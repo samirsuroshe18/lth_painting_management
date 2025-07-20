@@ -1,0 +1,35 @@
+{
+  "name": "lth-painting-backend",
+  "version": "1.0.0",
+  "description": "A Node.js REST API for managing painting audits using QR code scanning, asset tracking, and real-time inspection logs. Built for construction and facility management projects to ensure quality compliance and streamlined audit workflows.",
+  "main": "src/index.js",
+  "type": "module",
+  "scripts": {
+    "start": "node src/index.js",
+    "dev": "nodemon src/index.js",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [
+    "smartdwell",
+    "backend",
+    "API",
+    "audit-system",
+    "asset-management"
+  ],
+  "author": "Smartdwell Technologies",
+  "license": "ISC",
+  "dependencies": {
+    "bcrypt": "^6.0.0",
+    "cloudinary": "^2.7.0",
+    "cookie-parser": "^1.4.7",
+    "cors": "^2.8.5",
+    "dotenv": "^17.2.0",
+    "ejs": "^3.1.10",
+    "express": "^5.1.0",
+    "firebase-admin": "^13.4.0",
+    "jsonwebtoken": "^9.0.2",
+    "mongoose": "^8.16.4",
+    "multer": "^2.0.2",
+    "nodemailer": "^7.0.5"
+  }
+}
