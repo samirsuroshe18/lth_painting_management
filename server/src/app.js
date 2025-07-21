@@ -1,3 +1,5 @@
+import dotenv from "dotenv";
+dotenv.config()
 import express from "express";
 import cors from 'cors';
 import cookieParser from "cookie-parser";
@@ -40,6 +42,7 @@ import userMasterRouter from './routes/userMaster.routes.js';
 import stateMasterRouter from './routes/stateMaster.routes.js';
 import locationMasterRouter from './routes/locationMaster.routes.js';
 import assetMasterRouter from './routes/assetMaster.routes.js';
+import assetAuditRouter from './routes/assetAudit.routes.js';
 
 //Routes declaration
 app.use("/api/v1/user", userRouter);
@@ -48,6 +51,7 @@ app.use("/api/v1/usermaster", userMasterRouter);
 app.use("/api/v1/statemaster", stateMasterRouter);
 app.use("/api/v1/locationmaster", locationMasterRouter);
 app.use("/api/v1/assetmaster", assetMasterRouter);
+app.use("/api/v1/assetaudit", assetAuditRouter);
 
 // Custom error handeling
 app.use(errorHandler)

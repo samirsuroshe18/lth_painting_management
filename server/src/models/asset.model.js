@@ -12,11 +12,18 @@ const AssetSchema = new mongoose.Schema({
         required: true,
     },
 
-    details: {
+    qrCode: {
         type: String,
+        default: 'N/A',
     },
 
-    currentValue: {
+    description: {
+        type: String,
+        required: true,
+        maxlength: 500
+    },
+
+    purchaseValue: {
         type: String,
         required: true,
         maxlength: 100,
@@ -48,6 +55,7 @@ const AssetSchema = new mongoose.Schema({
     size: {
         type: String,
         maxlength: 100,
+        default: 'N/A'
     },
 
     status: {

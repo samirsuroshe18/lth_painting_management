@@ -1,60 +1,3 @@
-// import React, { useState } from "react";
-// import { googleLoginUser } from "../../api/authApi";
-// import { GoogleOAuthProvider, GoogleLogin } from "@react-oauth/google";
-// import { jwtDecode } from "jwt-decode";
-// import { Loader2 } from "lucide-react";
-// import { useDispatch } from 'react-redux'
-// import { login } from "../../redux/slices/authSlice";
-// import { useNavigate } from "react-router-dom";
-// import { showNotificationWithTimeout } from "../../redux/slices/notificationSlice";
-// import { handleAxiosError } from "../../utils/handleAxiosError";
-// import SnackBar from "../../utils/SnackBar";
-// import { motion } from "framer-motion";
-// import iitBombayLogo from "../../assets/college.png";
-
-// const Login = () => {
-  // const [loading, setLoading] = useState(false);
-  // const navigate = useNavigate();
-  // const dispatch = useDispatch();
-
-  // const handleSuccess = async (response) => {
-  //   const token = response.credential;
-  //   const decoded = jwtDecode(token);
-
-    // try {
-    //   const res = await googleLoginUser(decoded, setLoading, dispatch);
-    //   dispatch(login(res.data));
-    //   navigate('/');
-    // } catch (error) {
-    //   setLoading(false);
-    //   dispatch(showNotificationWithTimeout({ show: true, type: "error", message: handleAxiosError(error) }));
-    // }
-  // };
-  // const handleError = (error) => {
-  //   dispatch(showNotificationWithTimeout({show:true, type:"error", message:handleAxiosError(error)}));
-  // };
-
-  // if (loading) {
-  //   return (
-  //     <div className="min-h-screen flex items-center justify-center bg-[#131314] text-amber-500">
-  //       <div className="text-center">
-  //         <Loader2 className="w-12 h-12 animate-spin mx-auto mb-4" />
-  //         <p className="text-lg">Loading...</p>
-  //       </div>
-  //     </div>
-  //   );
-  // }
-
-//   return (
-//     <>
-//       <h1>Login screen</h1>
-//     </>
-//   );
-// };
-
-// export default Login;
-
-
 import { useState } from 'react';
 import { Eye, EyeOff, Mail, Lock, Loader2 } from 'lucide-react';
 import { useDispatch } from 'react-redux'
@@ -62,6 +5,8 @@ import { useNavigate } from 'react-router-dom';
 import { loginUser } from '../../api/authApi';
 import { login } from '../../redux/slices/authSlice';
 import { handleAxiosError } from '../../utils/handleAxiosError';
+import { showNotificationWithTimeout } from '../../redux/slices/notificationSlice';
+import SnackBar from '../../components/commonComponents/SnackBar';
 
 const Login = () => {
   const dispatch = useDispatch();
@@ -99,13 +44,12 @@ const Login = () => {
     if (!validateForm()) return;
 
     try {
-      const res = await loginUser(formData);
-      dispatch(showNotificationWithTimeout({ show: true, type: "success", message: response.data.message }));
-      dispatch(login(res.data));
+      setIsLoading(true);
+      const response = await loginUser(formData);
+      dispatch(login(response.data));
       navigate('/');
     } catch (error) {
       setIsLoading(false);
-      console.log("Login error:", handleAxiosError(error));
       dispatch(showNotificationWithTimeout({ show: true, type: "error", message: handleAxiosError(error) }));
     }
   };
@@ -256,6 +200,8 @@ const Login = () => {
         <div className="absolute -top-4 -left-4 w-24 h-24 bg-purple-500/20 rounded-full blur-xl"></div>
         <div className="absolute -bottom-4 -right-4 w-32 h-32 bg-pink-500/20 rounded-full blur-xl"></div>
       </div>
+
+      <SnackBar />
     </div>
   );
 };

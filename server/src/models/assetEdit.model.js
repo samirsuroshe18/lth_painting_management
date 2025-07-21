@@ -3,38 +3,47 @@ import mongoose, { Schema } from 'mongoose';
 const proposedChangesSchema = new Schema({
     name: {
         type: String,
+        required: true,
         maxlength: 200,
     },
 
     image: {
         type: String,
+        required: true,
     },
 
     description: {
         type: String,
+        required: true,
         maxlength: 500
     },
 
     purchaseValue: {
         type: String,
+        required: true,
         maxlength: 100,
         default: '0'
     },
 
-    location: {
-        type: String,
+    locationId: {
+        type: Schema.Types.ObjectId,
+        ref: 'Location',
+        required: true
     },
 
     year: {
         type: Date,
+        required: true
     },
 
     artist: {
         type: String,
+        required: true,
     },
 
     place: {
         type: String,
+        required: true,
         maxlength: 100
     },
 
@@ -45,55 +54,21 @@ const proposedChangesSchema = new Schema({
     },
 });
 
-const AssetAuditLogSchema = new Schema({
+const AssetEditSchema = new Schema({
     assetId: {
         type: Schema.Types.ObjectId,
         ref: 'Asset',
         required: true
     },
 
-    locationId: {
+    assetAuditId: {
         type: Schema.Types.ObjectId,
-        ref: 'Location',
+        ref: 'AssetAuditLog',
         required: true
-    },
-
-    auditorRemark: {
-        type: String,
-        maxlength: 1000,
-        default: null
     },
 
     proposedChanges: proposedChangesSchema,
 
-    attachmentOne: {
-        type: String,
-    },
-
-    attachmentTwo: {
-        type: String,
-    },
-
-    attachmentThree: {
-        type: String,
-    },
-
-    auditStatus: {
-        type: Boolean,
-        default: true
-    },
-
-    reviewStatus: {
-        type: String,
-        enum: ['pending', 'approved', 'rejected'],
-        default: "pending"
-    },
-
-    rejectedRemark: {
-        type: String,
-        maxlength: 1000,
-    },
-    
 }, { timestamps: true });
 
-export const AssetAuditLog = mongoose.model('AssetAuditLog', AssetAuditLogSchema);
+export const AssetEdit = mongoose.model('AssetEdit', AssetEditSchema);
