@@ -5,6 +5,7 @@ import { Asset } from '../models/asset.model.js';
 import { uploadOnCloudinary } from '../utils/cloudinary.js';
 import { AssetAuditLog } from '../models/assetAuditLog.model.js';
 
+// To add a new asset audit
 const addNewAssetAudit = catchAsync(async (req, res) => {
     const { assetId, auditorRemark, proposedChanges } = req.body;
     const files = req.files || {};
@@ -24,7 +25,7 @@ const addNewAssetAudit = catchAsync(async (req, res) => {
     }
 
     if (!assetId || !auditorRemark || !auditImagePath1) {
-        throw new ApiError(400, 'Auditor remark, and at least one audit image are required');
+        throw new ApiError(400, 'Auditor remark and at least one audit image are required');
     }
 
     if (proposedChanges || assetImagePath) {
@@ -74,28 +75,35 @@ const addNewAssetAudit = catchAsync(async (req, res) => {
     );
 });
 
+// To review the audit status
 const reviewAuditStatus = catchAsync(async (req, res) => {
     const { auditId } = req.params;
     const { reviewStatus, rejectedRemark } = req.body;
+
     const audit = await AssetAuditLog.findById(auditId);
     if (!audit) {
         throw new ApiError(404, 'Audit not found');
     }
+
     if (!['approved', 'rejected'].includes(reviewStatus)) {
         throw new ApiError(400, 'Invalid review status');
     }
+
     if (reviewStatus === 'rejected' && !rejectedRemark) {
         throw new ApiError(400, 'Rejected remark is required for rejection');
     }
+
     audit.reviewStatus = reviewStatus;
     audit.rejectedRemark = rejectedRemark || null;
     audit.updatedBy = req.user._id;
     await audit.save();
+
     return res.status(200).json(
         new ApiResponse(200, {}, 'Audit status updated successfully')
     );
 });
 
+// To get all audit logs with pagination and filtering
 const getAuditLogs = catchAsync(async (req, res) => {
     // Pagination parameters
     const page = parseInt(req.query.page) || 1;
@@ -179,6 +187,7 @@ const getAuditLogs = catchAsync(async (req, res) => {
     );
 });
 
+// To view all audit logs for a specific asset
 const getAssetAuditLogs = catchAsync(async (req, res) => {
     const { assetId } = req.params;
     // Pagination parameters
@@ -264,6 +273,7 @@ const getAssetAuditLogs = catchAsync(async (req, res) => {
     );
 });
 
+// To view a specific audit log by ID
 const viewAuditLog = catchAsync(async (req, res) => {
     const { auditId } = req.params;
 

@@ -10,8 +10,6 @@ const addNewAsset = catchAsync(async (req, res) => {
     let imageUrl = null;
     const imagePath = req.file?.path || null;
 
-    console.log("Location ID:", locationId);
-    console.log("User Location:", req.user.location[0]._id);
     const hasAccessToLocation = req.user.location.some(
         (loc) => loc._id.toString() === locationId
     );
