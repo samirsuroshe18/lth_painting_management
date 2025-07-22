@@ -9,5 +9,23 @@
   <body>
     <div id="root"></div>
     <script type="module" src="/src/main.jsx"></script>
+    <script>
+  const observer = new MutationObserver(() => {
+    const htmlEl = document.documentElement;
+    const scheme = htmlEl.getAttribute("data-toolpad-color-scheme");
+
+    if (scheme === "dark") {
+      htmlEl.classList.add("dark");
+    } else {
+      htmlEl.classList.remove("dark");
+    }
+  });
+
+  observer.observe(document.documentElement, {
+    attributes: true,
+    attributeFilter: ["data-toolpad-color-scheme"]
+  });
+</script>
+
   </body>
 </html>
