@@ -6,7 +6,20 @@ const axiosInstance = axios.create({
   headers: {
     'Content-Type': 'application/json',
   },
+  withCredentials: true // Important for sending cookies in refresh-token call
 });
+
+// ========== Request Interceptor to add Authorization Header ==========
+axiosInstance.interceptors.request.use(
+  (config) => {
+    const token = localStorage.getItem('token'); // your access token from login
+    if (token) {
+      config.headers['Authorization'] = `Bearer ${token}`;
+    }
+    return config;
+  },
+  (error) => Promise.reject(error)
+);
 
 // ========== Response Interceptor for Handling Token Expiry ==========
 let isRefreshing = false;
@@ -19,10 +32,9 @@ const processQueue = (error) => {
 
 axiosInstance.interceptors.response.use(
   response => response,
-
   async error => {
     const originalRequest = error.config;
-    // Check if access token has expired
+
     if (error.response?.status === 401 && error.response?.data?.message === "Access token expired" && !originalRequest._retry) {
       originalRequest._retry = true;
 
@@ -40,12 +52,20 @@ axiosInstance.interceptors.response.use(
 
       try {
         // Attempt to refresh access token using refresh token (HttpOnly cookie)
-        await axiosInstance.get('/api/v1/user/refresh-token', { withCredentials: true }); // This route should issue a new access token cookie
+        await axiosInstance.get('/api/v1/user/refresh-token', { withCredentials: true });
+
         processQueue(null);
-        return axiosInstance(originalRequest); // Retry the original request
+
+        // Get the new access token from localStorage (after it was saved)
+        const newToken = localStorage.getItem('token');
+        if (newToken) {
+          originalRequest.headers['Authorization'] = `Bearer ${newToken}`;
+        }
+
+        return axiosInstance(originalRequest);
       } catch (err) {
         processQueue(err);
-        return Promise.reject(err); // Optional: redirect to login here if needed
+        return Promise.reject(err);
       } finally {
         isRefreshing = false;
       }
