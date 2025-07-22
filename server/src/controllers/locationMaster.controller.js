@@ -13,7 +13,9 @@ const addNewLocation = catchAsync(async (req, res) => {
         name,
         stateId : state,
         area,
-        status,
+        status : status=== 'active' ? true : false,
+        createdBy: req.user.id,
+        updatedBy: req.user.id,
     });
 
     if (!newLocation) {
@@ -26,6 +28,44 @@ const addNewLocation = catchAsync(async (req, res) => {
 
 });
 
+const updateLocation = catchAsync(async (req, res) => {
+    const { id } = req.params;
+    const { name, state, area, status } = req.body;
+
+    if (!name || !state || !area || !status) {
+        throw new ApiError(400, 'Name, state, area, and status are required fields');
+    }
+
+    const updatedLocation = await Location.findByIdAndUpdate(
+        id,
+        {
+            name,
+            stateId: state,
+            area,
+            status: status === 'active' ? true : false,
+            updatedBy: req.user.id,
+        },
+        { new: true }
+    ).populate('stateId', 'name');
+
+    if (!updatedLocation) {
+        throw new ApiError(404, 'Location not found');
+    }
+
+    return res.status(200).json(
+        new ApiResponse(200, updatedLocation, 'Location updated successfully')
+    );
+});
+
+const getLocations = catchAsync(async (req, res) => {
+    const locations = await Location.find().populate('stateId', 'name');
+    return res.status(200).json(
+        new ApiResponse(200, locations, 'Locations retrieved successfully')
+    );
+});
+
 export {
     addNewLocation,
+    updateLocation,
+    getLocations
 };

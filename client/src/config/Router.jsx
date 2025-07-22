@@ -1,8 +1,4 @@
-import {
-  createBrowserRouter,
-  createRoutesFromElements,
-  Route,
-} from "react-router-dom";
+import { createBrowserRouter } from "react-router-dom";
 import App from "../App.jsx";
 import Layout from "../components/commonComponents/Layout.jsx";
 import HomePage from "../pages/commonPages/Home.jsx";
@@ -16,37 +12,41 @@ import UserMaster from "../pages/Masters/UserMaster.jsx";
 import AssetMaster from "../pages/Masters/AssetMaster.jsx";
 import LocationMaster from "../pages/Masters/LocationMaster.jsx";
 import StateMaster from "../pages/Masters/StateMaster.jsx";
+import ChangePassword from "../pages/commonPages/ChangePassword.jsx";
+import ForgotPassword from "../pages/commonPages/ForgotPassword.jsx";
 
-const router = createBrowserRouter(
-  createRoutesFromElements(
-    <>
-      <Route path="/" element={<App />}>
-        <Route element={<Layout />}>
-          <Route index element={<HomePage />} />
-          
-          {/* Master Routes */}
-          <Route path="masters">
-            <Route path="user-master" element={<UserMaster />} />
-            <Route path="asset-master" element={<AssetMaster />} />
-            <Route path="location-master" element={<LocationMaster />} />
-            <Route path="state-master" element={<StateMaster />} />
-          </Route>
-          
-          {/* Generate QR Code Route */}
-          <Route path="generate-qr" element={<GenerateQR />} />
-          
-          {/* Audit Report Route */}
-          <Route path="audit-report" element={<AuditReport />} />
-          
-        </Route>
-      </Route>
-      
-      <Route path="/login" element={<LoginPage />} />
-      <Route path="qr-code/:id" element={<QrCodePage />} />
-      
-      <Route path="*" element={<NotFound />} />
-    </>
-  )
-);
+const router = createBrowserRouter([
+  {
+    Component: App,
+    children: [
+      {
+        path: "/",
+        Component: Layout,
+        children: [
+          {
+            path: "",
+            Component: HomePage,
+          },
+          {
+            path: "masters",
+            children: [
+              { path: "user-master", Component: UserMaster },
+              { path: "asset-master", Component: AssetMaster },
+              { path: "location-master", Component: LocationMaster },
+              { path: "state-master", Component: StateMaster },
+            ],
+          },
+          { path: "generate-qr", Component: GenerateQR },
+          { path: "audit-report", Component: AuditReport },
+        ],
+      },
+      { path: "/login", Component: LoginPage },
+      { path: "/qr-code/:id", Component: QrCodePage },
+      {path: "/change-password", Component: ChangePassword},
+      {path: "/forgot-password", Component: ForgotPassword},
+      { path: "*", Component: NotFound },
+    ],
+  },
+]);
 
 export default router;

@@ -8,7 +8,7 @@ const permissionSchema = new Schema({
 });
 
 const userSchema = new Schema({
-    profileProfile: {
+    profilePic: {
         type: String
     },
 

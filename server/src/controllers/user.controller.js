@@ -3,6 +3,7 @@ import ApiError from '../utils/ApiError.js';
 import ApiResponse from '../utils/ApiResponse.js';
 import mailSender from '../utils/mailSender.js';
 import { User } from '../models/user.model.js';
+import jwt from "jsonwebtoken";
 
 const generateAccessAndRefreshToken = async (userId) => {
     try {
@@ -60,7 +61,7 @@ const loginUser = catchAsync(async (req, res) => {
 
     return res.status(200).cookie('accessToken', accessToken, option).cookie('refreshToken', refreshToken, option).json(
         new ApiResponse(200, {
-            loggedInUser: user,
+            user,
             accessToken,
             refreshToken
         }, "User logged in successfully")
@@ -68,38 +69,48 @@ const loginUser = catchAsync(async (req, res) => {
 });
 
 const logoutUser = catchAsync(async (req, res) => {
+    const refreshToken = req.cookies.refreshToken;
 
-    await User.findByIdAndUpdate(
-        req.user._id,
-        {
-            $unset: {
-                refreshToken: 1,
-            },
-            $set: {
-                isLoggedIn: false,
-                lastLogout: new Date(),
-                isRemember: false,
-            }
-        },
-        {
-            new: true
-        }
-    );
-
+    // Cookie options
     const option = {
         httpOnly: process.env.HTTP_ONLY === 'true',
         secure: process.env.NODE_ENV === 'production',
         sameSite: process.env.SAME_SITE === 'true' ? 'Strict' : 'Lax',
     }
 
-    return res.status(200).clearCookie("accessToken", option).clearCookie("refreshToken", option).json(
-        new ApiResponse(200, {}, "User logged out")
-    )
+    try {
+        // Only update database if refresh token exists
+        if (refreshToken) {
+            await User.findOneAndUpdate(
+                { refreshToken: refreshToken },
+                {
+                    $unset: {
+                        refreshToken: 1,
+                    },
+                    $set: {
+                        isLoggedIn: false,
+                        lastLogout: new Date(),
+                        isRemember: false,
+                    }
+                },
+                { new: true }
+            );
+        }
+    } catch (error) {
+        // Log error but don't fail logout
+        console.error('Database update failed during logout:', error);
+    }
+
+    // Always clear cookies regardless of database operation result
+    return res.status(200)
+        .clearCookie("accessToken", option)
+        .clearCookie("refreshToken", option)
+        .json(new ApiResponse(200, {}, "User logged out successfully"));
 });
 
 const getCurrentUser = catchAsync(async (req, res) => {
     return res.status(200).json(
-        new ApiResponse(200, req.user, "Current user fetched successfully")
+        new ApiResponse(200, {user: req.user}, "Current user fetched successfully")
     );
 });
 
@@ -110,7 +121,16 @@ const refreshAccessToken = catchAsync(async (req, res) => {
         throw new ApiError(401, "Unauthorized request");
     }
 
-    const decodedToken = jwt.verify(incomingRefreshToken, process.env.REFRESH_TOKEN_SECRET);
+    let decodedToken;
+
+    try {
+        decodedToken = jwt.verify(incomingRefreshToken, process.env.REFRESH_TOKEN_SECRET);
+    } catch (err) {
+        if (err.name === 'TokenExpiredError') {
+            throw new ApiError(401, "Refresh token is expired");
+        }
+        throw new ApiError(403, "Invalid refresh token");
+    }
 
     const user = await User.findById(decodedToken?._id);
 
@@ -118,22 +138,24 @@ const refreshAccessToken = catchAsync(async (req, res) => {
         throw new ApiError(401, "Invalid refresh token");
     }
 
-    if (incomingRefreshToken != user?.refreshToken) {
+    if (incomingRefreshToken !== user.refreshToken) {
         throw new ApiError(401, "Refresh token is expired or used");
     }
 
     const option = {
         httpOnly: process.env.HTTP_ONLY === 'true',
-        secure: process.env.NODE_ENV === 'production', // secure only in production
-        maxAge: isRemember ? Number(process.env.COOKIE_MAX_AGE) : undefined,
-        sameSite: process.env.SAME_SITE === 'true' ? 'Strict' : 'Lax', // fallback to Lax if not strict
-    }
+        secure: process.env.NODE_ENV === 'production',
+        maxAge: user?.isRemember ? Number(process.env.COOKIE_MAX_AGE) : undefined,
+        sameSite: process.env.SAME_SITE === 'true' ? 'Strict' : 'Lax',
+    };
 
     const { accessToken, refreshToken } = await generateAccessAndRefreshToken(user._id);
 
-    return res.status(200).clearCookie("accessToken", accessToken, option).clearCookie("refreshToken", refreshToken, option).json(
-        new ApiResponse(200, { accessToken, refreshToken }, "Access token refreshed")
-    );
+    return res
+        .status(200)
+        .cookie('accessToken', accessToken, option)
+        .cookie('refreshToken', refreshToken, option)
+        .json(new ApiResponse(200, { accessToken, refreshToken }, "Access token refreshed"));
 });
 
 const changeCurrentPassword = catchAsync(async (req, res) => {

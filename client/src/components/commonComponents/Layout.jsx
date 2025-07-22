@@ -1,18 +1,25 @@
 import { Outlet } from "react-router";
 import { DashboardLayout } from "@toolpad/core/DashboardLayout";
 import { PageContainer } from "@toolpad/core/PageContainer";
-import SnackBar from "./SnackBar";
+import ProfileComponent from "../ProfileComponent";
+import { Box } from "@mui/material";
 
 export default function Layout() {
-
   return (
     <div>
-      <DashboardLayout>
+      <DashboardLayout
+        slots={{
+          sidebarFooter: () => (
+            <Box sx={{ p: 2, borderTop: 1, borderColor: "divider" }}>
+              <ProfileComponent />
+            </Box>
+          ),
+        }}
+      >
         <PageContainer>
           <Outlet />
         </PageContainer>
       </DashboardLayout>
-      <SnackBar />
     </div>
   );
 }

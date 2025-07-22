@@ -1,19 +1,17 @@
 import { useEffect, useState } from "react";
 import { Outlet, useNavigate } from "react-router";
 import { useDispatch, useSelector } from "react-redux";
+import { ReactRouterAppProvider } from "@toolpad/core/react-router";
+import { getCurrentUser } from "./api/authApi";
+import { currentUser } from "./redux/slices/authSlice";
+import { LinearProgress } from "@mui/material";
 import AnnouncementIcon from "@mui/icons-material/Campaign";
 import HowToVoteIcon from "@mui/icons-material/HowToVote";
 import BusinessCenterIcon from "@mui/icons-material/BusinessCenter";
 import AssignmentIcon from "@mui/icons-material/Assignment";
 import ReportProblemIcon from "@mui/icons-material/ReportProblem";
-import { ReactRouterAppProvider } from "@toolpad/core/react-router";
-import GavelIcon from "@mui/icons-material/Gavel";
-import BarChartIcon from "@mui/icons-material/BarChart";
 import LayersIcon from "@mui/icons-material/Layers";
 import ShoppingCartIcon from "@mui/icons-material/ShoppingCart";
-import { getCurrentUser } from "./api/authApi";
-import { currentUser } from "./redux/slices/authSlice";
-import { LinearProgress } from "@mui/material";
 import DashboardIcon from "@mui/icons-material/Dashboard";
 import SettingsIcon from "@mui/icons-material/Settings";
 import PeopleIcon from "@mui/icons-material/People";
@@ -22,15 +20,14 @@ import LocationOnIcon from "@mui/icons-material/LocationOn";
 import PublicIcon from "@mui/icons-material/Public";
 import QrCodeIcon from "@mui/icons-material/QrCode";
 import AssessmentIcon from "@mui/icons-material/Assessment";
+import SnackBar from "./components/commonComponents/SnackBar";
 
 function App() {
+  const userRole = useSelector((state) => state.auth.userData?.user?.role);
   const [loading, setLoading] = useState(true);
   const navigate = useNavigate();
   const dispatch = useDispatch();
 
-  const userRole = useSelector((state) => state.auth.userData?.role);
-
-  // Call API when the page is loading
   useEffect(() => {
     const fetchData = async () => {
       try {
@@ -44,7 +41,7 @@ function App() {
       }
     };
     fetchData();
-  }, [dispatch, navigate]);
+  }, []);
 
   const BRANDING = {
     title: "Artifact E-Gallary Portal",
@@ -95,51 +92,6 @@ function App() {
       icon: <AssessmentIcon />,
     },
   ];
-
-  //   const superAdminNavigation = [
-  //   {
-  //     segment: "dashboard",
-  //     title: "Dashboard",
-  //     icon: <DashboardIcon />,
-  //   },
-  // {
-  //   segment: "masters",
-  //   title: "Masters",
-  //   icon: <SettingsIcon />,
-  //   children: [
-  //     {
-  //       segment: "user-master",
-  //       title: "User Master",
-  //       icon: <PeopleIcon />,
-  //     },
-  //     {
-  //       segment: "asset-master",
-  //       title: "Asset Master",
-  //       icon: <DevicesOtherIcon />,
-  //     },
-  //     {
-  //       segment: "location-master",
-  //       title: "Location Master",
-  //       icon: <LocationOnIcon />,
-  //     },
-  //     {
-  //       segment: "state-master",
-  //       title: "State Master",
-  //       icon: <PublicIcon />,
-  //     },
-  //   ],
-  // },
-    // {
-    //   segment: "generate-qr",
-    //   title: "Generate QR Code",
-    //   icon: <QrCodeIcon />,
-    // },
-    // {
-    //   segment: "audit-report",
-    //   title: "Audit Report",
-    //   icon: <AssessmentIcon />,
-    // },
-  // ];
 
   const studentNavigation = [
     {
@@ -204,7 +156,7 @@ function App() {
   // Show loading state
   if (loading) {
     return (
-      <ReactRouterAppProvider navigation={NAVIGATION} branding={BRANDING}>
+      <ReactRouterAppProvider>
         <div
           style={{
             width: "100%",
@@ -222,6 +174,7 @@ function App() {
   return (
     <ReactRouterAppProvider navigation={NAVIGATION} branding={BRANDING}>
       <Outlet />
+      <SnackBar />
     </ReactRouterAppProvider>
   );
 }
