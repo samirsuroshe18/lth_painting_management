@@ -10,4 +10,24 @@ const getAllLocations = async () => {
   }
 };
 
-export { getAllLocations };
+const addLocation = async (locationData) => {
+  try {
+    const response = await axiosInstance.post('/api/v1/locationmaster/add-location', locationData);
+    return response.data;
+  } catch (error) {
+    console.error('Error adding location:', error);
+    throw error;
+  }
+};
+
+const updateLocation = async (locationId, updatedData) => {
+  try {
+    const response = await axiosInstance.put(`/api/v1/locationmaster/update-location/${locationId}`, updatedData);
+    return response.data;
+  } catch (error) {
+    console.error('Error updating location:', error);
+    throw error;
+  }
+};
+
+export { getAllLocations, addLocation, updateLocation };
