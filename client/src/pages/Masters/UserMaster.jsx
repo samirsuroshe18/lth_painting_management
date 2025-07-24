@@ -35,7 +35,7 @@ const UserMaster = () => {
 
 
   const handleAddUser = () => {
-    navigate("/add-user");
+    navigate("/masters/add-user");
   };
 
   const handleEditUser = (userId) => {
@@ -150,7 +150,7 @@ const UserMaster = () => {
           <button
             key={i + 1}
             onClick={() => setCurrentPage(i + 1)}
-            className={`px-3 py-1 border rounded-full ${
+            className={`px-3 py-1 rounded ${
               currentPage === i + 1
                 ? "bg-blue-600 text-white hover:bg-blue-700"
                 : "border-gray-300 dark:border-gray-600 hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-800 dark:text-gray-200"

@@ -10,4 +10,5 @@ router.route('/get-all-states').get(verifyJwt, checkAccess('userMaster', 'dashbo
 router.route('/update-state/:id').put(verifyJwt, checkAccess('userMaster', 'dashboard'), updateState);
 
 
+
 export default router;

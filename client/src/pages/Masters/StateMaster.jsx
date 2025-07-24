@@ -4,6 +4,8 @@ import { useDispatch } from 'react-redux';
 import { showNotificationWithTimeout } from '../../redux/slices/notificationSlice';
 import editIcon from "@/assets/icons/edit.png";
 import { motion, AnimatePresence } from 'framer-motion';
+import { FaChevronLeft } from 'react-icons/fa';
+
 
 const StateMaster = () => {
   const [states, setStates] = useState([]);
@@ -12,13 +14,18 @@ const StateMaster = () => {
   const [showModal, setShowModal] = useState(false);
   const [editMode, setEditMode] = useState(false);
   const [editStateId, setEditStateId] = useState(null);
-
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 5;
   const dispatch = useDispatch();
-
+      const indexOfLastItem = currentPage * itemsPerPage;
+      const indexOfFirstItem = indexOfLastItem - itemsPerPage;
+      const currentStates = states.slice(indexOfFirstItem, indexOfLastItem);
   const fetchStates = async () => {
     try {
       const result = await getAllStates();
       setStates(result?.data || []);
+      
+
     } catch (error) {
       console.error('Error fetching states:', error);
     }
@@ -29,61 +36,65 @@ const StateMaster = () => {
   }, []);
 
   const handleSubmit = async (e) => {
-    e.preventDefault();
+  e.preventDefault();
 
-    if (!stateName || !status) {
+  if (!stateName || !status) {
+    dispatch(
+      showNotificationWithTimeout({
+        show: true,
+        type: 'error',
+        message: 'Please fill in all fields.',
+      })
+    );
+    return;
+  }
+
+  try {
+    if (editMode) {
+      await updateState(editStateId, {
+        name: stateName,
+        status: status, // keep it as "active" or "inactive"
+      });
+
       dispatch(
         showNotificationWithTimeout({
           show: true,
-          type: 'error',
-          message: 'Please fill in all fields.',
+          type: 'success',
+          message: 'State updated successfully',
         })
       );
-      return;
-    }
+    } else {
+      await addState({
+        name: stateName,
+        status: status, // keep it as "active" or "inactive"
+      });
 
-    try {
-      if (editMode) {
-        await updateState(editStateId, {
-          name: stateName,
-          status: status === 'active',
-        });
-
-        dispatch(
-          showNotificationWithTimeout({
-            show: true,
-            type: 'success',
-            message: 'State updated successfully',
-          })
-        );
-      } else {
-        await addState({ name: stateName, status: status === 'active' });
-
-        dispatch(
-          showNotificationWithTimeout({
-            show: true,
-            type: 'success',
-            message: 'State added successfully',
-          })
-        );
-      }
-
-      setStateName('');
-      setStatus('');
-      setEditStateId(null);
-      setEditMode(false);
-      setShowModal(false);
-      fetchStates();
-    } catch (error) {
       dispatch(
         showNotificationWithTimeout({
           show: true,
-          type: 'error',
-          message: editMode ? 'Failed to update state' : 'Failed to add state',
+          type: 'success',
+          message: 'State added successfully',
         })
       );
     }
-  };
+
+    setStateName('');
+    setStatus('');
+    setEditStateId(null);
+    setEditMode(false);
+    setShowModal(false);
+    fetchStates();
+  } catch (error) {
+    dispatch(
+      showNotificationWithTimeout({
+        show: true,
+        type: 'error',
+        message: editMode ? 'Failed to update state' : 'Failed to add state',
+      })
+    );
+  }
+};
+
 
   const handleEditClick = (state) => {
     setStateName(state.name);
@@ -206,7 +217,7 @@ const StateMaster = () => {
     </div>
 
     {/* Responsive Rows */}
-    {states.map((state, index) => (
+  {currentStates.map((state, index) => (
       <div
         key={state._id}
         className={`grid sm:grid-cols-4 grid-cols-1 sm:items-center py-2 px-4 gap-1 text-gray-800 dark:text-gray-200 border-t border-gray-200 dark:border-gray-700 ${
@@ -215,7 +226,8 @@ const StateMaster = () => {
       >
         <div className="text-center sm:text-left">
           <span className="sm:hidden font-medium text-gray-500 dark:text-gray-400">Sr.No: </span>
-          {index + 1}
+          {indexOfFirstItem + index + 1}
+
         </div>
         <div className="break-words">
           <span className="sm:hidden font-medium text-gray-500 dark:text-gray-400">State: </span>
@@ -251,15 +263,43 @@ const StateMaster = () => {
     ))}
   </div>
 )}
+{Math.ceil(states.length / itemsPerPage) > 1 && (
+  <div className="flex justify-center items-center mt-4 gap-2">
+   <button
+  onClick={() => setCurrentPage((prev) => Math.max(prev - 1, 1))}
+  disabled={currentPage === 1}
+  className="px-3 py-1 border border-gray-300 dark:border-gray-600 rounded-full hover:bg-gray-200 dark:hover:bg-gray-600 disabled:opacity-50"
+>
+  &lt;
+</button>
 
-</div>
 
+    {[...Array(Math.ceil(states.length / itemsPerPage)).keys()].map((page) => (
+      <button
+        key={page + 1}
+        onClick={() => setCurrentPage(page + 1)}
+        className={`px-3 py-1 rounded ${
+          currentPage === page + 1
+            ? "bg-blue-600 text-white hover:bg-blue-700"
+            : "border-gray-300 dark:border-gray-600 hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-800 dark:text-gray-200"
+        }`}
+      >
+        {page + 1}
+      </button>
+    ))}
 
-
-
-
+    <button
+      onClick={() => setCurrentPage((prev) => Math.min(prev + 1, Math.ceil(states.length / itemsPerPage)))}
+      disabled={currentPage === Math.ceil(states.length / itemsPerPage)}
+      className="px-3 py-1 border border-gray-300 dark:border-gray-600 rounded-full hover:bg-gray-200 dark:hover:bg-gray-600 disabled:opacity-50"
+>
+      &gt;
+    </button>
+  </div>
+)}
 
     </div>
+</div>
   );
 };
 

@@ -119,6 +119,39 @@ const updateState = catchAsync(async (req, res) => {
     );
 });
 
+// const updateState = catchAsync(async (req, res) => {
+//     const { id } = req.params;
+//     const { name, status } = req.body;
+
+//     if (!['active', 'inactive'].includes(status)) {
+//         throw new ApiError(400, 'Status must be either active or inactive');
+//     }
+
+//     if (!name) {
+//         throw new ApiError(400, 'Name is a required field');
+//     }
+
+//     const updatedState = await State.findByIdAndUpdate(
+//         id,
+//         {
+//             name,
+//             status: status === 'active'
+//             // updatedBy: req.user._id, // 🔴 Removed for debugging
+//         },
+//         { new: true, runValidators: true }
+//     )
+//     .populate('createdBy', 'userName')
+//     .populate('updatedBy', 'userName');
+
+//     if (!updatedState) {
+//         throw new ApiError(404, 'State not found');
+//     }
+
+//     return res.status(200).json(
+//         new ApiResponse(200, updatedState, 'State updated successfully')
+//     );
+// });
+
 export {
     addNewState,
     getAllStates,
