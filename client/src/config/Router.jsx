@@ -8,43 +8,48 @@ import QrCodePage from "../pages/commonPages/QrCodePage.jsx";
 
 import GenerateQR from "../pages/QrCode/GenerateQR.jsx";
 import AuditReport from "../pages/Report/AuditReport.jsx";
+
 import UserMaster from "../pages/Masters/UserMaster.jsx";
+import AddUser from "../pages/Masters/AddUser.jsx"; 
 import AssetMaster from "../pages/Masters/AssetMaster.jsx";
 import LocationMaster from "../pages/Masters/LocationMaster.jsx";
 import StateMaster from "../pages/Masters/StateMaster.jsx";
+
 import ChangePassword from "../pages/commonPages/ChangePassword.jsx";
 import ForgotPassword from "../pages/commonPages/ForgotPassword.jsx";
 
 const router = createBrowserRouter([
   {
-    Component: App,
+    path: "/",
+    element: <App />,
     children: [
       {
-        path: "/",
-        Component: Layout,
+        path: "",
+        element: <Layout />,
         children: [
           {
             path: "",
-            Component: HomePage,
+            element: <HomePage />,
           },
           {
             path: "masters",
             children: [
-              { path: "user-master", Component: UserMaster },
-              { path: "asset-master", Component: AssetMaster },
-              { path: "location-master", Component: LocationMaster },
-              { path: "state-master", Component: StateMaster },
+              { path: "user-master", element: <UserMaster /> },
+              { path: "add-user", element: <AddUser /> }, // ✅ Nested correctly
+              { path: "asset-master", element: <AssetMaster /> },
+              { path: "location-master", element: <LocationMaster /> },
+              { path: "state-master", element: <StateMaster /> },
             ],
           },
-          { path: "generate-qr", Component: GenerateQR },
-          { path: "audit-report", Component: AuditReport },
+          { path: "generate-qr", element: <GenerateQR /> },
+          { path: "audit-report", element: <AuditReport /> },
         ],
       },
-      { path: "/login", Component: LoginPage },
-      { path: "/qr-code/:id", Component: QrCodePage },
-      {path: "/change-password", Component: ChangePassword},
-      {path: "/forgot-password", Component: ForgotPassword},
-      { path: "*", Component: NotFound },
+      { path: "login", element: <LoginPage /> },
+      { path: "qr-code/:id", element: <QrCodePage /> },
+      { path: "change-password", element: <ChangePassword /> },
+      { path: "forgot-password", element: <ForgotPassword /> },
+      { path: "*", element: <NotFound /> },
     ],
   },
 ]);
