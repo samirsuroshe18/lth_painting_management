@@ -1,10 +1,30 @@
-const Home = () => {
+import { useSelector } from "react-redux";
+import SuperAdminDashboard from "../Dashboards/SuperAdminDashboard";
+import AuditorDashboard from "../Dashboards/AuditorDashboard";
+import UserDashboard from "../Dashboards/UserDashboard";
 
-    return (
-        <>
-            <h1>Home page</h1>
-        </>
-    );
+const Home = () => {
+  const userData = useSelector((state) => state.auth.userData?.user);
+  const userRole = userData?.role;
+
+  const dashboardComponents = {
+    superAdmin: SuperAdminDashboard,
+    admin: SuperAdminDashboard,
+    auditor: AuditorDashboard,
+    user: UserDashboard,
+  };
+
+  const DashboardComponent = dashboardComponents[userRole];
+
+  return (
+    <>
+      {DashboardComponent ? (
+        <DashboardComponent />
+      ) : (
+        <div>Access denied or invalid role</div>
+      )}
+    </>
+  );
 };
 
 export default Home;

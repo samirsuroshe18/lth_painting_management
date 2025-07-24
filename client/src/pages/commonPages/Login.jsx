@@ -49,6 +49,7 @@ const Login = () => {
       dispatch(login(response.data));
       navigate('/');
     } catch (error) {
+      console.log(error);
       setIsLoading(false);
       dispatch(showNotificationWithTimeout({ show: true, type: "error", message: handleAxiosError(error) }));
     }

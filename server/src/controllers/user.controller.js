@@ -23,6 +23,7 @@ const generateAccessAndRefreshToken = async (userId) => {
 }
 
 const loginUser = catchAsync(async (req, res) => {
+    console.log('hello');
     const { email, password, isRemember } = req.body;
 
     if (!email || !password) {

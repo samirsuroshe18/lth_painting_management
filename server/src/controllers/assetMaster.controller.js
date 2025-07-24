@@ -241,7 +241,8 @@ const getAssets = catchAsync(async (req, res) => {
     const totalCount = await Asset.countDocuments(assetMatch);
     const totalPages = Math.ceil(totalCount / limit);
     const updatedAsset = await Asset.find(assetMatch)
-        .sort({ createdAt: -1 });
+        .sort({ createdAt: -1 })
+        .populate('locationId', 'name');
 
     // Apply pagination on combined results
     const response = updatedAsset.slice(skip, skip + limit);
