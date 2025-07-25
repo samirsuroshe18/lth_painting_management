@@ -4,6 +4,7 @@ import {
   addLocation,
   updateLocation,
 } from "../../api/locationApi";
+import { getAllStates } from "../../api/stateApi";
 import { useDispatch } from "react-redux";
 import { showNotificationWithTimeout } from "../../redux/slices/notificationSlice";
 import editIcon from "@/assets/icons/edit.png";
@@ -12,6 +13,7 @@ import { FaChevronLeft } from "react-icons/fa";
 
 const LocationMaster = () => {
   const [locations, setLocations] = useState([]);
+  const [states, setStates] = useState([]);
   const [locationName, setLocationName] = useState("");
   const [selectedStates, setSelectedStates] = useState("");
   const [area, setArea] = useState("");
@@ -29,14 +31,23 @@ const LocationMaster = () => {
     try {
       const result = await getAllLocations();
       setLocations(result?.data || []);
-      console.log("Fetched Locations:", result?.data);
     } catch (error) {
       console.error("Error fetching Location:", error);
     }
   };
 
+  const fetchStates = async () => {
+    try {
+      const result = await getAllStates();
+      setStates(result?.data || []);
+    } catch (error) {
+      console.error("Error fetching States:", error);
+    }
+  };
+
   useEffect(() => {
     fetchLocations();
+    fetchStates();
   }, []);
 
   const handleSubmit = async (e) => {
@@ -57,7 +68,9 @@ const LocationMaster = () => {
       if (editMode) {
         await updateLocation(editStateId, {
           name: locationName,
-          status: status, // keep it as "active" or "inactive"
+          state: selectedStates, 
+          area: area,
+          status: status,
         });
 
         dispatch(
@@ -70,7 +83,9 @@ const LocationMaster = () => {
       } else {
         await addLocation({
           name: locationName,
-          status: status, // keep it as "active" or "inactive"
+          state: selectedStates, 
+          area: area,
+          status: status,
         });
 
         dispatch(
@@ -103,7 +118,7 @@ const LocationMaster = () => {
 
   const handleEditClick = (state) => {
     setLocationName(state.name);
-    setSelectedStates(state.stateId.name);
+    setSelectedStates(state.stateId._id);
     setArea(state.area);
     setStatus(state.status ? "active" : "inactive");
     setEditStateId(state._id);
@@ -133,7 +148,7 @@ const LocationMaster = () => {
             exit={{ opacity: 0 }}
           >
             <motion.div
-              className="relative bg-white dark:bg-[#1e1e1e] p-6 rounded-2xl w-full max-w-md shadow-xl border border-gray-200 dark:border-gray-700 transition-colors duration-300"
+              className="relative bg-white dark:bg-[#1e1e1e] p-6 rounded-2xl w-full max-w-2xl shadow-xl border border-gray-200 dark:border-gray-700 transition-colors duration-300"
               initial={{ opacity: 0, scale: 0.9 }}
               animate={{ opacity: 1, scale: 1 }}
               exit={{ opacity: 0, scale: 0.9 }}
@@ -148,7 +163,7 @@ const LocationMaster = () => {
               </button>
 
               <h2 className="text-xl font-semibold mb-4 text-gray-800 dark:text-gray-100">
-                {editMode ? "Edit State" : "Add New State"}
+                {editMode ? "Edit Location" : "Add New Location"}
               </h2>
 
               <form onSubmit={handleSubmit}>
@@ -162,7 +177,7 @@ const LocationMaster = () => {
                       type="text"
                       value={locationName}
                       onChange={(e) => setLocationName(e.target.value)}
-                      placeholder="Enter state name"
+                      placeholder="Enter Location name"
                       className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 bg-white dark:bg-[#2a2a2a] text-gray-900 dark:text-white rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
                     />
                   </div>
@@ -173,15 +188,16 @@ const LocationMaster = () => {
                       Select State
                     </label>
                     <select
-                      value={selectedState}
-                      onChange={(e) => setSelectedState(e.target.value)}
+                      value={selectedStates}
+                      onChange={(e) => setSelectedStates(e.target.value)}
                       className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 bg-white dark:bg-[#2a2a2a] text-gray-900 dark:text-white rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
                     >
                       <option value="">Choose state</option>
-                      <option value="maharashtra">Maharashtra</option>
-                      <option value="gujarat">Gujarat</option>
-                      <option value="karnataka">Karnataka</option>
-                      {/* Add more options as needed */}
+                      {states.map((state) => (
+                        <option key={state._id} value={state._id}>
+                          {state.name}
+                        </option>
+                      ))}
                     </select>
                   </div>
 
