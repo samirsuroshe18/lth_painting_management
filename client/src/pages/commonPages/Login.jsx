@@ -13,37 +13,37 @@
 // import iitBombayLogo from "../../assets/college.png";
 
 // const Login = () => {
-  // const [loading, setLoading] = useState(false);
-  // const navigate = useNavigate();
-  // const dispatch = useDispatch();
+// const [loading, setLoading] = useState(false);
+// const navigate = useNavigate();
+// const dispatch = useDispatch();
 
-  // const handleSuccess = async (response) => {
-  //   const token = response.credential;
-  //   const decoded = jwtDecode(token);
+// const handleSuccess = async (response) => {
+//   const token = response.credential;
+//   const decoded = jwtDecode(token);
 
-    // try {
-    //   const res = await googleLoginUser(decoded, setLoading, dispatch);
-    //   dispatch(login(res.data));
-    //   navigate('/');
-    // } catch (error) {
-    //   setLoading(false);
-    //   dispatch(showNotificationWithTimeout({ show: true, type: "error", message: handleAxiosError(error) }));
-    // }
-  // };
-  // const handleError = (error) => {
-  //   dispatch(showNotificationWithTimeout({show:true, type:"error", message:handleAxiosError(error)}));
-  // };
+// try {
+//   const res = await googleLoginUser(decoded, setLoading, dispatch);
+//   dispatch(login(res.data));
+//   navigate('/');
+// } catch (error) {
+//   setLoading(false);
+//   dispatch(showNotificationWithTimeout({ show: true, type: "error", message: handleAxiosError(error) }));
+// }
+// };
+// const handleError = (error) => {
+//   dispatch(showNotificationWithTimeout({show:true, type:"error", message:handleAxiosError(error)}));
+// };
 
-  // if (loading) {
-  //   return (
-  //     <div className="min-h-screen flex items-center justify-center bg-[#131314] text-amber-500">
-  //       <div className="text-center">
-  //         <Loader2 className="w-12 h-12 animate-spin mx-auto mb-4" />
-  //         <p className="text-lg">Loading...</p>
-  //       </div>
-  //     </div>
-  //   );
-  // }
+// if (loading) {
+//   return (
+//     <div className="min-h-screen flex items-center justify-center bg-[#131314] text-amber-500">
+//       <div className="text-center">
+//         <Loader2 className="w-12 h-12 animate-spin mx-auto mb-4" />
+//         <p className="text-lg">Loading...</p>
+//       </div>
+//     </div>
+//   );
+// }
 
 //   return (
 //     <>
@@ -54,23 +54,22 @@
 
 // export default Login;
 
-
-import { useState } from 'react';
-import { Eye, EyeOff, Mail, Lock, Loader2 } from 'lucide-react';
-import { useDispatch } from 'react-redux'
-import { useNavigate } from 'react-router-dom';
-import { loginUser } from '../../api/authApi';
-import { login } from '../../redux/slices/authSlice';
-import { handleAxiosError } from '../../utils/handleAxiosError';
-import { showNotificationWithTimeout } from '../../redux/slices/notificationSlice';
+import { useState } from "react";
+import { Eye, EyeOff, Mail, Lock, Loader2 } from "lucide-react";
+import { useDispatch } from "react-redux";
+import { Link, useNavigate } from "react-router-dom";
+import { loginUser } from "../../api/authApi";
+import { login } from "../../redux/slices/authSlice";
+import { handleAxiosError } from "../../utils/handleAxiosError";
+import { showNotificationWithTimeout } from "../../redux/slices/notificationSlice";
 
 const Login = () => {
   const dispatch = useDispatch();
   const navigate = useNavigate();
   const [formData, setFormData] = useState({
-    email: '',
-    password: '',
-    isRemember: false
+    email: "",
+    password: "",
+    isRemember: false,
   });
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
@@ -78,19 +77,19 @@ const Login = () => {
 
   const validateForm = () => {
     const newErrors = {};
-    
+
     if (!formData.email) {
-      newErrors.email = 'Email is required';
+      newErrors.email = "Email is required";
     } else if (!/\S+@\S+\.\S+/.test(formData.email)) {
-      newErrors.email = 'Please enter a valid email';
+      newErrors.email = "Please enter a valid email";
     }
-    
+
     if (!formData.password) {
-      newErrors.password = 'Password is required';
+      newErrors.password = "Password is required";
     } else if (formData.password.length < 6) {
-      newErrors.password = 'Password must be at least 6 characters';
+      newErrors.password = "Password must be at least 6 characters";
     }
-    
+
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
@@ -101,29 +100,39 @@ const Login = () => {
 
     try {
       const res = await loginUser(formData);
-      dispatch(showNotificationWithTimeout({ show: true, type: "success", message: res.data.message }));
+      dispatch(
+        showNotificationWithTimeout({
+          show: true,
+          type: "success",
+          message: res.data.message,
+        })
+      );
       dispatch(login(res.data));
-      navigate('/');
+      navigate("/");
     } catch (error) {
-      console.log(error);
       setIsLoading(false);
-      console.log("Login error:", handleAxiosError(error));
-      dispatch(showNotificationWithTimeout({ show: true, type: "error", message: handleAxiosError(error) }));
+      dispatch(
+        showNotificationWithTimeout({
+          show: true,
+          type: "error",
+          message: handleAxiosError(error),
+        })
+      );
     }
   };
 
   const handleInputChange = (e) => {
     const { name, value, type, checked } = e.target;
-    setFormData(prev => ({
+    setFormData((prev) => ({
       ...prev,
-      [name]: type === 'checkbox' ? checked : value
+      [name]: type === "checkbox" ? checked : value,
     }));
-    
+
     // Clear error when user starts typing
     if (errors[name]) {
-      setErrors(prev => ({
+      setErrors((prev) => ({
         ...prev,
-        [name]: ''
+        [name]: "",
       }));
     }
   };
@@ -131,33 +140,30 @@ const Login = () => {
   return (
     // <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900 p-4">
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-tr from-[#0082A2] via-[#FFE600] to-[#FF8700] p-4">
-
       {/* Background Pattern */}
       <div className="absolute inset-0 bg-[url('data:image/svg+xml,%3Csvg width=\'60\' height=\'60\' viewBox=\'0 0 60 60\' xmlns=\'http://www.w3.org/2000/svg\'%3E%3Cg fill=\'none\' fill-rule=\'evenodd\'%3E%3Cg fill=\'%239C92AC\' fill-opacity=\'0.1\'%3E%3Ccircle cx=\'30\' cy=\'30\' r=\'2\'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E')] opacity-20"></div>
-      
+
       {/* Login Card */}
       <div className="relative w-full max-w-md">
         {/* <div className="bg-white/10 backdrop-blur-xl rounded-2xl shadow-2xl border border-white/20 p-8">
-         */}<div className="bg-white rounded-2xl shadow-2xl border border-gray-200 p-8">
-
-
+         */}
+        <div className="bg-white rounded-2xl shadow-2xl border border-gray-200 p-8">
           {/* Header */}
           <div className="text-center mb-8">
-           <div className="w-16 h-16 mx-auto mb-4">
-            <img
+            <div className="w-16 h-16 mx-auto mb-4">
+              <img
                 src="/lt-logo.svg"
                 alt="Logo"
                 className="w-full h-full object-contain"
-             />
+              />
 
- {/* <div className="w-16 h-16 bg-gradient-to-r from-purple-500 to-pink-500 rounded-full flex items-center justify-center mx-auto mb-4"> */}
+              {/* <div className="w-16 h-16 bg-gradient-to-r from-purple-500 to-pink-500 rounded-full flex items-center justify-center mx-auto mb-4"> */}
               {/* <Lock className="w-8 h-8 text-white" /> */}
             </div>
             {/* <h1 className="text-3xl font-bold text-white mb-2">Welcome Back</h1>
             <p className="text-gray-300">Sign in to your account to continue</p> */}
             <h1 className="text-3xl font-bold text-black mb-2">Welcome Back</h1>
             <p className="text-gray-700">Sign in to your account to continue</p>
-
           </div>
 
           {/* Form */}
@@ -173,7 +179,6 @@ const Login = () => {
             <div className="space-y-2">
               {/* <div className="text-sm font-medium text-gray-200 block"> */}
               <div className="text-sm font-medium text-black block">
-
                 Email Address
               </div>
               <div className="relative">
@@ -196,11 +201,10 @@ const Login = () => {
                   value={formData.email}
                   onChange={handleInputChange}
                   className={`block w-full pl-10 pr-3 py-3 border ${
-                    errors.email ? 'border-red-500' : 'border-black/20'
+                    errors.email ? "border-red-500" : "border-black/20"
                   } rounded-lg bg-white text-black placeholder-gray-500 focus:outline-none focus:ring-2 focus:focus:ring-blue-500 focus:border-transparent transition duration-200`}
                   placeholder="Enter your email"
                 />
-
               </div>
               {errors.email && (
                 <p className="text-red-400 text-sm">{errors.email}</p>
@@ -210,8 +214,7 @@ const Login = () => {
             {/* Password Field */}
             <div className="space-y-2">
               {/* <div className="text-sm font-medium text-gray-200 block"> */}
-                <div className="text-sm font-medium text-black block">
-
+              <div className="text-sm font-medium text-black block">
                 Password
               </div>
               <div className="relative">
@@ -228,16 +231,16 @@ const Login = () => {
                   } rounded-lg bg-white/10 backdrop-blur-sm text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent transition duration-200`}
                   placeholder="Enter your password"
                 /> */}
-                  <input
-                     type={showPassword ? 'text' : 'password'}
-                     name="password"
-                     value={formData.password}
-                     onChange={handleInputChange}
-                     className={`block w-full pl-10 pr-12 py-3 border ${
-                       errors.password ? 'border-red-500' : 'border-black/20'
-                     } rounded-lg bg-white text-black placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition duration-200`}
-                     placeholder="Enter your password"
-                  />
+                <input
+                  type={showPassword ? "text" : "password"}
+                  name="password"
+                  value={formData.password}
+                  onChange={handleInputChange}
+                  className={`block w-full pl-10 pr-12 py-3 border ${
+                    errors.password ? "border-red-500" : "border-black/20"
+                  } rounded-lg bg-white text-black placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition duration-200`}
+                  placeholder="Enter your password"
+                />
 
                 {/* <button
                   type="button"
@@ -261,7 +264,6 @@ const Login = () => {
                     <Eye className="h-5 w-5" />
                   )}
                 </button>
-
               </div>
               {errors.password && (
                 <p className="text-red-400 text-sm">{errors.password}</p>
@@ -292,10 +294,10 @@ const Login = () => {
                 type="button"
                 className="text-sm text-black-400 hover:text-blue-300 transition duration-200"
               >
-                Forgot password?
+                <Link to="/forgot-password">Forgot password?</Link>
               </button>
             </div>
-              
+
             {/* Submit Button */}
             <button
               onClick={handleSubmit}
@@ -313,7 +315,6 @@ const Login = () => {
               )}
             </button>
           </div>
-
         </div>
 
         {/* Decorative Elements */}
