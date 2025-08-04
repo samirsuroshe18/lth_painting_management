@@ -1,10 +1,9 @@
-import React, { useEffect, useState } from "react";
-import { getAllStates, addState, updateState } from "../../api/stateApi";
-import { useDispatch } from "react-redux";
-import { showNotificationWithTimeout } from "../../redux/slices/notificationSlice";
+import { useEffect, useState } from 'react';
+import { getAllStates, addState, updateState } from '../../api/stateApi';
+import { useDispatch } from 'react-redux';
+import { showNotificationWithTimeout } from '../../redux/slices/notificationSlice';
 import editIcon from "@/assets/icons/edit.png";
-import { motion, AnimatePresence } from "framer-motion";
-import { FaChevronLeft } from "react-icons/fa";
+import { motion, AnimatePresence } from 'framer-motion';
 
 const StateMaster = () => {
   const [states, setStates] = useState([]);

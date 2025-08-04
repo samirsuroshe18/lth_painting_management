@@ -25,8 +25,26 @@ const getCurrentUser = async () => {
     return response.data;
 };
 
+const forgotPassword = async (email) => {
+    const response = await axiosInstance.post(
+        'api/v1/user/forgot-password',
+        {email}
+    );
+    return response.data;
+}
+
+const changePassword = async (formData) => {
+    const response = await axiosInstance.post(
+        'api/v1/user/change-password',
+        formData
+    );
+    return response.data;
+}
+
 export {
     loginUser,
     logoutUser,
     getCurrentUser,
+    forgotPassword,
+    changePassword
 }
