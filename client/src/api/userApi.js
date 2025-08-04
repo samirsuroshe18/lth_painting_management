@@ -1,3 +1,5 @@
+// userApi.js
+
 import axiosInstance from './config.js';
 
 // Get all users
@@ -18,4 +20,21 @@ const updateUser = async (userId, updatedData) => {
   return response.data;
 };
 
-export { getAllUsers, createUser, updateUser };
+// Fetch a specific user by ID
+const fetchUser = async (userId) => {
+  const response = await axiosInstance.get(`/api/v1/usermaster/fetch-user/${userId}`);
+  return response.data.data; 
+};
+
+const updatePermissions = async (userId, permissions) => {
+  const response = await axiosInstance.put(`/api/v1/usermaster/update-user-permissions/${userId}`, { permissions });
+  return response.data;
+};
+
+export {
+  getAllUsers,
+  createUser,
+  updateUser,
+  fetchUser,
+  updatePermissions
+};

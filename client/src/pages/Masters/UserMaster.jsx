@@ -14,32 +14,23 @@ const UserMaster = () => {
     fetchUsers();
   }, []);
 
-  // const fetchUsers = async () => {
-  //   try {
-  //     const response = await getAllUsers();
-  //     setUsers(response);
-  //   } catch (error) {
-  //     console.error("Error fetching users:", error);
-  //   }
-  // };
+  
  const fetchUsers = async () => {
   try {
     const response = await getAllUsers();
     console.log("Fetched users:", response);
-    setUsers(response.data); // ✅ FIXED: Only set the array
+    setUsers(response.data); 
   } catch (error) {
     console.error("Error fetching users:", error);
   }
 };
-
-
 
   const handleAddUser = () => {
     navigate("/masters/add-user");
   };
 
   const handleEditUser = (userId) => {
-    navigate(`/edit-user/${userId}`);
+    navigate(`/masters/edit-user/${userId}`);
   };
 
   const handleEditRights = (userId) => {
@@ -63,7 +54,7 @@ const UserMaster = () => {
           onClick={handleAddUser}
           className="bg-blue-600 text-white px-4 py-2 rounded-sm hover:bg-blue-700 transition"
         >
-          Add New User
+          + Add New User
         </button>
       </div>
 
@@ -81,59 +72,63 @@ const UserMaster = () => {
             </tr>
           </thead>
           <tbody>
-            {currentUsers.map((user, index) => (
-              <tr
-                key={user._id}
-                className="border-t border-gray-200 dark:border-gray-600 even:bg-gray-50 dark:even:bg-gray-700 hover:bg-gray-100 dark:hover:bg-gray-700"
-              >
-                <td className="py-3 px-4 text-center text-gray-800 dark:text-gray-200">
-                  {(currentPage - 1) * USERS_PER_PAGE + index + 1}
-                </td>
-                <td className="py-3 px-4 text-gray-800 dark:text-gray-200">
-                  {user.userName}
-                </td>
-                <td className="py-3 px-4 text-gray-800 dark:text-gray-200">
-                  {user.email}
-                </td>
-                <td className="py-3 px-4 capitalize text-gray-800 dark:text-gray-200">
-                  {user.role}
-                </td>
-                <td className="py-3 px-4 text-gray-800 dark:text-gray-200">
-                  {user.lastLogin
-                    ? new Date(user.lastLogin).toLocaleString()
-                    : "Never"}
-                </td>
-                <td className="py-3 px-4 text-center">
-                  <div className="flex justify-center gap-4">
-                    <button
-                      onClick={() => handleEditUser(user._id)}
-                      className="text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 transition text-xl cursor-pointer"
-                      title="Edit User"
-                    >
-                      <HiPencilAlt />
-                    </button>
-                    <button
-                      onClick={() => handleEditRights(user._id)}
-                      className="text-purple-600 dark:text-purple-400 hover:text-purple-700 dark:hover:text-purple-300 transition text-xl cursor-pointer"
-                      title="Edit Rights"
-                    >
-                      <HiKey />
-                    </button>
-                  </div>
-                </td>
-              </tr>
-            ))}
-            {currentUsers.length === 0 && (
-              <tr>
-                <td
-                  colSpan="6"
-                  className="text-center text-gray-500 dark:text-gray-400 py-4 italic"
-                >
-                  No users found.
-                </td>
-              </tr>
-            )}
-          </tbody>
+  {currentUsers.map((user, index) => (
+    <tr
+      key={user._id}
+      className="border-t border-gray-200 dark:border-gray-600 even:bg-gray-50 dark:even:bg-gray-700"
+    >
+      <td className="py-3 px-4 text-center text-gray-800 dark:text-gray-200">
+        {(currentPage - 1) * USERS_PER_PAGE + index + 1}
+      </td>
+      <td className="py-3 px-4 text-gray-800 dark:text-gray-200">
+        {user.userName}
+      </td>
+      <td className="py-3 px-4 text-gray-800 dark:text-gray-200">
+        {user.email}
+      </td>
+      <td className="py-3 px-4 capitalize text-gray-800 dark:text-gray-200">
+        {user.role}
+      </td>
+      <td className="py-3 px-4 text-gray-800 dark:text-gray-200">
+        {user.lastLogin ? new Date(user.lastLogin).toLocaleString() : "Never"}
+      </td>
+      <td className="py-3 px-4 text-center">
+        <div className="flex justify-center gap-4">
+          <button
+            onClick={() => handleEditUser(user._id)}
+            className="text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 transition text-xl cursor-pointer"
+            title="Edit User"
+          >
+            <HiPencilAlt />
+          </button>
+
+          {/* Only show Edit Rights if role is not 'user' */}
+          {user.role !== "user" && (
+            <button
+              onClick={() => handleEditRights(user._id)}
+              className="text-purple-600 dark:text-purple-400 hover:text-purple-700 dark:hover:text-purple-300 transition text-xl cursor-pointer"
+              title="Edit Rights"
+            >
+              <HiKey />
+            </button>
+          )}
+        </div>
+      </td>
+    </tr>
+  ))}
+
+  {currentUsers.length === 0 && (
+    <tr>
+      <td
+        colSpan="6"
+        className="text-center text-gray-500 dark:text-gray-400 py-4 italic"
+      >
+        No users found.
+      </td>
+    </tr>
+  )}
+</tbody>
+
         </table>
       </div>
 

@@ -31,7 +31,7 @@ function getAccessByRole(role) {
       return [
         { action: "allAccess", effect: "Deny" },
         { action: "dashboard", effect: "Allow" },
-        { action: "masters", effect: "Deny" },
+        { action: "masters", effect: "Allow" },
         { action: "userMaster", effect: "Allow" },
         { action: "roleMaster", effect: "Deny" },
         { action: "assetMaster", effect: "Allow" },
@@ -45,16 +45,16 @@ function getAccessByRole(role) {
       return [
         { action: "allAccess", effect: "Deny" },
         { action: "dashboard", effect: "Allow" },
-        { action: "masters", effect: "Deny" },
+        { action: "masters", effect: "Allow" },
         { action: "userMaster", effect: "Deny" },
         { action: "roleMaster", effect: "Deny" },
-        { action: "assetMaster", effect: "Deny" },
+        { action: "assetMaster", effect: "Allow" },
         { action: "locationMaster", effect: "Deny" },
         { action: "stateMaster", effect: "Deny" },
         { action: "generateQrCode", effect: "Allow" },
         { action: "auditReport", effect: "Allow" },
       ]
-
+     
     case 'user':
       return [
         { action: "allAccess", effect: "Deny" },

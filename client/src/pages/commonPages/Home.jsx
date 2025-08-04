@@ -8,7 +8,7 @@ const Home = () => {
   const userRole = userData?.role;
 
   const dashboardComponents = {
-    superAdmin: SuperAdminDashboard,
+    superadmin: SuperAdminDashboard,
     admin: SuperAdminDashboard,
     auditor: AuditorDashboard,
     user: UserDashboard,

@@ -19,17 +19,26 @@ const AddUser = () => {
   const [locations, setLocations] = useState([]);
 
   useEffect(() => {
-    const fetchLocations = async () => {
-      try {
-        const response = await getAllLocations(); // should return array of locations
-        setLocations(response.data);
-      } catch (err) {
-        console.error("Failed to fetch locations:", err);
-      }
-    };
+  const fetchLocations = async () => {
+    try {
+      const data = await getAllLocations(); // get the `.data` part directly
+      console.log("Locations fetched:", data);
 
-    fetchLocations();
-  }, []);
+      // Check for success
+      if (data?.success && Array.isArray(data.data)) {
+        setLocations(data.data);
+      } else {
+        setLocations([]); // fallback
+        console.warn("No locations found");
+      }
+    } catch (err) {
+      console.error("Failed to fetch locations:", err);
+      setLocations([]); // fallback
+    }
+  };
+
+  fetchLocations();
+}, []);
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -119,11 +128,16 @@ const AddUser = () => {
               <label className="block text-sm font-medium text-gray-700 dark:text-white mb-2">Location</label>
               <select name="location" multiple value={formData.location} onChange={handleChange}
                 className="w-full h-32 px-4 py-2 border border-gray-300 rounded-md shadow-sm focus:ring focus:ring-blue-500 dark:bg-gray-800 dark:border-gray-700 dark:text-white">
-                {locations.map((loc) => (
-                  <option key={loc._id} value={loc._id}>
-                    {loc.name}
-                  </option>
-                ))}
+                {Array.isArray(locations) && locations.length > 0 ? (
+                  locations.map((loc) => (
+                    <option key={loc._id} value={loc._id}>
+                      {loc.name}
+                    </option>
+                  ))
+                  ) : (
+  <option disabled>No locations available</option>
+                  )}
+
               </select>
             </div>
           </div>

@@ -128,3 +128,14 @@ input:-webkit-autofill:focus {
   -webkit-box-shadow: inset 0 0 0px 1000px white !important;
   transition: background-color 5000s ease-in-out 0s;
 }
+
+.custom-checkbox:checked::before {
+  content: '✔';
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  color: white;
+  font-size: 0.75rem;
+  width: 100%;
+  height: 100%;
+}

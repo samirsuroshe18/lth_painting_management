@@ -66,7 +66,10 @@ const viewAsset = catchAsync(async (req, res) => {
     if (!assetId) {
         throw new ApiError(400, 'Asset ID is required');
     }
-    const asset = await Asset.findById(assetId).populate('locationId', 'name');
+    const asset = await Asset.findById(assetId).populate('locationId', 'name')
+        .populate('createdBy', 'userName')
+        .populate('updatedBy', 'userName');
+
     if (!asset) {
         throw new ApiError(404, 'Asset not found');
     }
@@ -82,7 +85,8 @@ const viewAssetPublic = catchAsync(async (req, res) => {
     }
     const asset = await Asset.findOne({ _id: assetId, status: true, reviewStatus: 'approved' })
         .select('-updatedAt -reviewedBy -reviewStatus -status -qrCode -__v')
-        .populate('locationId', 'name');
+        .populate('locationId', 'name')
+        .populate('createdBy', 'userName');
 
     if (!asset) {
         throw new ApiError(404, 'Asset not found');
@@ -242,8 +246,8 @@ const getAssets = catchAsync(async (req, res) => {
     const totalPages = Math.ceil(totalCount / limit);
     const updatedAsset = await Asset.find(assetMatch)
         .sort({ createdAt: -1 })
-        .populate('locationId', 'name');
-
+        .populate('locationId', 'name')
+        .populate('createdBy', 'userName');
     // Apply pagination on combined results
     const response = updatedAsset.slice(skip, skip + limit);
 

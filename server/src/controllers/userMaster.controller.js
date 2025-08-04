@@ -41,7 +41,8 @@ const createUser = catchAsync(async (req, res) => {
 });
 
 const getAllUsers = catchAsync(async (req, res) => {
-    const users = await User.find({}).select('-password -__v')
+    const users = await User.find({}).find({ role: { $ne: 'superadmin' } })
+        .select('-password -__v')
         .sort({ createdAt: -1 })
         .populate({
             path: 'location',
@@ -151,8 +152,89 @@ const updateUser = catchAsync(async (req, res) => {
     return res.status(200).json(new ApiResponse(200, user, "User updated successfully"));
 });
 
+const fetchUser = catchAsync(async (req, res) => {
+    const { userId } = req.params;
+
+    if (!userId) {
+        throw new ApiError(400, "User ID is required");
+    }
+
+    const user = await User.findById(userId)
+        .select('-password -__v')
+        .populate({
+            path: 'location',
+            populate: [
+                {
+                    path: 'stateId',
+                    populate: [
+                        {
+                            path: 'createdBy',
+                            model: 'User',
+                            select: '-password -refreshToken -__v'
+                        },
+                        {
+                            path: 'updatedBy',
+                            model: 'User',
+                            select: '-password -refreshToken -__v'
+                        }
+                    ]
+                },
+                {
+                    path: 'createdBy',
+                    model: 'User',
+                    select: '-password -refreshToken -__v'
+                },
+                {
+                    path: 'updatedBy',
+                    model: 'User',
+                    select: '-password -refreshToken -__v'
+                }
+            ]
+        })
+        .populate({
+            path: 'createdBy',
+            select: '-password -refreshToken -__v'
+        })
+        .populate({
+            path: 'updatedBy',
+            select: '-password -refreshToken -__v'
+        });
+
+    if (!user) {
+        throw new ApiError(404, "User not found");
+    }
+
+    return res.status(200).json(new ApiResponse(200, user, "User fetched successfully"));
+});
+
+const updatePermissions = catchAsync(async (req, res) => {
+    const { userId } = req.params;
+    const { permissions } = req.body;
+
+    if (!userId || !Array.isArray(permissions)) {
+        throw new ApiError(400, "User ID and permissions array are required");
+    }
+
+    const updatedUser = await User.findByIdAndUpdate(
+        userId,
+        { permissions },
+        { new: true }
+    ).select('-password -__v');
+
+    if (!updatedUser) {
+        throw new ApiError(404, "User not found");
+    }
+
+    return res.status(200).json(
+        new ApiResponse(200, updatedUser, "Permissions updated successfully")
+    );
+});
+
+
 export {
     createUser,
     getAllUsers,
-    updateUser
+    updateUser,
+    fetchUser,
+    updatePermissions
 };

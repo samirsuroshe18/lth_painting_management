@@ -159,20 +159,31 @@ function App() {
     },
   ];
 
+  // const getNavigation = () => {
+  //   switch (userRole) {
+  //     case "superadmin":
+  //       return superAdminNavigation;
+  //     case "admin":
+  //       return superAdminNavigation;
+  //     case "auditor":
+  //       return auditorNavigation;
+  //     case "user":
+  //       return userNavigation;
+  //     default:
+  //       return [];
+  //   }
+  // };
   const getNavigation = () => {
-    switch (userRole) {
-      case "superadmin":
-        return superAdminNavigation;
-      case "admin":
-        return superAdminNavigation;
-      case "auditor":
-        return auditorNavigation;
-      case "user":
-        return userNavigation;
-      default:
-        return [];
-    }
-  };
+  switch (userRole) {
+    case "superadmin":
+    case "admin":
+    case "auditor":
+    case "user":
+      return filterNavigationByPermissions(navigationConfig);
+    default:
+      return [];
+  }
+};
 
   const NAVIGATION = getNavigation();
 

@@ -129,7 +129,7 @@ const Login = () => {
   };
 
   return (
-    // <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900 p-4">
+    
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-tr from-[#0082A2] via-[#FFE600] to-[#FF8700] p-4">
 
       {/* Background Pattern */}
@@ -137,8 +137,7 @@ const Login = () => {
       
       {/* Login Card */}
       <div className="relative w-full max-w-md">
-        {/* <div className="bg-white/10 backdrop-blur-xl rounded-2xl shadow-2xl border border-white/20 p-8">
-         */}<div className="bg-white rounded-2xl shadow-2xl border border-gray-200 p-8">
+        <div className="bg-white rounded-2xl shadow-2xl border border-gray-200 p-8">
 
 
           {/* Header */}
@@ -149,12 +148,8 @@ const Login = () => {
                 alt="Logo"
                 className="w-full h-full object-contain"
              />
-
- {/* <div className="w-16 h-16 bg-gradient-to-r from-purple-500 to-pink-500 rounded-full flex items-center justify-center mx-auto mb-4"> */}
-              {/* <Lock className="w-8 h-8 text-white" /> */}
             </div>
-            {/* <h1 className="text-3xl font-bold text-white mb-2">Welcome Back</h1>
-            <p className="text-gray-300">Sign in to your account to continue</p> */}
+         
             <h1 className="text-3xl font-bold text-black mb-2">Welcome Back</h1>
             <p className="text-gray-700">Sign in to your account to continue</p>
 
@@ -171,7 +166,7 @@ const Login = () => {
 
             {/* Email Field */}
             <div className="space-y-2">
-              {/* <div className="text-sm font-medium text-gray-200 block"> */}
+              
               <div className="text-sm font-medium text-black block">
 
                 Email Address
@@ -180,16 +175,6 @@ const Login = () => {
                 <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
                   <Mail className="h-5 w-5 text-gray-400" />
                 </div>
-                {/* <input
-                  type="email"
-                  name="email"
-                  value={formData.email}
-                  onChange={handleInputChange}
-                  className={`block w-full pl-10 pr-3 py-3 border ${
-                    errors.email ? 'border-red-500' : 'border-white/20'
-                  } rounded-lg bg-white/10 backdrop-blur-sm text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent transition duration-200`}
-                  placeholder="Enter your email"
-                /> */}
                 <input
                   type="email"
                   name="email"
@@ -209,7 +194,6 @@ const Login = () => {
 
             {/* Password Field */}
             <div className="space-y-2">
-              {/* <div className="text-sm font-medium text-gray-200 block"> */}
                 <div className="text-sm font-medium text-black block">
 
                 Password
@@ -218,16 +202,7 @@ const Login = () => {
                 <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
                   <Lock className="h-5 w-5 text-gray-400" />
                 </div>
-                {/* <input
-                  type={showPassword ? 'text' : 'password'}
-                  name="password"
-                  value={formData.password}
-                  onChange={handleInputChange}
-                  className={`block w-full pl-10 pr-12 py-3 border ${
-                    errors.password ? 'border-red-500' : 'border-white/20'
-                  } rounded-lg bg-white/10 backdrop-blur-sm text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent transition duration-200`}
-                  placeholder="Enter your password"
-                /> */}
+               
                   <input
                      type={showPassword ? 'text' : 'password'}
                      name="password"
@@ -239,17 +214,7 @@ const Login = () => {
                      placeholder="Enter your password"
                   />
 
-                {/* <button
-                  type="button"
-                  onClick={() => setShowPassword(!showPassword)}
-                  className="absolute inset-y-0 right-0 pr-3 flex items-center text-gray-400 hover:text-white transition duration-200"
-                >
-                  {showPassword ? (
-                    <EyeOff className="h-5 w-5" />
-                  ) : (
-                    <Eye className="h-5 w-5" />
-                  )}
-                </button> */}
+            
                 <button
                   type="button"
                   onClick={() => setShowPassword(!showPassword)}
@@ -279,18 +244,17 @@ const Login = () => {
                   className="w-4 h-4 text-purple-500 bg-white/10 border-white/20 rounded focus:ring-purple-500 focus:ring-2"
                 /> */}
                 <input
-                  type="checkbox"
-                  name="isRemember"
-                  checked={formData.isRemember}
-                  onChange={handleInputChange}
-                  className="w-4 h-4 text-[#009ff6] accent-[#009ff6] bg-white border-gray-300 rounded focus:ring-[#009ff6] focus:ring-2"
-                />
-
-                <span className="ml-2 text-sm text-black-300">Remember me</span>
+                 type="checkbox"
+                 name="isRemember"
+                 checked={formData.isRemember}
+                 onChange={handleInputChange}
+                 className="custom-checkbox w-4 h-4 appearance-none bg-white border border-gray-400 rounded-sm checked:bg-[#009ff6] checked:border-[#009ff6] focus:outline-none focus:ring-2 focus:ring-[#009ff6] cursor-pointer"
+                  />
+                <span className="ml-2 text-sm text-gray-700">Remember me</span>
               </div>
               <button
                 type="button"
-                className="text-sm text-black-400 hover:text-blue-300 transition duration-200"
+                className="text-sm text-gray-700 hover:text-blue-500 transition duration-200"
               >
                 Forgot password?
               </button>
