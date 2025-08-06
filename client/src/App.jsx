@@ -25,9 +25,7 @@ import canAccess from "./utils/canAccess";
 
 function App() {
   const userRole = useSelector((state) => state.auth.userData?.user?.role);
-  console.log("User Role:", userRole);
   const userData = useSelector((state) => state.auth.userData?.user);
-  console.log("User Data:", userData);
   const [loading, setLoading] = useState(true);
   const navigate = useNavigate();
   const dispatch = useDispatch();

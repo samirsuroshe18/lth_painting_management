@@ -16,9 +16,7 @@ export default function Layout() {
           ),
         }}
       >
-        <PageContainer>
-          <Outlet />
-        </PageContainer>
+        <Outlet />
       </DashboardLayout>
     </div>
   );

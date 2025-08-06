@@ -1,27 +1,289 @@
 import React, { useEffect, useState, useCallback } from "react";
+import { useDispatch } from "react-redux";
+import {
+  IconButton,
+  Tooltip,
+  Box,
+  CircularProgress,
+  LinearProgress,
+} from "@mui/material";
+import { CheckCircle, Cancel, QrCode, MoreVert } from "@mui/icons-material";
+import { Delete, Edit2 } from "lucide-react";
+import { Crud } from "@toolpad/core/Crud";
 import { assetsData } from "../../redux/slices/assetMasterSlice";
-import { useDispatch, useSelector } from "react-redux";
 import { getAssets } from "../../api/assetMasterApi";
 import { showNotificationWithTimeout } from "../../redux/slices/notificationSlice";
 import { handleAxiosError } from "../../utils/handleAxiosError";
-import { DataSourceCache, List } from "@toolpad/core/Crud";
 
 const AssetMaster = () => {
   const dispatch = useDispatch();
+  const [assetsStore, setAssetStore] = useState([]);
+  const [queryParams] = useState({ page: "1", limit: "5" });
   const [loading, setLoading] = useState(true);
-  const [queryParams, setQueryParams] = useState({
-    page: "1",
-    limit: "5",
-  });
-  
-  // Get data from Redux store
-  const data = useSelector((state) => state.assetMaster.assetData);
-  console.log("Asset data:", data);
 
+  // Action handlers
+  const handleApprove = (assetId) => {
+    dispatch(
+      showNotificationWithTimeout({
+        show: true,
+        type: "success",
+        message: "Asset approved successfully",
+      })
+    );
+  };
+
+  const handleReject = (assetId) => {
+    dispatch(
+      showNotificationWithTimeout({
+        show: true,
+        type: "info",
+        message: "Asset rejected",
+      })
+    );
+  };
+
+  const handleQRCode = (assetId) => {
+    dispatch(
+      showNotificationWithTimeout({
+        show: true,
+        type: "info",
+        message: "QR Code generated",
+      })
+    );
+  };
+
+  const handleMenu = (assetId) => {
+    // Implement your menu logic here
+  };
+
+  // Custom actions column
+  const CustomActions = ({ row }) => (
+    <Box sx={{ display: "flex", gap: 0.5 }}>
+      <Tooltip title="Approve">
+        <IconButton
+          size="small"
+          onClick={() => handleApprove(row._id)}
+          sx={{ color: "success.main" }}
+        >
+          <CheckCircle fontSize="small" />
+        </IconButton>
+      </Tooltip>
+      <Tooltip title="Reject">
+        <IconButton
+          size="small"
+          onClick={() => handleReject(row._id)}
+          sx={{ color: "error.main" }}
+        >
+          <Cancel fontSize="small" />
+        </IconButton>
+      </Tooltip>
+      <Tooltip title="QR Code">
+        <IconButton
+          size="small"
+          onClick={() => handleQRCode(row._id)}
+          sx={{ color: "primary.main" }}
+        >
+          <QrCode fontSize="small" />
+        </IconButton>
+      </Tooltip>
+      <Tooltip title="Edit">
+        <IconButton
+          size="small"
+          onClick={() => handleQRCode(row._id)}
+          sx={{ color: "primary.main" }}
+        >
+          <Edit2 fontSize="small" />
+        </IconButton>
+      </Tooltip>
+      <Tooltip title="Delete">
+        <IconButton
+          size="small"
+          onClick={() => handleQRCode(row._id)}
+          sx={{ color: "primary.main" }}
+        >
+          <Delete fontSize="small" />
+        </IconButton>
+      </Tooltip>
+      <Tooltip title="Menu">
+        <IconButton
+          size="small"
+          onClick={() => handleMenu(row._id)}
+          sx={{ color: "text.secondary" }}
+        >
+          <MoreVert fontSize="small" />
+        </IconButton>
+      </Tooltip>
+    </Box>
+  );
+
+  // DataSource for Crud
+  const assetsDataSource = {
+    fields: [
+      { field: "srNo", headerName: "Sr. No", width: 80 },
+      { field: "name", headerName: "Name", flex: 1 },
+      {
+        field: "location",
+        headerName: "Location",
+        flex: 1,
+        renderCell: (params) => (
+          <span>{params.row.locationId?.name || "-"}</span>
+        ),
+      },
+      { field: "place", headerName: "Place", flex: 1 },
+      {
+        field: "status",
+        headerName: "Status",
+        flex: 1,
+        renderCell: (params) => (
+          <span>{params.row.status === true ? "Active" : "Inactive"}</span>
+        ),
+      },
+      { field: "reviewStatus", headerName: "Review Status", flex: 1 },
+      {
+        field: "customActions",
+        headerName: "Actions",
+        width: 200,
+        sortable: false,
+        filterable: false,
+        renderCell: (params) => (
+          <Box
+            sx={{
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              height: "100%",
+              width: "100%",
+            }}
+          >
+            <CustomActions row={params.row} />
+          </Box>
+        ),
+      },
+    ],
+
+    getMany: async ({ paginationModel, filterModel, sortModel }) => {
+      await new Promise((resolve) => setTimeout(resolve, 750));
+      let processedAssets = [...assetsStore];
+
+      // Filtering
+      if (filterModel?.items?.length) {
+        filterModel.items.forEach(({ field, value, operator }) => {
+          if (!field || value == null) return;
+          processedAssets = processedAssets.filter((asset) => {
+            const rawValue = field.includes(".")
+              ? field.split(".").reduce((o, key) => o?.[key], asset)
+              : asset[field];
+            switch (operator) {
+              case "contains":
+                return String(rawValue)
+                  .toLowerCase()
+                  .includes(String(value).toLowerCase());
+              case "equals":
+                return rawValue === value;
+              case "startsWith":
+                return String(rawValue)
+                  .toLowerCase()
+                  .startsWith(String(value).toLowerCase());
+              case "endsWith":
+                return String(rawValue)
+                  .toLowerCase()
+                  .endsWith(String(value).toLowerCase());
+              case ">":
+                return rawValue > value;
+              case "<":
+                return rawValue < value;
+              default:
+                return true;
+            }
+          });
+        });
+      }
+
+      // Sorting
+      if (sortModel?.length) {
+        processedAssets.sort((a, b) => {
+          for (const { field, sort } of sortModel) {
+            const aValue = field.includes(".")
+              ? field.split(".").reduce((o, key) => o?.[key], a)
+              : a[field];
+            const bValue = field.includes(".")
+              ? field.split(".").reduce((o, key) => o?.[key], b)
+              : b[field];
+            if (aValue < bValue) return sort === "asc" ? -1 : 1;
+            if (aValue > bValue) return sort === "asc" ? 1 : -1;
+          }
+          return 0;
+        });
+      }
+
+      // Pagination
+      const start = paginationModel.page * paginationModel.pageSize;
+      const end = start + paginationModel.pageSize;
+      const paginated = processedAssets
+        .slice(start, end)
+        .map((item, index) => ({
+          ...item,
+          srNo: start + index + 1,
+        }));
+
+      return { items: paginated, itemCount: processedAssets.length };
+    },
+
+    getOne: async (id) => {
+      await new Promise((resolve) => setTimeout(resolve, 500));
+      const asset = assetsStore.find((a) => a._id === id);
+      if (!asset) throw new Error("Asset not found");
+      return asset;
+    },
+
+    createOne: async (data) => {
+      await new Promise((resolve) => setTimeout(resolve, 500));
+      const newAsset = { _id: Date.now().toString(), ...data };
+      setAssetStore([...assetsStore, newAsset]);
+      return newAsset;
+    },
+
+    updateOne: async (id, data) => {
+      await new Promise((resolve) => setTimeout(resolve, 500));
+      let updatedAsset = null;
+      const updatedAssets = assetsStore.map((a) => {
+        if (a._id === id) {
+          updatedAsset = { ...a, ...data };
+          return updatedAsset;
+        }
+        return a;
+      });
+      setAssetStore(updatedAssets);
+      if (!updatedAsset) throw new Error("Asset not found");
+      return updatedAsset;
+    },
+
+    deleteOne: async (id) => {
+      await new Promise((resolve) => setTimeout(resolve, 500));
+      setAssetStore(assetsStore.filter((a) => a._id !== id));
+    },
+
+    validate: (formValues) => {
+      const issues = [];
+      if (!formValues.name)
+        issues.push({ message: "Name is required", path: ["name"] });
+      if (!formValues.place)
+        issues.push({ message: "Place is required", path: ["place"] });
+      return { issues };
+    },
+  };
+
+  // Fetch assets
   const fetchData = useCallback(async () => {
+    setLoading(true); // <-- ADD THIS
     try {
-      setLoading(true);
       const res = await getAssets(queryParams);
+      const response = res.data.assets.map((asset, index) => ({
+        ...asset,
+        srNo: index + 1,
+        id: asset._id,
+      }));
+      setAssetStore(response);
       dispatch(assetsData(res.data));
     } catch (error) {
       dispatch(
@@ -32,7 +294,7 @@ const AssetMaster = () => {
         })
       );
     } finally {
-      setLoading(false);
+      setLoading(false); // <-- ADD THIS
     }
   }, [dispatch, queryParams]);
 
@@ -40,186 +302,36 @@ const AssetMaster = () => {
     fetchData();
   }, [fetchData]);
 
-  // Helper function to get nested property value
-  const getNestedValue = (obj, path) => {
-    return path.split('.').reduce((current, key) => {
-      return current && current[key] !== undefined ? current[key] : null;
-    }, obj);
-  };
-
-  // Helper function to normalize data with proper id field
-  const normalizeAssetData = (assets) => {
-    if (!Array.isArray(assets)) return [];
-    return assets.map(asset => ({
-      ...asset,
-      id: asset._id // Add id field for MUI compatibility
-    }));
-  };
-
-  const assetsDataSource = {
-    fields: [
-      {
-        field: "name",
-        headerName: "Name",
-      },
-      {
-        field: "locationId.name",
-        headerName: "Location",
-      },
-      {
-        field: "place",
-        headerName: "Place",
-      },
-      {
-        field: "status",
-        headerName: "Active",
-        type: "boolean",
-      },
-      {
-        field: "reviewStatus",
-        headerName: "Review Status",
-      },
-    ],
-    getRowId: (row) => row._id || row.id,
-    getMany: async ({ paginationModel, filterModel, sortModel }) => {
-      // Simulate loading delay
-      await new Promise((resolve) => {
-        setTimeout(resolve, 750);
-      });
-
-      // Ensure data is an array and normalize it
-      let processedAssets = normalizeAssetData(data?.assets || []);
-
-      // Apply filters
-      if (filterModel?.items?.length) {
-        filterModel.items.forEach(({ field, value, operator }) => {
-          if (!field || value == null) {
-            return;
-          }
-
-          processedAssets = processedAssets.filter((asset) => {
-            // Handle nested properties like "locationId.name"
-            const assetValue = field.includes('.') 
-              ? getNestedValue(asset, field)
-              : asset[field];
-
-            if (assetValue == null) return false;
-
-            switch (operator) {
-              case "contains":
-                return String(assetValue)
-                  .toLowerCase()
-                  .includes(String(value).toLowerCase());
-              case "equals":
-                return assetValue === value;
-              case "startsWith":
-                return String(assetValue)
-                  .toLowerCase()
-                  .startsWith(String(value).toLowerCase());
-              case "endsWith":
-                return String(assetValue)
-                  .toLowerCase()
-                  .endsWith(String(value).toLowerCase());
-              case ">":
-                return assetValue > value;
-              case "<":
-                return assetValue < value;
-              default:
-                return true;
-            }
-          });
-        });
-      }
-
-      // Apply sorting
-      if (sortModel?.length) {
-        processedAssets.sort((a, b) => {
-          for (const { field, sort } of sortModel) {
-            const aValue = field.includes('.') ? getNestedValue(a, field) : a[field];
-            const bValue = field.includes('.') ? getNestedValue(b, field) : b[field];
-            
-            // Handle null/undefined values
-            if (aValue == null && bValue == null) continue;
-            if (aValue == null) return sort === "asc" ? -1 : 1;
-            if (bValue == null) return sort === "asc" ? 1 : -1;
-            
-            if (aValue < bValue) {
-              return sort === "asc" ? -1 : 1;
-            }
-            if (aValue > bValue) {
-              return sort === "asc" ? 1 : -1;
-            }
-          }
-          return 0;
-        });
-      }
-
-      // Apply pagination
-      const start = paginationModel.page * paginationModel.pageSize;
-      const end = start + paginationModel.pageSize;
-      const paginatedAssets = processedAssets.slice(start, end);
-
-      return {
-        items: paginatedAssets,
-        itemCount: processedAssets.length,
-      };
-    },
-    deleteOne: async (assetId) => {
-      // Simulate loading delay
-      await new Promise((resolve) => {
-        setTimeout(resolve, 750);
-      });
-
-      // Filter out the deleted asset using both _id and id for compatibility
-      const updatedAssets = (data?.assets || []).filter(
-        (asset) => asset._id !== assetId && asset.id !== assetId
-      );
-      
-      // Dispatch action to update Redux store
-      dispatch(assetsData({ ...data, assets: updatedAssets }));
-    },
-  };
-
-  const assetsCache = new DataSourceCache();
-
-  const handleRowClick = useCallback((assetId) => {
-    console.log(`Row click with id ${assetId}`);
-  }, []);
-
-  const handleCreateClick = useCallback(() => {
-    console.log("Create click");
-  }, []);
-
-  const handleEditClick = useCallback((assetId) => {
-    console.log(`Edit click with id ${assetId}`);
-  }, []);
-
-  const handleDelete = useCallback((assetId) => {
-    console.log(`Asset with id ${assetId} deleted`);
-  }, []);
-
   if (loading) {
-    return <div>Loading...</div>;
-  }
-
-  // Check if data and assets exist before rendering
-  if (!data || !data.assets) {
-    return <div>No data available</div>;
+    return <LinearProgress />;
   }
 
   return (
-    <div>
-      <h1>Asset Master</h1>
-      <List
-        dataSource={assetsDataSource}
-        dataSourceCache={assetsCache}
-        initialPageSize={parseInt(queryParams.limit)}
-        onRowClick={handleRowClick}
-        onCreateClick={handleCreateClick}
-        onEditClick={handleEditClick}
-        onDelete={handleDelete}
-      />
-    </div>
+    <Crud
+      dataSource={assetsDataSource}
+      rootPath="/masters/asset-master"
+      initialPageSize={10}
+      defaultValues={{ place: "", status: true, reviewStatus: "Pending" }}
+      pageTitles={{
+        create: "New Entry",
+        edit: "Edit Entry",
+        show: "View Entry",
+      }}
+      slotProps={{
+        list: {
+          dataGrid: {
+            initialState: {
+              columns: {
+                columnVisibilityModel: {
+                  actions: false,
+                },
+              },
+            },
+          },
+        },
+        onReload: fetchData,
+      }}
+    />
   );
 };
 
