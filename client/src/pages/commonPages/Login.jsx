@@ -97,6 +97,7 @@ const Login = () => {
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (!validateForm()) return;
+    setIsLoading(true);
 
     try {
       const res = await loginUser(formData);
@@ -118,6 +119,8 @@ const Login = () => {
           message: handleAxiosError(error),
         })
       );
+    }finally{
+      setIsLoading(false);
     }
   };
 

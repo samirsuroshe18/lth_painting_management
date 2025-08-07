@@ -33,7 +33,7 @@ const addNewAsset = catchAsync(async (req, res) => {
         description,
         purchaseValue,
         locationId,
-        year: new Date(year),
+        year,
         artist,
         place,
         size,
@@ -133,7 +133,7 @@ const updateAsset = catchAsync(async (req, res) => {
     if (description !== undefined) updateData.description = description;
     if (purchaseValue !== undefined) updateData.purchaseValue = purchaseValue;
     if (locationId !== undefined) updateData.locationId = locationId;
-    if (year !== undefined) updateData.year = new Date(year);
+    if (year !== undefined) updateData.year = year;
     if (artist !== undefined) updateData.artist = artist;
     if (place !== undefined) updateData.place = place;
     if (size !== undefined) updateData.size = size;
@@ -237,15 +237,24 @@ const getAssets = catchAsync(async (req, res) => {
 
     // Base match conditions for DeliveryEntry
     const assetMatch = {
+        isDeleted: false,
         locationId: { $in: req.user.location.map(loc => loc._id) },
         ...filters
     };
+
+    // Sorting parameters
+    let sort = { createdAt: -1 }; // default sort (newest first)
+    if (req.query.sortField && req.query.sortOrder) {
+        const sortField = req.query.sortField;
+        const sortOrder = parseInt(req.query.sortOrder);
+        sort = { [sortField]: sortOrder };
+    }
 
     // Count total documents for pagination
     const totalCount = await Asset.countDocuments(assetMatch);
     const totalPages = Math.ceil(totalCount / limit);
     const updatedAsset = await Asset.find(assetMatch)
-        .sort({ createdAt: -1 })
+        .sort(sort)
         .populate('locationId', 'name')
         .populate('createdBy', 'userName');
     // Apply pagination on combined results
@@ -269,11 +278,38 @@ const getAssets = catchAsync(async (req, res) => {
     );
 });
 
+const removeAsset = catchAsync(async (req, res) => {
+    const {id} = req.params;
+    if(!id){
+        throw new ApiError(404, "id is missing");
+    }
+
+    const deletedAsset = await Asset.findByIdAndUpdate(
+        id,
+        {
+            isDeleted: true
+        },
+        {
+            new: true,
+            runValidators: true
+        }
+    );
+
+    if(!deletedAsset){
+        throw new ApiError(500, "Something went wrong");
+    }
+
+    return res.status(200).json(
+        new ApiResponse(200, {}, "Asset Removed Successfully")
+    );
+})
+
 export {
     addNewAsset,
     viewAsset,
     updateAsset,
     viewAssetPublic,
     reviewAssetStatus,
-    getAssets
+    getAssets,
+    removeAsset
 };

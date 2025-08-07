@@ -24,10 +24,8 @@ const AssetSchema = new mongoose.Schema({
     },
 
     purchaseValue: {
-        type: String,
+        type: Number,
         required: true,
-        maxlength: 100,
-        default: '0'
     },
 
     locationId: {
@@ -37,8 +35,8 @@ const AssetSchema = new mongoose.Schema({
     },
 
     year: {
-        type: Date,
-        required: true
+        type: Number,
+        required: true,
     },
 
     artist: {
@@ -82,6 +80,11 @@ const AssetSchema = new mongoose.Schema({
     updatedBy: {
         type: Schema.Types.ObjectId,
         ref: 'User',
+    },
+
+    isDeleted: {
+        type: Boolean,
+        default: false,
     }
 }, { timestamps: true });
 
