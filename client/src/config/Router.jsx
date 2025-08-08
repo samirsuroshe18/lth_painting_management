@@ -63,13 +63,14 @@ const router = createBrowserRouter([
           { path: "audit-report", element: <AuditReport /> },
         ],
       },
-      { path: "login", element: <LoginPage /> },
+      
+    ],
+  },
+  { path: "login", element: <LoginPage /> },
       { path: "qr-code/:id", element: <QrCodePage /> },
       { path: "change-password", element: <ChangePassword /> },
       { path: "forgot-password", element: <ForgotPassword /> },
-      { path: "*", element: <NotFound /> },
-    ],
-  },
+      { path: "*", element: <NotFound /> }
 ]);
 
 export default router;
