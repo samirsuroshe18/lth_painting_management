@@ -8,9 +8,9 @@ const getAssets = async (queryParams) => {
     return response.data;
 };
 
-const viewAsset = async (queryParams) => {
+const viewAsset = async (id) => {
     const response = await axiosInstance.get(
-        `/api/v1/assetmaster/view-asset/${queryParams}`,
+        `/api/v1/assetmaster/view-asset/${id}`,
         { withCredentials: true }
     );
     return response.data;

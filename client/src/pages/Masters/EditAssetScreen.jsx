@@ -16,7 +16,7 @@ import { DatePicker } from "@mui/x-date-pickers/DatePicker";
 import { AdapterDayjs } from "@mui/x-date-pickers/AdapterDayjs";
 import dayjs from "dayjs";
 import { getAllLocations } from "../../api/locationApi";
-import { useDispatch } from "react-redux";
+import { useDispatch, useSelector } from "react-redux";
 import { showNotificationWithTimeout } from "../../redux/slices/notificationSlice";
 import { handleAxiosError } from "../../utils/handleAxiosError";
 import { updateAsset } from "../../api/assetMasterApi";
@@ -27,8 +27,10 @@ const statusOptions = [
 ];
 
 export default function EditAssetScreen() {
+  const userData = useSelector((state) => state.auth.userData?.user);
   const [loading, setLoading] = useState(false);
-  const [locations, setLocations] = useState([]);
+  const [locations, setLocations] = useState(userData.location);
+  const [yearError, setYearError] = useState("");
   const dispatch = useDispatch();
   const navigate = useNavigate();
   const { state } = useLocation();
@@ -60,31 +62,26 @@ export default function EditAssetScreen() {
     }
   };
 
-  useEffect(() => {
-    const fetchLocations = async () => {
-      try {
-        const response = await getAllLocations();
-        if (response?.success && Array.isArray(response.data)) {
-          setLocations(response.data);
-        }
-      } catch (error) {
-        dispatch(
-          showNotificationWithTimeout({
-            show: true,
-            type: "error",
-            message: handleAxiosError(error),
-          })
-        );
-        setLocations([]);
-      }
-    };
-
-    fetchLocations();
-  }, []);
-
   const handleSubmit = async (e) => {
+    e.preventDefault();
+
+    if (!asset.image && !imagePreview) {
+      dispatch(
+        showNotificationWithTimeout({
+          show: true,
+          type: "error",
+          message: "Please upload an image.",
+        })
+      );
+      return; // stop submission
+    }
+
+    if (!asset.year) {
+      setYearError("Year is required.");
+      return;
+    }
+
     try {
-      e.preventDefault();
       setLoading(true);
       const response = await updateAsset(asset);
       dispatch(
@@ -136,10 +133,11 @@ export default function EditAssetScreen() {
                   autoFocus
                   slotProps={{
                     input: {
-                      readOnly: read, // new approach
+                      readOnly: read,
                     },
                   }}
                 />
+
                 <TextField
                   name="location"
                   label="Location"
@@ -149,7 +147,7 @@ export default function EditAssetScreen() {
                   required
                   slotProps={{
                     input: {
-                      readOnly: read, // new approach
+                      readOnly: read,
                     },
                   }}
                   fullWidth
@@ -160,6 +158,7 @@ export default function EditAssetScreen() {
                     </MenuItem>
                   ))}
                 </TextField>
+
                 <TextField
                   name="place"
                   label="Place"
@@ -169,10 +168,11 @@ export default function EditAssetScreen() {
                   fullWidth
                   slotProps={{
                     input: {
-                      readOnly: read, // new approach
+                      readOnly: read,
                     },
                   }}
                 />
+
                 <TextField
                   name="artist"
                   label="Artist"
@@ -182,10 +182,11 @@ export default function EditAssetScreen() {
                   fullWidth
                   slotProps={{
                     input: {
-                      readOnly: read, // new approach
+                      readOnly: read,
                     },
                   }}
                 />
+
                 <Stack direction="row" alignItems="center" spacing={2}>
                   <Avatar
                     src={imagePreview}
@@ -199,7 +200,7 @@ export default function EditAssetScreen() {
                     {!read && (
                       <label htmlFor="image-upload">
                         <Button variant="contained" component="span">
-                          {imagePreview ? "Change Image" : "Upload Image"}
+                          {imagePreview ? "Change Image" : "Upload Image *"}
                         </Button>
                         <input
                           type="file"
@@ -241,20 +242,30 @@ export default function EditAssetScreen() {
                   fullWidth
                   slotProps={{
                     input: {
-                      readOnly: read, // new approach
+                      readOnly: read,
                     },
                   }}
                 />
+
                 <LocalizationProvider dateAdapter={AdapterDayjs}>
                   <DatePicker
-                    label={"year *"}
+                    label={"year"}
                     views={["year"]}
                     value={asset.year}
                     onChange={(value) => setAsset({ ...asset, year: value })}
                     minDate={dayjs("1500-01-01")}
                     maxDate={dayjs()}
+                    disabled={read}
+                    slotProps={{
+                      textField: {
+                        error: Boolean(yearError),
+                        helperText: yearError,
+                        required: true,
+                      },
+                    }}
                   />
                 </LocalizationProvider>
+
                 <TextField
                   name="currentValue"
                   label="Current Value"
@@ -265,10 +276,11 @@ export default function EditAssetScreen() {
                   fullWidth
                   slotProps={{
                     input: {
-                      readOnly: read, // new approach
+                      readOnly: read,
                     },
                   }}
                 />
+
                 <TextField
                   name="status"
                   label="Status"
@@ -279,7 +291,7 @@ export default function EditAssetScreen() {
                   fullWidth
                   slotProps={{
                     input: {
-                      readOnly: read, // new approach
+                      readOnly: read,
                     },
                   }}
                 >
@@ -289,6 +301,7 @@ export default function EditAssetScreen() {
                     </MenuItem>
                   ))}
                 </TextField>
+
                 <TextField
                   name="description"
                   label="Description"

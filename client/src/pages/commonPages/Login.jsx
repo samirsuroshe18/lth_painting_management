@@ -105,7 +105,7 @@ const Login = () => {
         showNotificationWithTimeout({
           show: true,
           type: "success",
-          message: res.data.message,
+          message: res.message,
         })
       );
       dispatch(login(res.data));

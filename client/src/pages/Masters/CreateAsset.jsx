@@ -10,13 +10,20 @@ import {
   Avatar,
   CircularProgress,
 } from "@mui/material";
+import {
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogActions,
+} from "@mui/material";
 import { AdapterDayjs } from "@mui/x-date-pickers/AdapterDayjs";
+import dayjs from "dayjs";
 import { LocalizationProvider } from "@mui/x-date-pickers/LocalizationProvider";
 import { DatePicker } from "@mui/x-date-pickers/DatePicker";
 import AddPhotoAlternateIcon from "@mui/icons-material/AddPhotoAlternate";
 import { getAllLocations } from "../../api/locationApi";
 import { createNewAsset } from "../../api/assetMasterApi";
-import { useDispatch } from "react-redux";
+import { useDispatch, useSelector } from "react-redux";
 import { showNotificationWithTimeout } from "../../redux/slices/notificationSlice";
 import { handleAxiosError } from "../../utils/handleAxiosError";
 import { useNavigate } from "react-router-dom";
@@ -27,45 +34,26 @@ const statusOptions = [
 ];
 
 function CreateAsset() {
+  const userData = useSelector((state) => state.auth.userData?.user);
   const [loading, setLoading] = useState(false);
   const [fileImage, setFileImage] = useState(null);
   const dispatch = useDispatch();
   const navigate = useNavigate();
-  const [locations, setLocations] = useState([]);
+  const [locations, setLocations] = useState(userData.location);
+  const [yearError, setYearError] = useState("");
+  const [successDialogOpen, setSuccessDialogOpen] = useState(false);
   const [asset, setAsset] = useState({
     name: "",
     image: null,
     location: "",
     place: "",
-    currentValue: null,
+    currentValue: "",
     year: null,
     description: "",
     artist: "",
     size: "",
     status: "",
   });
-
-  useEffect(() => {
-    const fetchLocations = async () => {
-      try {
-        const data = await getAllLocations();
-        if (data?.success && Array.isArray(data.data)) {
-          setLocations(data.data);
-        }
-      } catch (error) {
-        dispatch(
-          showNotificationWithTimeout({
-            show: true,
-            type: "error",
-            message: handleAxiosError(error),
-          })
-        );
-        setLocations([]);
-      }
-    };
-
-    fetchLocations();
-  }, []);
 
   const handleChange = (e) => {
     const { name, value, files } = e.target;
@@ -79,8 +67,25 @@ function CreateAsset() {
   };
 
   const handleSubmit = async (e) => {
+    e.preventDefault();
+    // Validate image field
+    if (!asset.image) {
+      dispatch(
+        showNotificationWithTimeout({
+          show: true,
+          type: "error",
+          message: "Please upload an image.",
+        })
+      );
+      return; // stop submission
+    }
+
+    if (!asset.year) {
+      setYearError("Year is required.");
+      return;
+    }
+
     try {
-      e.preventDefault();
       setLoading(true);
       const response = await createNewAsset(asset);
       dispatch(
@@ -90,6 +95,7 @@ function CreateAsset() {
           message: response.message,
         })
       );
+      setSuccessDialogOpen(true);
     } catch (error) {
       setLoading(false);
       dispatch(
@@ -131,6 +137,7 @@ function CreateAsset() {
                   fullWidth
                   autoFocus
                 />
+
                 <TextField
                   name="location"
                   label="Location"
@@ -146,6 +153,7 @@ function CreateAsset() {
                     </MenuItem>
                   ))}
                 </TextField>
+
                 <TextField
                   name="place"
                   label="Place"
@@ -154,6 +162,7 @@ function CreateAsset() {
                   required
                   fullWidth
                 />
+
                 <TextField
                   name="artist"
                   label="Artist"
@@ -162,6 +171,7 @@ function CreateAsset() {
                   onChange={handleChange}
                   fullWidth
                 />
+
                 <Stack direction="row" alignItems="center" spacing={2}>
                   <Avatar
                     src={fileImage}
@@ -179,7 +189,7 @@ function CreateAsset() {
                   <Box>
                     <label htmlFor="image-upload">
                       <Button variant="contained" component="span">
-                        {asset.image ? "Change Image" : "Upload Image"}
+                        {asset.image ? "Change Image" : "Upload Image *"}
                       </Button>
                       <input
                         type="file"
@@ -219,14 +229,28 @@ function CreateAsset() {
                   placeholder="e.g. 10x20"
                   fullWidth
                 />
+
                 <LocalizationProvider dateAdapter={AdapterDayjs}>
                   <DatePicker
-                    label={"year *"}
+                    label="Year"
                     views={["year"]}
                     value={asset.year}
-                    onChange={(value)=>setAsset({...asset, year: value})}  
+                    minDate={dayjs("1500-01-01")}
+                    maxDate={dayjs()}
+                    onChange={(value) => {
+                      setAsset({ ...asset, year: value });
+                      setYearError(""); // clear error on selection
+                    }}
+                    slotProps={{
+                      textField: {
+                        error: Boolean(yearError),
+                        helperText: yearError,
+                        required: true,
+                      },
+                    }}
                   />
                 </LocalizationProvider>
+
                 <TextField
                   name="currentValue"
                   label="Current Value"
@@ -236,6 +260,7 @@ function CreateAsset() {
                   onChange={handleChange}
                   fullWidth
                 />
+
                 <TextField
                   name="status"
                   label="Status"
@@ -251,6 +276,7 @@ function CreateAsset() {
                     </MenuItem>
                   ))}
                 </TextField>
+
                 <TextField
                   name="description"
                   label="Description"
@@ -306,6 +332,51 @@ function CreateAsset() {
           </Button>
         </Stack>
       </form>
+
+      <Dialog
+        open={successDialogOpen}
+        onClose={() => setSuccessDialogOpen(false)}
+      >
+        <DialogTitle>Asset Created</DialogTitle>
+        <DialogContent>
+          <Typography>Your asset has been created successfully.</Typography>
+        </DialogContent>
+        <DialogActions>
+          <Button
+            onClick={() => {
+              setSuccessDialogOpen(false);
+              navigate(-1); // Go back to previous page
+            }}
+            color="primary"
+            variant="outlined"
+          >
+            Go Back
+          </Button>
+          <Button
+            onClick={() => {
+              // Reset form for new entry
+              setAsset({
+                name: "",
+                image: null,
+                location: "",
+                place: "",
+                currentValue: "",
+                year: null,
+                description: "",
+                artist: "",
+                size: "",
+                status: "",
+              });
+              setFileImage(null);
+              setSuccessDialogOpen(false);
+            }}
+            color="primary"
+            variant="contained"
+          >
+            Create Another
+          </Button>
+        </DialogActions>
+      </Dialog>
     </Box>
   );
 }

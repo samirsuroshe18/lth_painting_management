@@ -22,7 +22,6 @@ const verifyJwt = catchAsync(async (req, _, next) => {
     }
 
     const user = await User.findById(decodedToken?._id)
-        .select('-password -refreshToken -__v')
         .populate({
             path: 'location',
             populate: [
@@ -60,7 +59,8 @@ const verifyJwt = catchAsync(async (req, _, next) => {
         .populate({
             path: 'updatedBy',
             select: '-password -refreshToken -__v'
-        });
+        })
+        .select('-password -refreshToken -__v');
 
     if (!user) {
         throw new ApiError(401, "Invalid access token");
