@@ -1,7 +1,19 @@
 import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { createUser } from "../../api/userApi";
-import { getAllLocations } from "../../api/locationApi"; // Uncomment if used
+import { getAllLocations } from "../../api/locationApi";
+import {
+  Container,
+  Card,
+  CardContent,
+  Typography,
+  Button,
+  Box,
+  IconButton,
+} from "@mui/material";
+import {
+  ArrowBack as ArrowBackIcon,
+} from "@mui/icons-material";
 
 const AddUser = () => {
   const navigate = useNavigate();
@@ -19,26 +31,25 @@ const AddUser = () => {
   const [locations, setLocations] = useState([]);
 
   useEffect(() => {
-  const fetchLocations = async () => {
-    try {
-      const data = await getAllLocations(); // get the `.data` part directly
-      console.log("Locations fetched:", data);
+    const fetchLocations = async () => {
+      try {
+        const data = await getAllLocations();
+        console.log("Locations fetched:", data);
 
-      // Check for success
-      if (data?.success && Array.isArray(data.data)) {
-        setLocations(data.data);
-      } else {
-        setLocations([]); // fallback
-        console.warn("No locations found");
+        if (data?.success && Array.isArray(data.data)) {
+          setLocations(data.data);
+        } else {
+          setLocations([]);
+          console.warn("No locations found");
+        }
+      } catch (err) {
+        console.error("Failed to fetch locations:", err);
+        setLocations([]);
       }
-    } catch (err) {
-      console.error("Failed to fetch locations:", err);
-      setLocations([]); // fallback
-    }
-  };
+    };
 
-  fetchLocations();
-}, []);
+    fetchLocations();
+  }, []);
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -68,96 +79,181 @@ const AddUser = () => {
   };
 
   return (
-    <div className="min-w-5xl mx-auto mt-12 px-6">
-      <div className="bg-white dark:bg-gray-900 rounded shadow-lg p-6">
-        <h2 className="text-2xl font-bold mb-6 text-gray-800 dark:text-white">Add New User</h2>
+    <Container maxWidth="lg" sx={{ py: 3 }}>
+      {/* Header Card */}
+      <Card elevation={2} sx={{ mb: 3 }}>
+        <CardContent>
+          <Box display="flex" alignItems="center" gap={2}>
+            <IconButton 
+              onClick={handleCancel}
+              color="primary"
+              sx={{ p: 1 }}
+            >
+              <ArrowBackIcon />
+            </IconButton>
+            <Box>
+              <Typography variant="h4" fontWeight={700} color="primary">
+                Add New User
+              </Typography>
+              <Typography variant="body2" color="text.secondary">
+                Create a new user account with access permissions
+              </Typography>
+            </Box>
+          </Box>
+        </CardContent>
+      </Card>
 
-        <form onSubmit={handleSubmit}>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+      {/* Form Card */}
+      <Card elevation={2}>
+        <CardContent sx={{ p: 4 }}>
+          <form onSubmit={handleSubmit}>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-white mb-2">Username</label>
+                <input 
+                  type="text" 
+                  name="userName" 
+                  value={formData.userName} 
+                  onChange={handleChange}
+                  className="w-full px-4 py-2 border border-gray-300 rounded shadow-sm focus:ring focus:ring-blue-500 dark:bg-gray dark:border-gray-400 dark:text-white" 
+                  required 
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-white mb-2">Email</label>
+                <input 
+                  type="email" 
+                  name="email" 
+                  value={formData.email} 
+                  onChange={handleChange}
+                  className="w-full px-4 py-2 border border-gray-300 rounded shadow-sm focus:ring focus:ring-blue-500 dark:bg-gray dark:border-gray-400 dark:text-white" 
+                  required 
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-white mb-2">Mobile No</label>
+                <input 
+                  type="text" 
+                  name="mobileNo" 
+                  value={formData.mobileNo} 
+                  onChange={handleChange}
+                  className="w-full px-4 py-2 border border-gray-300 rounded shadow-sm focus:ring focus:ring-blue-500 dark:bg-gray dark:border-gray-400 dark:text-white" 
+                  required 
+                />
+              </div>
+
+               <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-white mb-2">Role</label>
+                <select 
+                  name="role" 
+                  value={formData.role} 
+                  onChange={handleChange}
+                className="w-full px-4 py-2 border border-gray-400 rounded shadow-sm focus:ring focus:ring-blue-500 dark:bg-gray dark:border-gray-500 dark:text-white [&>option]:dark:bg-gray-700 [&>option]:dark:text-white"
+                >
+
+                  <option value="user">User</option>
+                  <option value="admin">Admin</option>
+                  <option value="superadmin">Super Admin</option>
+                  <option value="auditor">Auditor</option>
+                </select>
+              </div>
+
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-white mb-2">Password</label>
+                <input 
+                  type="password" 
+                  name="password" 
+                  value={formData.password} 
+                  onChange={handleChange}
+                  className="w-full px-4 py-2 border border-gray-300 rounded-md shadow-sm focus:ring focus:ring-blue-500 dark:bg-gray dark:border-gray-400 dark:text-white" 
+                  required 
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-white mb-2">Confirm Password</label>
+                <input 
+                  type="password" 
+                  name="confirmPassword" 
+                  value={formData.confirmPassword} 
+                  onChange={handleChange}
+                  className="w-full px-4 py-2 border border-gray-300 rounded-md shadow-sm focus:ring focus:ring-blue-500 dark:bg-gray dark:border-gray-400 dark:text-white" 
+                  required 
+                />
+              </div>
+
             <div>
-              <label className="block text-sm font-medium text-gray-700 dark:text-white mb-2">Username</label>
-              <input type="text" name="userName" value={formData.userName} onChange={handleChange}
-                className="w-full px-4 py-2 border border-gray-300 rounded-md shadow-sm focus:ring focus:ring-blue-500 dark:bg-gray-800 dark:border-gray-700 dark:text-white" required />
-            </div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-white mb-2">Status</label>
+                <select 
+                  name="status" 
+                  value={formData.status} 
+                  onChange={handleChange}
+                  className="w-full px-4 py-2 border border-gray-400 rounded shadow-sm focus:ring focus:ring-blue-500 dark:bg-gray dark:border-gray-500 dark:text-white [&>option]:dark:bg-gray-700 [&>option]:dark:text-white"
+                >
+                  <option value="active">Active</option>
+                  <option value="inactive">Inactive</option>
+                </select>
+              </div>
 
-            <div>
-              <label className="block text-sm font-medium text-gray-700 dark:text-white mb-2">Email</label>
-              <input type="email" name="email" value={formData.email} onChange={handleChange}
-                className="w-full px-4 py-2 border border-gray-300 rounded-md shadow-sm focus:ring focus:ring-blue-500 dark:bg-gray-800 dark:border-gray-700 dark:text-white" required />
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-gray-700 dark:text-white mb-2">Mobile No</label>
-              <input type="text" name="mobileNo" value={formData.mobileNo} onChange={handleChange}
-                className="w-full px-4 py-2 border border-gray-300 rounded-md shadow-sm focus:ring focus:ring-blue-500 dark:bg-gray-800 dark:border-gray-700 dark:text-white" required />
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-gray-700 dark:text-white mb-2">Role</label>
-              <select name="role" value={formData.role} onChange={handleChange}
-                className="w-full px-4 py-2 border border-gray-300 rounded-md shadow-sm focus:ring focus:ring-blue-500 dark:bg-gray-800 dark:border-gray-700 dark:text-white">
-                <option value="user">User</option>
-                <option value="admin">Admin</option>
-                <option value="superadmin">Super Admin</option>
-                <option value="auditor">Auditor</option>
-              </select>
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-gray-700 dark:text-white mb-2">Password</label>
-              <input type="password" name="password" value={formData.password} onChange={handleChange}
-                className="w-full px-4 py-2 border border-gray-300 rounded-md shadow-sm focus:ring focus:ring-blue-500 dark:bg-gray-800 dark:border-gray-700 dark:text-white" required />
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-gray-700 dark:text-white mb-2">Confirm Password</label>
-              <input type="password" name="confirmPassword" value={formData.confirmPassword} onChange={handleChange}
-                className="w-full px-4 py-2 border border-gray-300 rounded-md shadow-sm focus:ring focus:ring-blue-500 dark:bg-gray-800 dark:border-gray-700 dark:text-white" required />
-            </div>
-
-            <div className="w-full md:w-1/2">
-              <label className="block text-sm font-medium text-gray-700 dark:text-white mb-2">Status</label>
-              <select name="status" value={formData.status} onChange={handleChange}
-                className="w-full px-4 py-2 border border-gray-300 rounded-md shadow-sm focus:ring focus:ring-blue-500 dark:bg-gray-800 dark:border-gray-700 dark:text-white">
-                <option value="active">Active</option>
-                <option value="inactive">Inactive</option>
-              </select>
-            </div>
-
-            <div className="w-full md:w-1/2">
-              <label className="block text-sm font-medium text-gray-700 dark:text-white mb-2">Location</label>
-              <select name="location" multiple value={formData.location} onChange={handleChange}
-                className="w-full h-32 px-4 py-2 border border-gray-300 rounded-md shadow-sm focus:ring focus:ring-blue-500 dark:bg-gray-800 dark:border-gray-700 dark:text-white">
-                {Array.isArray(locations) && locations.length > 0 ? (
-                  locations.map((loc) => (
-                    <option key={loc._id} value={loc._id}>
-                      {loc.name}
-                    </option>
-                  ))
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-white mb-2">Location</label>
+                <select 
+                  name="location" 
+                  multiple 
+                  value={formData.location} 
+                  onChange={handleChange}
+                  className="w-full h-32 px-4 py-2 border border-gray-300 rounded-md shadow-sm focus:ring focus:ring-blue-500 dark:bg-gray dark:border-gray-400 dark:text-white"
+                >
+                  {Array.isArray(locations) && locations.length > 0 ? (
+                    locations.map((loc) => (
+                      <option key={loc._id} value={loc._id}>
+                        {loc.name}
+                      </option>
+                    ))
                   ) : (
-  <option disabled>No locations available</option>
+                    <option disabled>No locations available</option>
                   )}
-
-              </select>
+                </select>
+              </div>
             </div>
-          </div>
 
-          <div className="mt-8 flex justify-end gap-4">
-            <button type="button" onClick={handleCancel}
-              className="w-full md:w-auto bg-gray-500 text-white px-6 py-3 rounded-md text-lg font-semibold hover:bg-gray-600 transition-all">
-              Cancel
-            </button>
-
-            <button type="submit"
-              className="w-full md:w-auto bg-blue-600 text-white px-6 py-3 rounded-md text-lg font-semibold hover:bg-blue-700 transition-all">
-              Create User
-            </button>
-          </div>
-        </form>
-      </div>
-    </div>
+            {/* Action Buttons */}
+            <Box 
+              sx={{ 
+                display: 'flex', 
+                justifyContent: 'flex-end', 
+                gap: 2, 
+                mt: 4,
+                pt: 3,
+                borderTop: '1px solid',
+                borderColor: 'divider'
+              }}
+            >
+              <Button
+                variant="outlined"
+                onClick={handleCancel}
+                size="large"
+                sx={{ minWidth: 120 }}
+              >
+                Cancel
+              </Button>
+              <Button
+                type="submit"
+                variant="contained"
+                size="large"
+                sx={{ minWidth: 120 }}
+              >
+                Create User
+              </Button>
+            </Box>
+          </form>
+        </CardContent>
+      </Card>
+    </Container>
   );
 };
-
 
 export default AddUser;

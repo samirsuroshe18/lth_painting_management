@@ -1,26 +1,114 @@
 import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { getAllUsers } from "../../api/userApi";
-import { HiPencilAlt, HiKey } from "react-icons/hi";
-
-const USERS_PER_PAGE = 5;
+import { DataGrid } from "@mui/x-data-grid";
+import {
+  Box,
+  Button,
+  IconButton,
+  Tooltip,
+  Chip,
+  Typography,
+  TextField,
+  Container,
+  Grid,
+  Card,
+  CardContent,
+  InputAdornment,
+  useMediaQuery,
+  useTheme,
+  Fab,
+  CircularProgress,
+} from "@mui/material";
+import {
+  DriveFileRenameOutline as EditIcon,
+  VpnKey as VpnKeyIcon,
+  Add as AddIcon,
+  Search as SearchIcon,
+  Refresh,
+  Cancel,
+} from "@mui/icons-material";
 
 const UserMaster = () => {
   const navigate = useNavigate();
-  const [users, setUsers] = useState([]);
-  const [currentPage, setCurrentPage] = useState(1);
+  const theme = useTheme();
+  const isMobile = useMediaQuery(theme.breakpoints.down("md"));
 
+  const [users, setUsers] = useState([]);
+  const [rows, setRows] = useState([]);
+  const [rowCount, setRowCount] = useState(0);
+  const [loading, setLoading] = useState(true);
+  const [searchTerm, setSearchTerm] = useState("");
+
+  // pagination model for DataGrid
+  const [paginationModel, setPaginationModel] = useState({
+    page: 0,
+    pageSize: 5,
+  });
+
+  // initial load
   useEffect(() => {
     fetchUsers();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  // re-fetch on pagination change
+  useEffect(() => {
+    fetchUsers();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [paginationModel]);
+
+  // when search changes: if not on page 0 -> reset to page 0; else fetch
+  useEffect(() => {
+    if (paginationModel.page === 0) {
+      fetchUsers();
+    } else {
+      setPaginationModel((prev) => ({ ...prev, page: 0 }));
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [searchTerm]);
 
   const fetchUsers = async () => {
     try {
+      setLoading(true);
       const response = await getAllUsers();
-      console.log("Fetched users:", response);
-      setUsers(response.data);
+      const apiUsers = response?.data || [];
+      
+      let filteredUsers = apiUsers;
+
+      if (searchTerm) {
+        filteredUsers = apiUsers.filter((user) =>
+          user.userName.toLowerCase().includes(searchTerm.toLowerCase()) ||
+          user.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
+          user.role.toLowerCase().includes(searchTerm.toLowerCase())
+        );
+      }
+
+      // Client-side pagination
+      const startIndex = paginationModel.page * paginationModel.pageSize;
+      const paginatedUsers = filteredUsers.slice(
+        startIndex,
+        startIndex + paginationModel.pageSize
+      );
+
+      const usersWithIds = paginatedUsers.map((user, index) => ({
+        id: user._id,
+        srNo: startIndex + index + 1,
+        userName: user.userName,
+        email: user.email,
+        role: user.role,
+        lastLogin: user.lastLogin
+          ? new Date(user.lastLogin).toLocaleString()
+          : "Never",
+      }));
+
+      setRows(usersWithIds);
+      setRowCount(filteredUsers.length);
+      setUsers(usersWithIds);
     } catch (error) {
       console.error("Error fetching users:", error);
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -36,132 +124,262 @@ const UserMaster = () => {
     navigate(`/edit-rights/${userId}`);
   };
 
-  const indexOfLastUser = currentPage * USERS_PER_PAGE;
-  const indexOfFirstUser = indexOfLastUser - USERS_PER_PAGE;
-  const currentUsers = users.slice(indexOfFirstUser, indexOfLastUser);
-  const totalPages = Math.ceil(users.length / USERS_PER_PAGE);
+  const handleRefresh = () => fetchUsers();
+
+  const columns = [
+    {
+      field: "srNo",
+      headerName: "Sr. No",
+      flex: 1,
+      minWidth: 100,
+      sortable: false,
+      filterable: false,
+      align: "center",
+      headerAlign: "center",
+    },
+    {
+      field: "userName",
+      headerName: "Username",
+      flex: 1,
+      minWidth: 100,
+      sortable: false,
+      filterable: false,
+      align: "center",
+      headerAlign: "center",
+    },
+    {
+      field: "email",
+      headerName: "Email",
+      flex: 1,
+      minWidth: 100,
+      sortable: false,
+      filterable: false,
+      align: "center",
+      headerAlign: "center",
+    },
+    {
+      field: "role",
+      headerName: "Role",
+      flex: 1,
+      minWidth: 100,
+      align: "center",
+      sortable: false,
+      filterable: false,
+      headerAlign: "center",
+      renderCell: (params) => (
+        <Chip
+          label={params.value}
+          color={params.value === "admin" ? "primary" : "default"}
+          size="small"
+          variant={params.value === "admin" ? "filled" : "outlined"}
+        />
+      ),
+    },
+    {
+      field: "lastLogin",
+      headerName: "Last Login",
+      flex: 1,
+      minWidth: 100,
+      sortable: false,
+      filterable: false,
+      align: "center",
+      headerAlign: "center",
+    },
+    {
+      field: "actions",
+      headerName: "Actions",
+      flex: 1,
+      minWidth: 100,
+      sortable: false,
+      filterable: false,
+      align: "center",
+      headerAlign: "center",
+      renderCell: (params) => (
+        <Box
+          sx={{
+            width: "100%",
+            height: "100%",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            gap: 1,
+            px: 0.5,
+          }}
+        >
+          <Tooltip title="Edit User">
+            <IconButton
+              size="small"
+              color="warning"
+              onClick={(e) => {
+                e.stopPropagation();
+                handleEditUser(params.row.id);
+              }}
+              sx={{ p: 0.5 }}
+            >
+              <EditIcon fontSize="small" />
+            </IconButton>
+          </Tooltip>
+          {params.row.role !== "user" && (
+            <Tooltip title="Edit Rights">
+              <IconButton
+                size="small"
+                color="primary"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  handleEditRights(params.row.id);
+                }}
+                sx={{ p: 0.5 }}
+              >
+                <VpnKeyIcon fontSize="small" />
+              </IconButton>
+            </Tooltip>
+          )}
+        </Box>
+      ),
+    },
+  ];
 
   return (
-    <div className="bg-gray-50 dark:bg-[#1e1e1e] p-6 w-full rounded-lg shadow-md transition-colors duration-300">
-      {/* Header */}
-      <div className="flex justify-between items-center mb-6">
-        <h1 className="text-2xl font-semibold text-gray-800 dark:text-white">
-          User List
-        </h1>
-        <button
-          onClick={handleAddUser}
-          className="bg-blue-600 text-white px-4 py-2 rounded-sm hover:bg-blue-700 transition"
-        >
-          + Add New User
-        </button>
-      </div>
+    <Container maxWidth="xl" sx={{ py: 3 }}>
+      {/* Header card */}
+      <Card elevation={2}>
+        <CardContent>
+          <Grid container alignItems="center" justifyContent="space-between" spacing={2}>
+            <Grid item>
+              <Typography variant="h4" fontWeight={700} color="primary">
+                User Management
+              </Typography>
+              <Typography variant="body2" color="text.secondary">
+                Manage and monitor all users in the system
+              </Typography>
+            </Grid>
 
-      {/* Table */}
-      <div className="overflow-x-auto shadow-md rounded-lg">
-        <table className="min-w-full bg-white dark:bg-gray-900 border border-gray-300 dark:border-gray-700 rounded-lg transition-colors duration-300">
-          <thead className="bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-200 text-left">
-            <tr>
-              <th className="py-3 px-4 text-center">Sr. No</th>
-              <th className="py-3 px-4">Username</th>
-              <th className="py-3 px-4">Email</th>
-              <th className="py-3 px-4">Role</th>
-              <th className="py-3 px-4">Last Login</th>
-              <th className="py-3 px-4 text-center">Action</th>
-            </tr>
-          </thead>
-          <tbody>
-            {currentUsers.map((user, index) => (
-              <tr
-                key={user._id}
-                className="border-t border-gray-200 dark:border-gray-600 even:bg-gray-50 dark:even:bg-gray-700"
-              >
-                <td className="py-3 px-4 text-center text-gray-800 dark:text-gray-200">
-                  {(currentPage - 1) * USERS_PER_PAGE + index + 1}
-                </td>
-                <td className="py-3 px-4 text-gray-800 dark:text-gray-200">
-                  {user.userName}
-                </td>
-                <td className="py-3 px-4 text-gray-800 dark:text-gray-200">
-                  {user.email}
-                </td>
-                <td className="py-3 px-4 capitalize text-gray-800 dark:text-gray-200">
-                  {user.role}
-                </td>
-                <td className="py-3 px-4 text-gray-800 dark:text-gray-200">
-                  {user.lastLogin
-                    ? new Date(user.lastLogin).toLocaleString()
-                    : "Never"}
-                </td>
-                <td className="py-3 px-4 text-center">
-                  <div className="flex justify-center gap-4">
-                    <button
-                      onClick={() => handleEditUser(user._id)}
-                      className="text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 transition text-xl cursor-pointer"
-                      title="Edit User"
-                    >
-                      <HiPencilAlt />
-                    </button>
-
-                    {/* Only show Edit Rights if role is not 'user' */}
-                    {user.role !== "user" && (
-                      <button
-                        onClick={() => handleEditRights(user._id)}
-                        className="text-purple-600 dark:text-purple-400 hover:text-purple-700 dark:hover:text-purple-300 transition text-xl cursor-pointer"
-                        title="Edit Rights"
-                      >
-                        <HiKey />
-                      </button>
-                    )}
-                  </div>
-                </td>
-              </tr>
-            ))}
-
-            {currentUsers.length === 0 && (
-              <tr>
-                <td
-                  colSpan="6"
-                  className="text-center text-gray-500 dark:text-gray-400 py-4 italic"
+            <Grid item>
+              <Box display="flex" gap={1} flexWrap="wrap">
+                <Button
+                  variant="outlined"
+                  startIcon={<Refresh />}
+                  onClick={handleRefresh}
+                  disabled={loading}
                 >
-                  No users found.
-                </td>
-              </tr>
-            )}
-          </tbody>
-        </table>
-      </div>
+                  Refresh
+                </Button>
 
-      {/* Pagination */}
-      <div className="mt-6 flex justify-center items-center gap-3 pb-6">
-        <button
-          disabled={currentPage === 1}
-          onClick={() => setCurrentPage((prev) => prev - 1)}
-          className="px-3 py-1 border border-gray-300 dark:border-gray-600 rounded-full hover:bg-gray-200 dark:hover:bg-gray-600 disabled:opacity-50"
+                <Button 
+                  variant="contained" 
+                  startIcon={<AddIcon />} 
+                  onClick={handleAddUser}
+                  sx={{ textTransform: "none" }}
+                >
+                  Add New User
+                </Button>
+              </Box>
+            </Grid>
+          </Grid>
+        </CardContent>
+      </Card>
+
+      {/* Search & chips */}
+      <Card sx={{ mt: 3 }}>
+        <CardContent>
+          <Grid container spacing={2} alignItems="center">
+            <Grid item xs={12} md={6}>
+              <TextField
+                fullWidth
+                placeholder="Search users by username, email or role..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                variant="outlined"
+                size="small"
+                InputProps={{
+                  startAdornment: (
+                    <InputAdornment position="start">
+                      <SearchIcon color="action" />
+                    </InputAdornment>
+                  ),
+                  endAdornment: searchTerm && (
+                    <InputAdornment position="end">
+                      <IconButton 
+                        size="small" 
+                        onClick={() => setSearchTerm("")} 
+                        edge="end"
+                      >
+                        <Cancel fontSize="small" />
+                      </IconButton>
+                    </InputAdornment>
+                  ),
+                }}
+              />
+            </Grid>
+
+            <Grid item xs={12} md={6}>
+              <Box display="flex" gap={1} justifyContent="flex-end">
+                <Chip 
+                  label={`${rowCount} users`} 
+                  color="primary" 
+                  variant="outlined" 
+                />
+                {loading && (
+                  <Chip
+                    icon={<CircularProgress size={14} color="inherit" />}
+                    label="Loading..."
+                    color="info"
+                    variant="outlined"
+                    sx={{
+                      px: 1.5,
+                      fontWeight: 500,
+                      backgroundColor: "rgba(0, 123, 255, 0.08)",
+                      borderRadius: "16px",
+                      ".MuiChip-icon": { marginLeft: "4px" },
+                    }}
+                  />
+                )}
+              </Box>
+            </Grid>
+          </Grid>
+        </CardContent>
+      </Card>
+
+      {/* DataGrid */}
+      <Card sx={{ mt: 3 }}>
+        <Box sx={{ height: 380, width: "100%" }}>
+          <DataGrid
+            rows={rows}
+            columns={columns}
+            paginationModel={paginationModel}
+            onPaginationModelChange={setPaginationModel}
+            pageSizeOptions={[5, 10, 25, 50]}
+            pagination
+            paginationMode="client"
+            rowCount={rowCount}
+            loading={loading}
+            disableRowSelectionOnClick
+            rowHeight={60}
+            headerHeight={50}
+            getRowId={(row) => row.id}
+            componentsProps={{
+              toolbar: {
+                showQuickFilter: false,
+                printOptions: { disableToolbarButton: true },
+                csvOptions: { disableToolbarButton: true },
+              },
+            }}
+          />
+        </Box>
+      </Card>
+
+      {/* Mobile FAB */}
+      {isMobile && (
+        <Fab 
+          color="primary" 
+          aria-label="add" 
+          onClick={handleAddUser}
+          sx={{ position: "fixed", bottom: 46, right: 36 }}
         >
-          &lt;
-        </button>
-        {Array.from({ length: totalPages }, (_, i) => (
-          <button
-            key={i + 1}
-            onClick={() => setCurrentPage(i + 1)}
-            className={`px-3 py-1 rounded ${
-              currentPage === i + 1
-                ? "bg-blue-600 text-white hover:bg-blue-700"
-                : "border-gray-300 dark:border-gray-600 hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-800 dark:text-gray-200"
-            }`}
-          >
-            {i + 1}
-          </button>
-        ))}
-        <button
-          disabled={currentPage === totalPages}
-          onClick={() => setCurrentPage((prev) => prev + 1)}
-          className="px-3 py-1 border border-gray-300 dark:border-gray-600 rounded-full hover:bg-gray-200 dark:hover:bg-gray-600 disabled:opacity-50"
-        >
-          &gt;
-        </button>
-      </div>
-    </div>
+          <AddIcon />
+        </Fab>
+      )}
+    </Container>
   );
 };
 

@@ -1,40 +1,145 @@
-import { useEffect, useState } from 'react';
-import { getAllStates, addState, updateState } from '../../api/stateApi';
-import { useDispatch } from 'react-redux';
-import { showNotificationWithTimeout } from '../../redux/slices/notificationSlice';
-import editIcon from "@/assets/icons/edit.png";
-import { motion, AnimatePresence } from 'framer-motion';
+import { useEffect, useState } from "react";
+import { getAllStates, addState, updateState } from "../../api/stateApi";
+import { useDispatch } from "react-redux";
+import { showNotificationWithTimeout } from "../../redux/slices/notificationSlice";
+import {
+  IconButton,
+  Tooltip,
+  Box,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogActions,
+  Button,
+  Typography,
+  CircularProgress,
+  Container,
+  Grid,
+  Card,
+  CardContent,
+  Chip,
+  Fab,
+  TextField,
+  InputAdornment,
+  useMediaQuery,
+  useTheme,
+  MenuItem,
+  Select,
+  FormControl,
+  InputLabel,
+} from "@mui/material";
+import {
+  DriveFileRenameOutline as EditIcon,
+  Add as AddIcon,
+  Search as SearchIcon,
+  Refresh,
+  Cancel,
+  Close as CloseIcon,
+} from "@mui/icons-material";
+import { DataGrid } from "@mui/x-data-grid";
 
 const StateMaster = () => {
+  const dispatch = useDispatch();
+  const theme = useTheme();
+  const isMobile = useMediaQuery(theme.breakpoints.down("md"));
+
+  // UI state
   const [states, setStates] = useState([]);
-  const [stateName, setStateName] = useState("");
-  const [status, setStatus] = useState("");
+  const [rows, setRows] = useState([]);
+  const [rowCount, setRowCount] = useState(0);
+  const [loading, setLoading] = useState(true);
+  const [searchTerm, setSearchTerm] = useState("");
+
+  // modal & form state
   const [showModal, setShowModal] = useState(false);
   const [editMode, setEditMode] = useState(false);
   const [editStateId, setEditStateId] = useState(null);
-  const [currentPage, setCurrentPage] = useState(1);
-  const itemsPerPage = 5;
-  const dispatch = useDispatch();
-  const indexOfLastItem = currentPage * itemsPerPage;
-  const indexOfFirstItem = indexOfLastItem - itemsPerPage;
-  const currentStates = states.slice(indexOfFirstItem, indexOfLastItem);
+  const [stateName, setStateName] = useState("");
+  const [status, setStatus] = useState(null); // boolean now
+  const [submitLoading, setSubmitLoading] = useState(false);
+
+  // pagination model for DataGrid (server-side style)
+  const [paginationModel, setPaginationModel] = useState({
+    page: 0,
+    pageSize: 5,
+  });
+
+  // initial load
+  useEffect(() => {
+    fetchStates();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // re-fetch on pagination change
+  useEffect(() => {
+    fetchStates();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [paginationModel]);
+
+  // when search changes: if not on page 0 -> reset to page 0; else fetch
+  useEffect(() => {
+    if (paginationModel.page === 0) {
+      fetchStates();
+    } else {
+      setPaginationModel((prev) => ({ ...prev, page: 0 }));
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [searchTerm]);
+
   const fetchStates = async () => {
     try {
-      const result = await getAllStates();
-      setStates(result?.data || []);
+      setLoading(true);
+      const result = await getAllStates({
+        page: paginationModel.page + 1, // api expect 1-based
+        limit: paginationModel.pageSize,
+        search: searchTerm,
+      });
+
+      // adjust depending on your API — this assumes result.data is array
+      const apiStates = result?.data || [];
+      let filteredStates = apiStates;
+
+      if (searchTerm) {
+        filteredStates = apiStates.filter((s) =>
+          s.name.toLowerCase().includes(searchTerm.toLowerCase())
+        );
+      }
+
+      // if API already paginates, remove client-side slice below
+      const startIndex = paginationModel.page * paginationModel.pageSize;
+      const paginatedStates = filteredStates.slice(
+        startIndex,
+        startIndex + paginationModel.pageSize
+      );
+
+      const statesWithIds = paginatedStates.map((state, index) => ({
+        ...state,
+        id: state._id ?? index, // DataGrid needs id
+        srNo: startIndex + index + 1,
+      }));
+
+      setRows(statesWithIds);
+      setRowCount(filteredStates.length);
+      setStates(statesWithIds);
     } catch (error) {
       console.error("Error fetching states:", error);
+      dispatch(
+        showNotificationWithTimeout({
+          show: true,
+          type: "error",
+          message: "Failed to fetch states",
+        })
+      );
+    } finally {
+      setLoading(false);
     }
   };
 
-  useEffect(() => {
-    fetchStates();
-  }, []);
-
+  // submit add / update
   const handleSubmit = async (e) => {
     e.preventDefault();
 
-    if (!stateName || !status) {
+    if (!stateName || status === null) {
       dispatch(
         showNotificationWithTimeout({
           show: true,
@@ -46,12 +151,13 @@ const StateMaster = () => {
     }
 
     try {
+      setSubmitLoading(true);
+
       if (editMode) {
         await updateState(editStateId, {
           name: stateName,
-          status: status, // keep it as "active" or "inactive"
+          status: status, // boolean
         });
-
         dispatch(
           showNotificationWithTimeout({
             show: true,
@@ -62,9 +168,8 @@ const StateMaster = () => {
       } else {
         await addState({
           name: stateName,
-          status: status, // keep it as "active" or "inactive"
+          status: status, // boolean
         });
-
         dispatch(
           showNotificationWithTimeout({
             show: true,
@@ -74,13 +179,10 @@ const StateMaster = () => {
         );
       }
 
-      setStateName("");
-      setStatus("");
-      setEditStateId(null);
-      setEditMode(false);
-      setShowModal(false);
+      handleCloseModal();
       fetchStates();
     } catch (error) {
+      console.error("Error submit state:", error);
       dispatch(
         showNotificationWithTimeout({
           show: true,
@@ -88,12 +190,14 @@ const StateMaster = () => {
           message: editMode ? "Failed to update state" : "Failed to add state",
         })
       );
+    } finally {
+      setSubmitLoading(false);
     }
   };
 
   const handleEditClick = (state) => {
-    setStateName(state.name);
-    setStatus(state.status ? "active" : "inactive");
+    setStateName(state.name ?? "");
+    setStatus(!!state.status); // convert to boolean (works if backend returns true/false)
     setEditStateId(state._id);
     setEditMode(true);
     setShowModal(true);
@@ -103,209 +207,298 @@ const StateMaster = () => {
     setShowModal(false);
     setEditMode(false);
     setStateName("");
-    setStatus("");
+    setStatus(null);
     setEditStateId(null);
   };
 
-  return (
-    <div className="p-6 text-gray-800 dark:text-gray-100 transition-colors duration-300">
-      {/* Modal with Animation */}
-      <AnimatePresence>
-        {showModal && (
-          <motion.div
-            className="fixed inset-0 z-50 flex items-center justify-center backdrop-blur-sm bg-white/30 dark:bg-black/30"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-          >
-            <motion.div
-              className="relative bg-white dark:bg-[#1e1e1e] p-6 rounded-2xl w-full max-w-md shadow-xl border border-gray-200 dark:border-gray-700 transition-colors duration-300"
-              initial={{ opacity: 0, scale: 0.9 }}
-              animate={{ opacity: 1, scale: 1 }}
-              exit={{ opacity: 0, scale: 0.9 }}
-              transition={{ duration: 0.3 }}
-            >
-              <button
-                onClick={handleCloseModal}
-                className="absolute top-3 right-3 text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-white text-xl font-bold"
-                aria-label="Close"
-              >
-                ×
-              </button>
+  const handleCreateClick = () => {
+    setShowModal(true);
+    setEditMode(false);
+    setStateName("");
+    setStatus(null);
+  };
 
-              <h2 className="text-xl font-semibold mb-4 text-gray-800 dark:text-gray-100">
-                {editMode ? "Edit State" : "Add New State"}
-              </h2>
+  const handleRefresh = () => fetchStates();
 
-              <form onSubmit={handleSubmit}>
-                <input
-                  type="text"
-                  value={stateName}
-                  onChange={(e) => setStateName(e.target.value)}
-                  placeholder="Enter state name"
-                  className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 bg-white dark:bg-[#2a2a2a] text-gray-900 dark:text-white rounded-lg mb-4 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                />
-
-                <select
-                  value={status}
-                  onChange={(e) => setStatus(e.target.value)}
-                  className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 bg-white dark:bg-[#2a2a2a] text-gray-900 dark:text-white rounded-lg mb-4 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                >
-                  <option value="">Select status</option>
-                  <option value="active">Active</option>
-                  <option value="inactive">Inactive</option>
-                </select>
-
-                <div className="flex justify-end gap-2">
-                  <button
-                    type="button"
-                    onClick={handleCloseModal}
-                    className="px-4 py-2 bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 rounded-lg text-gray-700 dark:text-white"
-                  >
-                    Cancel
-                  </button>
-                  <button
-                    type="submit"
-                    className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg"
-                  >
-                    {editMode ? "Update" : "Save"}
-                  </button>
-                </div>
-              </form>
-            </motion.div>
-          </motion.div>
-        )}
-      </AnimatePresence>
-
-      <div className="bg-gray-100 dark:bg-[#1e1e1e] p-6 rounded-2xl shadow-md transition-colors duration-300">
-        <div className="flex justify-between items-center mb-4">
-          <h3 className="text-xl font-semibold text-gray-700 dark:text-gray-100">
-            State List
-          </h3>
-          <button
-            className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-sm shadow transition cursor-pointer"
-            onClick={() => {
-              setShowModal(true);
-              setEditMode(false);
-              setStateName("");
-              setStatus("");
+const columns = [
+  {
+    field: "srNo",
+    headerName: "Sr. No",
+    flex: 1, // equal width
+    minWidth: 100,
+    sortable: false,
+    filterable: false,
+    align: "center",
+    headerAlign: "center",
+  },
+  {
+    field: "name",
+    headerName: "State Name",
+    flex: 1, // equal width
+    minWidth: 100,
+    sortable: false,
+    filterable: false,
+    align: "center",
+    headerAlign: "center",
+  },
+  {
+    field: "status",
+    headerName: "Status",
+    flex: 1, // equal width
+    minWidth: 100,
+    align: "center",
+    sortable: false,
+    filterable: false,
+    headerAlign: "center",
+    renderCell: (params) => (
+      <Chip
+        label={params.value ? "Active" : "Inactive"}
+        size="small"
+        color={params.value ? "success" : "default"}
+        variant={params.value ? "filled" : "outlined"}
+      />
+    ),
+  },
+  {
+    field: "actions",
+    headerName: "Actions",
+    flex: 1, // equal width
+    minWidth: 100,
+    sortable: false,
+    filterable: false,
+    align: "center",
+    headerAlign: "center",
+    renderCell: (params) => (
+      <Box
+        sx={{
+          width: "100%",
+          height: "100%",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          px: 0.5,
+        }}
+      >
+        <Tooltip title="Edit State">
+          <IconButton
+            size="small"
+            color="warning"
+            onClick={(e) => {
+              e.stopPropagation();
+              handleEditClick(params.row);
             }}
+            sx={{ p: 0.5 }}
           >
-            + Add New
-          </button>
-        </div>
+            <EditIcon fontSize="small" />
+          </IconButton>
+        </Tooltip>
+      </Box>
+    ),
+  },
+];
 
-        {states.length === 0 ? (
-          <div className="text-gray-500 dark:text-gray-400 text-center py-6">
-            No states found.
-          </div>
-        ) : (
-          <div className="border border-gray-300 dark:border-gray-700 rounded-lg overflow-hidden">
-            {/* Desktop Header */}
-            <div className="hidden sm:grid grid-cols-4 font-semibold bg-gray-200 dark:bg-gray-800 text-gray-700 dark:text-gray-100 py-2 px-2">
-              <div>Sr.No</div>
-              <div>State</div>
-              <div>Status</div>
-              <div>Action</div>
-            </div>
 
-            {/* Responsive Rows */}
-            {currentStates.map((state, index) => (
-              <div
-                key={state._id}
-                className={`grid sm:grid-cols-4 grid-cols-1 sm:items-center py-2 px-4 gap-1 text-gray-800 dark:text-gray-200 border-t border-gray-200 dark:border-gray-700 ${
-                  index % 2 === 0
-                    ? "bg-white/60 dark:bg-white/5"
-                    : "bg-transparent"
-                }`}
-              >
-                <div className="text-center sm:text-left">
-                  <span className="sm:hidden font-medium text-gray-500 dark:text-gray-400">
-                    Sr.No:{" "}
-                  </span>
-                  {indexOfFirstItem + index + 1}
-                </div>
-                <div className="break-words">
-                  <span className="sm:hidden font-medium text-gray-500 dark:text-gray-400">
-                    State:{" "}
-                  </span>
-                  {state.name}
-                </div>
-                <div>
-                  <span className="sm:hidden font-medium text-gray-500 dark:text-gray-400">
-                    Status:{" "}
-                  </span>
-                  <span
-                    className={`inline-block px-3 py-1 text-xs font-medium rounded-full ${
-                      state.status
-                        ? "bg-green-100 text-green-700 dark:bg-green-900 dark:text-green-300"
-                        : "bg-red-100 text-red-700 dark:bg-red-900 dark:text-red-300"
-                    }`}
-                  >
-                    {state.status ? "Active" : "Inactive"}
-                  </span>
-                </div>
-                <div>
-                  <span className="sm:hidden font-medium text-gray-500 dark:text-gray-400">
-                    Action:{" "}
-                  </span>
-                  <button
-                    className="transition cursor-pointer"
-                    title="Edit"
-                    onClick={() => handleEditClick(state)}
-                  >
-                    <img
-                      src={editIcon}
-                      alt="Edit"
-                      className="h-8 w-14 object-contain transition duration-200 hover:brightness-150"
-                    />
-                  </button>
-                </div>
-              </div>
-            ))}
-          </div>
-        )}
-        {Math.ceil(states.length / itemsPerPage) > 1 && (
-          <div className="flex justify-center items-center mt-4 gap-2">
-            <button
-              onClick={() => setCurrentPage((prev) => Math.max(prev - 1, 1))}
-              disabled={currentPage === 1}
-              className="px-3 py-1 border border-gray-300 dark:border-gray-600 rounded-full hover:bg-gray-200 dark:hover:bg-gray-600 disabled:opacity-50"
-            >
-              &lt;
-            </button>
+  return (
+    <Container maxWidth="xl" sx={{ py: 3 }}>
+      {/* Header card */}
+      <Card elevation={2}>
+        <CardContent>
+          <Grid container alignItems="center" justifyContent="space-between" spacing={2}>
+            <Grid item>
+              <Typography variant="h4" fontWeight={700} color="primary">
+                State Management
+              </Typography>
+              <Typography variant="body2" color="text.secondary">
+                Manage and monitor all states in the system
+              </Typography>
+            </Grid>
 
-            {[...Array(Math.ceil(states.length / itemsPerPage)).keys()].map(
-              (page) => (
-                <button
-                  key={page + 1}
-                  onClick={() => setCurrentPage(page + 1)}
-                  className={`px-3 py-1 rounded ${
-                    currentPage === page + 1
-                      ? "bg-blue-600 text-white hover:bg-blue-700"
-                      : "border-gray-300 dark:border-gray-600 hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-800 dark:text-gray-200"
-                  }`}
+            <Grid item>
+              <Box display="flex" gap={1} flexWrap="wrap">
+                <Button
+                  variant="outlined"
+                  startIcon={<Refresh />}
+                  onClick={handleRefresh}
+                  disabled={loading}
                 >
-                  {page + 1}
-                </button>
-              )
-            )}
+                  Refresh
+                </Button>
 
-            <button
-              onClick={() =>
-                setCurrentPage((prev) =>
-                  Math.min(prev + 1, Math.ceil(states.length / itemsPerPage))
-                )
-              }
-              disabled={currentPage === Math.ceil(states.length / itemsPerPage)}
-              className="px-3 py-1 border border-gray-300 dark:border-gray-600 rounded-full hover:bg-gray-200 dark:hover:bg-gray-600 disabled:opacity-50"
-            >
-              &gt;
-            </button>
-          </div>
-        )}
-      </div>
-    </div>
+                <Button variant="contained" startIcon={<AddIcon />} onClick={handleCreateClick}>
+                  Add State
+                </Button>
+              </Box>
+            </Grid>
+          </Grid>
+        </CardContent>
+      </Card>
+
+      {/* Search & chips */}
+      <Card sx={{ mt: 3 }}>
+        <CardContent>
+          <Grid container spacing={2} alignItems="center">
+            <Grid item xs={12} md={6}>
+              <TextField
+                fullWidth
+                placeholder="Search states by name..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                variant="outlined"
+                size="small"
+                InputProps={{
+                  startAdornment: (
+                    <InputAdornment position="start">
+                      <SearchIcon color="action" />
+                    </InputAdornment>
+                  ),
+                  endAdornment: searchTerm && (
+                    <InputAdornment position="end">
+                      <IconButton size="small" onClick={() => setSearchTerm("")} edge="end">
+                        <Cancel fontSize="small" />
+                      </IconButton>
+                    </InputAdornment>
+                  ),
+                }}
+              />
+            </Grid>
+
+            <Grid item xs={12} md={6}>
+              <Box display="flex" gap={1} justifyContent="flex-end">
+                <Chip label={`${rowCount} states`} color="primary" variant="outlined" />
+                {loading && (
+                  <Chip
+                    icon={<CircularProgress size={14} color="inherit" />}
+                    label="Loading..."
+                    color="info"
+                    variant="outlined"
+                    sx={{
+                      px: 1.5,
+                      fontWeight: 500,
+                      backgroundColor: "rgba(0, 123, 255, 0.08)",
+                      borderRadius: "16px",
+                      ".MuiChip-icon": { marginLeft: "4px" },
+                    }}
+                  />
+                )}
+              </Box>
+            </Grid>
+          </Grid>
+        </CardContent>
+      </Card>
+
+      {/* DataGrid */}
+      <Card sx={{ mt: 3 }}>
+        <Box sx={{ height: 380, width: "100%" }}>
+          <DataGrid
+            rows={rows}
+            columns={columns}
+            paginationModel={paginationModel}
+            onPaginationModelChange={setPaginationModel}
+            pageSizeOptions={[5, 10, 25, 50]}
+            pagination
+            paginationMode="server"
+            rowCount={rowCount}
+            loading={loading}
+            disableRowSelectionOnClick
+            rowHeight={60}
+            headerHeight={50}
+            getRowId={(row) => row.id}
+            componentsProps={{
+              toolbar: {
+                showQuickFilter: false,
+                printOptions: { disableToolbarButton: true },
+                csvOptions: { disableToolbarButton: true },
+              },
+            }}
+          />
+        </Box>
+      </Card>
+
+      {/* Mobile FAB */}
+      {isMobile && (
+        <Fab color="primary" aria-label="add" onClick={handleCreateClick} sx={{ position: "fixed", bottom: 46, right: 36 }}>
+          <AddIcon />
+        </Fab>
+      )}
+
+      {/* Add/Edit Dialog */}
+<Dialog
+  open={showModal}
+  onClose={handleCloseModal}
+  maxWidth="sm"
+  fullWidth
+  slotProps={{
+    backdrop: {
+      sx: {
+        backdropFilter: 'blur(5px)',
+        backgroundColor: 'rgba(0,0,0,0.3)', // optional tint
+      }
+    }
+  }}
+>
+  <DialogTitle>
+    <Box display="flex" alignItems="center" justifyContent="space-between">
+      <Typography variant="h6">
+        {editMode ? "Edit State" : "Add New State"}
+      </Typography>
+      <IconButton onClick={handleCloseModal} size="small" disabled={submitLoading}>
+        <CloseIcon />
+      </IconButton>
+    </Box>
+  </DialogTitle>
+
+  <form onSubmit={handleSubmit}>
+    <DialogContent>
+      <Box display="flex" flexDirection="column" gap={3} pt={1}>
+        <TextField
+          fullWidth
+          label="State Name"
+          value={stateName}
+          onChange={(e) => setStateName(e.target.value)}
+          placeholder="Enter state name"
+          variant="outlined"
+          required
+          disabled={submitLoading}
+        />
+
+        <FormControl fullWidth required disabled={submitLoading}>
+          <InputLabel>Status</InputLabel>
+          <Select
+            value={status === null ? "" : String(status)}
+            onChange={(e) => setStatus(e.target.value === "true")}
+            label="Status"
+          >
+            <MenuItem value="">Select status</MenuItem>
+            <MenuItem value="true">Active</MenuItem>
+            <MenuItem value="false">Inactive</MenuItem>
+          </Select>
+        </FormControl>
+      </Box>
+    </DialogContent>
+
+    <DialogActions sx={{ px: 3, pb: 3 }}>
+      <Button onClick={handleCloseModal} variant="outlined" disabled={submitLoading}>
+        Cancel
+      </Button>
+      <Button
+        type="submit"
+        variant="contained"
+        disabled={submitLoading}
+        startIcon={submitLoading ? <CircularProgress size={16} /> : null}
+      >
+        {submitLoading
+          ? editMode
+            ? "Updating..."
+            : "Adding..."
+          : editMode
+          ? "Update"
+          : "Add State"}
+      </Button>
+    </DialogActions>
+  </form>
+</Dialog>
+
+    </Container>
   );
 };
 
