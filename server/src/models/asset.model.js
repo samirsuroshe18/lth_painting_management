@@ -82,6 +82,11 @@ const AssetSchema = new mongoose.Schema({
         ref: 'User',
     },
 
+    rejectedRemark: {
+        type: String,
+        maxlength: 1000,
+    },
+
     isDeleted: {
         type: Boolean,
         default: false,

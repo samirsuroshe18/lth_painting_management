@@ -22,11 +22,12 @@ const proposedChangesSchema = new Schema({
     },
 
     location: {
-        type: String,
+        type: Schema.Types.ObjectId,
+        ref: 'Location',
     },
 
     year: {
-        type: Date,
+        type: Number,
     },
 
     artist: {
@@ -93,6 +94,16 @@ const AssetAuditLogSchema = new Schema({
         type: String,
         maxlength: 1000,
     },
+
+    createdBy : {
+        type: Schema.Types.ObjectId,
+        ref: 'User'
+    },
+    
+    updatedBy : {
+        type: Schema.Types.ObjectId,
+        ref: 'User'
+    }
     
 }, { timestamps: true });
 

@@ -39,6 +39,7 @@ const router = createBrowserRouter([
             element: <HomePage />,
           },
           { path: "edit-rights/:id", element: <EditRights />},
+          { path: "asset", element: <AssetDetailsPage />},
           {
             path: "masters",
             children: [
@@ -46,7 +47,6 @@ const router = createBrowserRouter([
               { path: "user-master", element: <UserMaster /> },
               { path: "add-user", element: <AddUser /> },
               { path: "edit-user/:id", element: <EditUser /> },
-              { path: "asset/:id", element: <AssetDetailsPage />}, // Now this will work
               { path: "asset-master", 
                 children: [
                   { path: "", element: <AssetMaster /> },

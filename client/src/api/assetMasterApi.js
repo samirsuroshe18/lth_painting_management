@@ -8,9 +8,35 @@ const getAssets = async (queryParams) => {
     return response.data;
 };
 
+const getAllAudits = async (queryParams) => {
+    const response = await axiosInstance.get(
+        `/api/v1/assetaudit/get-audit-logs`,
+        { params: queryParams, withCredentials: true }
+    );
+    return response.data;
+};
+
 const viewAsset = async (id) => {
     const response = await axiosInstance.get(
         `/api/v1/assetmaster/view-asset/${id}`,
+        { withCredentials: true }
+    );
+    return response.data;
+};
+
+const reviewAuditStatus = async (id, reviewStatus) => {
+    const response = await axiosInstance.put(
+        `/api/v1/assetaudit/review-audit-status/${id}`,
+        {reviewStatus},
+        { withCredentials: true }
+    );
+    return response.data;
+};
+
+const reviewAssetStatus = async (id, formData) => {
+    const response = await axiosInstance.put(
+        `/api/v1/assetmaster/review-asset-status/${id}`,
+        formData,
         { withCredentials: true }
     );
     return response.data;
@@ -91,5 +117,8 @@ export {
     viewAsset,
     createNewAsset,
     updateAsset,
-    removeAsset
+    removeAsset,
+    getAllAudits,
+    reviewAuditStatus,
+    reviewAssetStatus
 }

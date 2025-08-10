@@ -161,7 +161,7 @@ const updateAsset = catchAsync(async (req, res) => {
 
 const reviewAssetStatus = catchAsync(async (req, res) => {
     const { assetId } = req.params;
-    const { reviewStatus } = req.body;
+    const { reviewStatus, rejectedRemark } = req.body;
     const asset = await Asset.findById(assetId);
     if (!asset) {
         throw new ApiError(404, 'Asset not found');
@@ -173,12 +173,15 @@ const reviewAssetStatus = catchAsync(async (req, res) => {
     if (!hasAccessToLocation) {
         return res.status(403).json({ message: 'You do not have access to this location.' });
     }
+
     if (!['approved', 'rejected'].includes(reviewStatus)) {
         throw new ApiError(400, 'Invalid review status');
     }
+
     asset.reviewStatus = reviewStatus;
     asset.updatedBy = req.user._id;
     asset.reviewedBy = req.user._id;
+    asset.rejectedRemark = rejectedRemark || undefined
     await asset.save();
     return res.status(200).json(
         new ApiResponse(200, {}, 'Asset status updated successfully')

@@ -36,7 +36,7 @@ import {
   Visibility,
 } from "@mui/icons-material";
 import { DataGrid } from "@mui/x-data-grid";
-import { getAssets, removeAsset } from "../../api/assetMasterApi";
+import { getAssets, removeAsset, reviewAssetStatus } from "../../api/assetMasterApi";
 import { showNotificationWithTimeout } from "../../redux/slices/notificationSlice";
 import { handleAxiosError } from "../../utils/handleAxiosError";
 import { useNavigate } from "react-router-dom";
@@ -62,6 +62,14 @@ export default function AssetMaster() {
   const [selectedQr, setSelectedQr] = useState(null);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [assetToDelete, setAssetToDelete] = useState(null);
+  // NEW: approve/reject dialogs + state
+  const [approveDialogOpen, setApproveDialogOpen] = useState(false);
+  const [rejectDialogOpen, setRejectDialogOpen] = useState(false);
+  const [assetToApprove, setAssetToApprove] = useState(null);
+  const [assetToReject, setAssetToReject] = useState(null);
+  const [approveLoading, setApproveLoading] = useState(false);
+  const [rejectLoading, setRejectLoading] = useState(false);
+  const [rejectRemark, setRejectRemark] = useState("");
 
   // ---------------------------
   // Server-side pagination model
@@ -149,26 +157,87 @@ export default function AssetMaster() {
   // Navigate to create screen
   const handleCreateClick = () => navigate("new");
 
-  // Stubbed approve action
-  const handleApprove = (assetId) => {
-    dispatch(
-      showNotificationWithTimeout({
-        show: true,
-        type: "success",
-        message: "Asset approved successfully",
-      })
-    );
+  // OPEN dialogs instead of acting immediately
+  const handleApprove = (assetIdOrRow) => {
+    const row = typeof assetIdOrRow === "object" ? assetIdOrRow : rows.find((r) => r.id === assetIdOrRow);
+    setAssetToApprove(row);
+    setApproveDialogOpen(true);
   };
 
-  // Stubbed reject action
-  const handleReject = (assetId) => {
-    dispatch(
-      showNotificationWithTimeout({
-        show: true,
-        type: "info",
-        message: "Asset rejected",
-      })
-    );
+  const handleReject = (assetIdOrRow) => {
+    const row = typeof assetIdOrRow === "object" ? assetIdOrRow : rows.find((r) => r.id === assetIdOrRow);
+    setAssetToReject(row);
+    setRejectRemark("");
+    setRejectDialogOpen(true);
+  };
+
+  // NEW: confirm approve
+  const handleConfirmApprove = async () => {
+    if (!assetToApprove) return;
+    try {
+      setApproveLoading(true);
+      await reviewAssetStatus(assetToApprove.id, {reviewStatus: "approved"}); // implement this API
+      const isLastItemOnPage = rows.length <= 1 && paginationModel.page > 0;
+      if (isLastItemOnPage) {
+        setPaginationModel((prev) => ({ ...prev, page: prev.page - 1 }));
+      } else {
+        await fetchAssets();
+      }
+      dispatch(
+        showNotificationWithTimeout({
+          show: true,
+          type: "success",
+          message: "Asset approved successfully",
+        })
+      );
+    } catch (error) {
+      dispatch(
+        showNotificationWithTimeout({
+          show: true,
+          type: "error",
+          message: handleAxiosError(error),
+        })
+      );
+    } finally {
+      setApproveLoading(false);
+      setApproveDialogOpen(false);
+      setAssetToApprove(null);
+    }
+  };
+
+  // NEW: confirm reject (remark required)
+  const handleConfirmReject = async () => {
+    if (!assetToReject || !rejectRemark.trim()) return;
+    try {
+      setRejectLoading(true);
+      await reviewAssetStatus(assetToReject.id, { reviewStatus: "rejected", rejectRemark }); // implement this API
+      const isLastItemOnPage = rows.length <= 1 && paginationModel.page > 0;
+      if (isLastItemOnPage) {
+        setPaginationModel((prev) => ({ ...prev, page: prev.page - 1 }));
+      } else {
+        await fetchAssets();
+      }
+      dispatch(
+        showNotificationWithTimeout({
+          show: true,
+          type: "success",
+          message: "Asset rejected successfully",
+        })
+      );
+    } catch (error) {
+      dispatch(
+        showNotificationWithTimeout({
+          show: true,
+          type: "error",
+          message: handleAxiosError(error),
+        })
+      );
+    } finally {
+      setRejectLoading(false);
+      setRejectDialogOpen(false);
+      setAssetToReject(null);
+      setRejectRemark("");
+    }
   };
 
   // Navigate to edit screen
@@ -345,7 +414,7 @@ export default function AssetMaster() {
                   color="success"
                   onClick={(e) => {
                     e.stopPropagation();
-                    handleApprove(params.row.id);
+                    handleApprove(params.row);
                   }}
                 >
                   <CheckCircle fontSize="small" />
@@ -358,7 +427,7 @@ export default function AssetMaster() {
                   color="error"
                   onClick={(e) => {
                     e.stopPropagation();
-                    handleReject(params.row.id);
+                    handleReject(params.row);
                   }}
                 >
                   <Cancel fontSize="small" />
@@ -497,7 +566,7 @@ export default function AssetMaster() {
                 onChange={(e) => setSearchTerm(e.target.value)}
                 variant="outlined"
                 size="small"
-                InputProps={{
+                slotProps={{
                   startAdornment: (
                     <InputAdornment position="start">
                       <SearchIcon color="action" />
@@ -658,6 +727,63 @@ export default function AssetMaster() {
             }
           >
             {deleteLoading ? "Deleting..." : "Delete"}
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* Approve */}
+      <Dialog open={approveDialogOpen} onClose={() => setApproveDialogOpen(false)} maxWidth="xs" fullWidth>
+        <DialogTitle>Approve Asset</DialogTitle>
+        <DialogContent>
+          <Typography>
+            Are you sure you want to approve <strong>{assetToApprove?.name}</strong>?
+          </Typography>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setApproveDialogOpen(false)} variant="outlined" disabled={approveLoading}>
+            Cancel
+          </Button>
+          <Button
+            variant="contained"
+            color="success"
+            disabled={approveLoading}
+            onClick={handleConfirmApprove}
+            startIcon={approveLoading ? <CircularProgress size={16} /> : <CheckCircle />}
+          >
+            {approveLoading ? "Approving..." : "Approve"}
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* Reject */}
+      <Dialog open={rejectDialogOpen} onClose={() => setRejectDialogOpen(false)} maxWidth="sm" fullWidth>
+        <DialogTitle>Reject Asset</DialogTitle>
+        <DialogContent>
+          <Alert severity="warning" sx={{ mb: 2 }}>
+            Please provide a rejection remark before confirming.
+          </Alert>
+          <TextField
+            autoFocus
+            fullWidth
+            label="Rejection Remark"
+            value={rejectRemark}
+            onChange={(e) => setRejectRemark(e.target.value)}
+            multiline
+            minRows={3}
+          />
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setRejectDialogOpen(false)} variant="outlined" disabled={rejectLoading}>
+            Cancel
+          </Button>
+          <Button
+            variant="contained"
+            color="error"
+            disabled={rejectLoading || !rejectRemark.trim()}
+            onClick={handleConfirmReject}
+            startIcon={rejectLoading ? <CircularProgress size={16} /> : <Cancel />}
+          >
+            {rejectLoading ? "Rejecting..." : "Reject"}
           </Button>
         </DialogActions>
       </Dialog>

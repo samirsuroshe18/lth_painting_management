@@ -1,175 +1,455 @@
-import React, { useEffect, useState } from 'react';
-import { useNavigate } from 'react-router-dom'; // Add this import
-import { getAssets, viewAsset } from '../../api/assetMasterApi';
-import { FaCheck, FaTimes, FaClock, FaList, FaEye } from 'react-icons/fa';
+import { useEffect, useMemo, useState } from "react";
+import { useNavigate } from "react-router-dom";
+import {
+  Box,
+  Card,
+  CardActionArea,
+  CardContent,
+  Chip,
+  Container,
+  Grid,
+  IconButton,
+  Typography,
+  useMediaQuery,
+  useTheme,
+  Button,
+  CircularProgress,
+  TextField,
+  InputAdornment,
+} from "@mui/material";
+import {
+  CheckCircle,
+  Cancel,
+  Schedule,
+  ListAlt,
+  Visibility,
+  Search as SearchIcon,
+  Refresh,
+} from "@mui/icons-material";
+import { DataGrid } from "@mui/x-data-grid";
+import { getAllAudits, getAssets } from "../../api/assetMasterApi";
+import { useDispatch } from "react-redux";
 
 const statusFilters = [
-  { label: 'All Audits', value: 'all', color: 'bg-[#009ef7]', icon: <FaList /> },
-  { label: 'Review Pending', value: 'Pending', color: 'bg-[#ffc700]', icon: <FaClock /> },
-  { label: 'Approved', value: 'Approved', color: 'bg-[#50cd89]', icon: <FaCheck /> },
-  { label: 'Rejected', value: 'Rejected', color: 'bg-[#f1416c]', icon: <FaTimes /> }
+  { label: "All Audits", value: "all", icon: <ListAlt /> },
+  { label: "Review Pending", value: "Pending", icon: <Schedule /> },
+  { label: "Approved", value: "Approved", icon: <CheckCircle /> },
+  { label: "Rejected", value: "Rejected", icon: <Cancel /> },
 ];
 
-const ITEMS_PER_PAGE = 5;
-
 const SuperAdminDashboard = () => {
-  const navigate = useNavigate(); // Add this hook
-  const [activeFilter, setActiveFilter] = useState('all');
-  const [assets, setAssets] = useState([]);
-  const [counts, setCounts] = useState({ all: 0, Pending: 0, Approved: 0, Rejected: 0 });
-  const [currentPage, setCurrentPage] = useState(1);
+  const dispatch = useDispatch();
+  const navigate = useNavigate();
+  const [audits, setAudits] = useState([]);
+  const [rows, setRows] = useState([]);
+  const [rowCount, setRowCount] = useState(0);
+  const [loading, setLoading] = useState(true);
+  const [countsLoading, setCountsLoading] = useState(false);
+  const [searchTerm, setSearchTerm] = useState("");
+  const [activeFilter, setActiveFilter] = useState("all");
+  const [counts, setCounts] = useState({
+    all: 0,
+    Pending: 0,
+    Approved: 0,
+    Rejected: 0,
+  });
+  const [paginationModel, setPaginationModel] = useState({
+    page: 0,
+    pageSize: 5,
+  });
 
-  const fetchAssets = async () => {
+  const lowerStatusParam = (v) =>
+    v && v !== "all" ? v.toLowerCase() : undefined;
+
+  useEffect(() => {
+    fetchCounts();
+  }, []);
+
+  // Re-fetch when user changes page or pageSize
+  useEffect(() => {
+    fetchAssets();
+  }, [paginationModel]);
+
+  // When search changes:
+  // - If already on page 0, fetch with new filter
+  // - Else, reset to page 0 (which triggers fetch via the effect above)
+  useEffect(() => {
+    if (paginationModel.page === 0) {
+      fetchAssets();
+    } else {
+      setPaginationModel((prev) => ({ ...prev, page: 0 }));
+    }
+  }, [searchTerm]);
+
+  // when filter changes, reset to first page and refetch
+  useEffect(() => {
+    setPaginationModel((prev) => ({ ...prev, page: 0 }));
+  }, [activeFilter]);
+
+  const fetchCounts = async () => {
     try {
-      const res = await getAssets('');
-      const allAssets = res?.data?.assets || [];
+      setCountsLoading(true);
+      const statuses = ["all", "Pending", "Approved", "Rejected"];
 
-      const countMap = {
-        all: allAssets.length,
-        Pending: allAssets.filter(asset => asset.reviewStatus?.toLowerCase() === 'pending').length,
-        Approved: allAssets.filter(asset => asset.reviewStatus?.toLowerCase() === 'approved').length,
-        Rejected: allAssets.filter(asset => asset.reviewStatus?.toLowerCase() === 'rejected').length,
-      };
-      setCounts(countMap);
+      const results = await Promise.allSettled(
+        statuses.map(async (s) => {
+          try {
+            const res = await getAllAudits({
+              page: 1,
+              limit: 1, // only need total
+              status: lowerStatusParam(s),
+            });
+            return {
+              key: s,
+              total: res?.data?.pagination?.totalEntries ?? 0,
+            };
+          } catch {
+            return { key: s, total: 0 }; // error → default to 0
+          }
+        })
+      );
 
-      const filteredAssets =
-        activeFilter === 'all'
-          ? allAssets
-          : allAssets.filter(asset => asset.reviewStatus?.toLowerCase() === activeFilter.toLowerCase());
+      const next = { all: 0, Pending: 0, Approved: 0, Rejected: 0 };
+      results.forEach((result) => {
+        if (result.status === "fulfilled" && result.value) {
+          next[result.value.key] = result.value.total || 0;
+        } else if (result.status === "rejected") {
+          // In case the mapping throw directly (rare), still set 0
+          const index = results.indexOf(result);
+          next[statuses[index]] = 0;
+        }
+      });
 
-      setAssets(filteredAssets);
-      setCurrentPage(1);
-    } catch (err) {
-      console.error('Failed to fetch assets', err);
+      setCounts(next);
+    } finally {
+      setCountsLoading(false);
     }
   };
 
-  useEffect(() => {
-    fetchAssets();
-  }, [activeFilter]);
+  const fetchAssets = async () => {
+    try {
+      setLoading(true);
 
-  // Function to handle navigation to asset details page
-  const handleViewAsset = (assetId) => {
-    navigate(`/masters/asset/${assetId}`); // Adjust the route as needed
+      const res = await getAllAudits({
+        page: paginationModel.page + 1, // server expects 1-based
+        limit: paginationModel.pageSize,
+        status: lowerStatusParam(activeFilter),
+        search: searchTerm,
+      });
+
+      const apiItems = res?.data?.auditLogs ?? [];
+      const normalized = apiItems.map((asset) => ({
+        ...asset,
+        id: asset._id,
+      }));
+
+      setAudits(normalized);
+      setRows(normalized);
+      setRowCount(
+        res?.data?.pagination?.totalEntries ??
+          res?.data?.total ??
+          res?.data?.totalCount ??
+          res?.data?.count ??
+          0
+      );
+    } catch (e) {
+      console.error("Failed to fetch assets", e);
+      setRows([]);
+      setRowCount(0);
+    } finally {
+      setLoading(false);
+    }
   };
 
-  const totalPages = Math.ceil(assets.length / ITEMS_PER_PAGE);
-  const paginatedAssets = assets.slice((currentPage - 1) * ITEMS_PER_PAGE, currentPage * ITEMS_PER_PAGE);
+  const handleViewAsset = (auditLog) => {
+    navigate("asset", { state: { auditLog } });
+  };
+
+  const columns = useMemo(
+    () => [
+      {
+        field: "srNo",
+        headerName: "Sr. No",
+        width: 90,
+        align: "center",
+        headerAlign: "center",
+        sortable: false,
+        filterable: false,
+        renderCell: (params) => {
+          const visibleIndex =
+            params.api.getRowIndexRelativeToVisibleRows(params.id) ?? 0;
+          const serial =
+            paginationModel.page * paginationModel.pageSize + visibleIndex + 1;
+
+          return (
+            <Box
+              sx={{
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                height: "100%",
+                width: "100%",
+              }}
+            >
+              <Typography variant="body2">{serial}</Typography>
+            </Box>
+          );
+        },
+      },
+      {
+        field: "assetId",
+        headerName: "Asset Name",
+        flex: 1,
+        minWidth: 220,
+        align: "center",
+        headerAlign: "center",
+        sortable: false,
+        filterable: false,
+        renderCell: (params) => params.row.assetId?.name || "-",
+      },
+      {
+        field: "reviewStatus",
+        headerName: "Status",
+        width: 140,
+        align: "center",
+        headerAlign: "center",
+        sortable: false,
+        filterable: false,
+        renderCell: (params) => {
+          const value = params.value || "-";
+          const map = {
+            pending: { color: "warning", label: "Pending" },
+            approved: { color: "success", label: "Approved" },
+            rejected: { color: "error", label: "Rejected" },
+          };
+          const cfg = map[value] || { color: "default", label: value };
+          return (
+            <Chip
+              label={cfg.label}
+              color={cfg.color}
+              size="small"
+              variant="outlined"
+            />
+          );
+        },
+      },
+      {
+        field: "createdBy.userName",
+        headerName: "Auditor",
+        flex: 1,
+        minWidth: 160,
+        align: "center",
+        headerAlign: "center",
+        sortable: false,
+        filterable: false,
+        valueGetter: (_value, row) => row?.createdBy?.userName || "-",
+      },
+      {
+        field: "createdAt",
+        headerName: "Created At",
+        flex: 1,
+        minWidth: 190,
+        align: "center",
+        headerAlign: "center",
+        sortable: false,
+        filterable: false,
+        valueGetter: (value) => {
+          const dt = value ? new Date(value) : null;
+          return dt
+            ? dt.toLocaleString("en-IN", {
+                day: "2-digit",
+                month: "long",
+                year: "numeric",
+                hour: "2-digit",
+                minute: "2-digit",
+                hour12: true,
+              })
+            : "-";
+        },
+      },
+      {
+        field: "actions",
+        headerName: "Actions",
+        width: 120,
+        align: "center",
+        headerAlign: "center",
+        sortable: false,
+        filterable: false,
+        renderCell: (params) => (
+          <IconButton
+            size="small"
+            color="primary"
+            onClick={(e) => {
+              e.stopPropagation();
+              handleViewAsset(params.row);
+            }}
+            title="View Asset"
+          >
+            <Visibility fontSize="small" />
+          </IconButton>
+        ),
+      },
+    ],
+    [paginationModel.page, paginationModel.pageSize]
+  );
 
   return (
-    <div>
-      {/* Top Filter Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4 mb-6">
-        {statusFilters.map(filter => (
-          <div
-            key={filter.value}
-            className={`cursor-pointer text-white px-4 py-6 rounded-lg shadow-md flex items-center justify-between transition-all duration-300 ease-in-out hover:scale-105 ${
-              filter.color
-            } ${activeFilter === filter.value ? 'ring-3 ring-offset ring-gray-200 shadow-xl' : ''}`}
-            onClick={() => setActiveFilter(filter.value)}
-          >
-            <div>
-              <h3 className="text-lg font-semibold">{filter.label}</h3>
-              <p className="text-2xl font-bold">
-                {counts[filter.value] !== undefined ? counts[filter.value] : 0}
-              </p>
-            </div>
-            <div className="text-3xl opacity-70">{filter.icon}</div>
-          </div>
-        ))}
-      </div>
+    <Container maxWidth="xl" sx={{ py: 3 }}>
+      <Grid container spacing={2} alignItems="center">
+        <Grid item xs={12} md="auto">
+          <Typography variant="h4" fontWeight={700} color="primary">
+            Super Admin Dashboard
+          </Typography>
+          <Typography variant="body2" color="text.secondary">
+            Overview of audit status and recent assets
+          </Typography>
+        </Grid>
+      </Grid>
 
-      {/* Table */}
-      <div className="bg-white dark:bg-gray-800 shadow-md rounded-lg overflow-auto transition-all duration-500">
-        <table className="w-full table-auto border-collapse">
-          <thead className="bg-gray-300 dark:bg-gray-800 text-gray-700 dark:text-white">
-            <tr className="text-left font-semibold">
-              <th className="px-6 py-4 border-b dark:border-gray-600">Sr. No</th>
-              <th className="px-6 py-4 border-b dark:border-gray-600">Asset Name</th>
-              <th className="px-6 py-4 border-b dark:border-gray-600">Status</th>
-              <th className="px-6 py-4 border-b dark:border-gray-600">Auditor</th>
-              <th className="px-6 py-4 border-b dark:border-gray-600">Created At</th>
-              <th className="px-6 py-4 border-b dark:border-gray-600">Actions</th>
-            </tr>
-          </thead>
-          <tbody>
-            {paginatedAssets.length === 0 ? (
-              <tr>
-                <td colSpan="6" className="text-center py-6 text-gray-500 dark:text-gray-400">
-                  No assets found.
-                </td>
-              </tr>
-            ) : (
-              paginatedAssets.map((asset, index) => (
-                <tr
-                  key={asset._id}
-                  className={`transition-colors duration-300 hover:bg-gray-100 dark:hover:bg-gray-700 ${
-                    index % 2 === 0 ? 'bg-white/60 dark:bg-white/5' : 'bg-transparent'
-                  }`}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mt-4">
+        {statusFilters.map((filter) => {
+          const isActive = activeFilter === filter.value;
+          return (
+            <Card
+              elevation={isActive ? 4 : 1}
+              sx={{
+                borderRadius: 2,
+                transition:
+                  "transform 120ms ease, box-shadow 120ms ease, border-color 120ms ease",
+                ...(isActive && { border: 2, borderColor: "primary.main" }),
+                "&:hover": {
+                  transform: "translateY(-2px)",
+                  boxShadow: (theme) => theme.shadows[4],
+                },
+              }}
+            >
+              <CardActionArea
+                onClick={() => setActiveFilter(filter.value)}
+                sx={{ height: "100%" }} // ensure full height clickable
+              >
+                <CardContent
+                  sx={{
+                    height: "100%",
+                  }}
                 >
-                  <td className="px-6 py-4 border-b dark:border-gray-600">
-                    {(currentPage - 1) * ITEMS_PER_PAGE + index + 1}
-                  </td>
-                  <td className="px-6 py-4 border-b dark:border-gray-600">{asset.name || '-'}</td>
-                  <td className="px-6 py-4 border-b dark:border-gray-600">{asset.reviewStatus}</td>
-                  <td className="px-6 py-4 border-b dark:border-gray-600">{asset.createdBy?.userName || '-'}</td>
-                  <td className="px-6 py-4 border-b dark:border-gray-600">
-                    {new Date(asset.createdAt).toLocaleString('en-IN', {
-                      day: '2-digit',
-                      month: 'long',
-                      year: 'numeric',
-                      hour: '2-digit',
-                      minute: '2-digit',
-                      hour12: true,
-                    })}
-                  </td>
-                  <td className="px-6 py-4 border-b dark:border-gray-600">
-                    <button
-                      onClick={() => handleViewAsset(asset._id)}
-                      className="text-blue-600 px-3 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300 transition"
-                      title="View Asset"
+                  <Chip
+                    icon={filter.icon}
+                    label={filter.value}
+                    variant="outlined"
+                    color={
+                      filter.value === "Approved"
+                        ? "success"
+                        : filter.value === "Rejected"
+                          ? "error"
+                          : filter.value === "Pending"
+                            ? "warning"
+                            : "default"
+                    }
+                    sx={{
+                      px: 1,
+                      fontWeight: 600,
+                      textTransform: "none",
+                    }}
+                  />
+
+                  <Box>
+                    <Typography
+                      variant="h5"
+                      fontWeight={700}
+                      lineHeight={1.2}
+                      sx={{ my: 3 }}
                     >
-                        <FaEye className="text-xl" />
-                    </button>
-                  </td>
-                </tr>
-              ))
-            )}
-          </tbody>
-        </table>
+                      {counts[filter.value] ?? 0}
+                    </Typography>
+                    <Typography variant="subtitle2" color="text.secondary">
+                      {filter.label}
+                    </Typography>
+                  </Box>
+                </CardContent>
+              </CardActionArea>
+            </Card>
+          );
+        })}
       </div>
 
-    {/* Pagination */}
-      <div className="mt-6 flex justify-center items-center gap-3 pb-6">
-        <button
-          disabled={currentPage === 1}
-          onClick={() => setCurrentPage((prev) => prev - 1)}
-          className="px-3 py-1 border border-gray-300 dark:border-gray-600 rounded-full hover:bg-gray-200 dark:hover:bg-gray-600 disabled:opacity-50"
+      {/* Search & total chips */}
+      <Grid
+        container
+        spacing={2}
+        alignItems="center"
+        justifyContent="space-between"
+        sx={{ mt: 4 }}
+      >
+        <Grid item xs={12} md={6}>
+          <TextField
+            fullWidth
+            placeholder="Search assets by name, artist, place, or location..."
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            variant="outlined"
+            size="small"
+            slotProps={{
+              input: {
+                startAdornment: (
+                  <InputAdornment position="start">
+                    <SearchIcon color="action" />
+                  </InputAdornment>
+                ),
+                endAdornment: !!searchTerm && (
+                  <InputAdornment position="end">
+                    <IconButton
+                      size="small"
+                      onClick={() => setSearchTerm("")}
+                      edge="end"
+                    >
+                      <Cancel fontSize="small" />
+                    </IconButton>
+                  </InputAdornment>
+                ),
+              },
+            }}
+          />
+        </Grid>
+
+        <Button
+          variant="outlined"
+          startIcon={loading ? <CircularProgress size={15} /> : <Refresh />}
+          onClick={() => {
+            fetchCounts();
+            fetchAssets();
+          }}
+          disabled={loading || countsLoading}
         >
-          &lt;
-        </button>
-        {Array.from({ length: totalPages }, (_, i) => (
-          <button
-            key={i + 1}
-            onClick={() => setCurrentPage(i + 1)}
-            className={`px-3 py-1 rounded ${
-              currentPage === i + 1
-                ? "bg-blue-600 text-white hover:bg-blue-700"
-                : "border-gray-300 dark:border-gray-600 hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-800 dark:text-gray-200"
-            }`}
-          >
-            {i + 1}
-          </button>
-        ))}
-        <button
-          disabled={currentPage === totalPages}
-          onClick={() => setCurrentPage((prev) => prev + 1)}
-          className="px-3 py-1 border border-gray-300 dark:border-gray-600 rounded-full hover:bg-gray-200 dark:hover:bg-gray-600 disabled:opacity-50"
-        >
-          &gt;
-        </button>
-      </div>
-    </div>
+          {loading ? "Loading.." : "Refresh"}
+        </Button>
+      </Grid>
+
+      <Card sx={{ mt: 1 }}>
+        <Box sx={{ height: 480, width: "100%" }}>
+          <DataGrid
+            rows={rows}
+            columns={columns}
+            paginationModel={paginationModel}
+            onPaginationModelChange={setPaginationModel}
+            pageSizeOptions={[5, 10, 25, 50]}
+            pagination
+            paginationMode="server"
+            rowCount={rowCount}
+            loading={loading}
+            disableRowSelectionOnClick
+            rowHeight={60}
+            headerHeight={50}
+            componentsProps={{
+              toolbar: {
+                showQuickFilter: false,
+                printOptions: { disableToolbarButton: true },
+                csvOptions: { disableToolbarButton: true },
+              },
+            }}
+          />
+        </Box>
+      </Card>
+    </Container>
   );
 };
 

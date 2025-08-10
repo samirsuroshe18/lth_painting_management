@@ -4,6 +4,9 @@ import catchAsync from '../utils/catchAsync.js';
 import { Asset } from '../models/asset.model.js';
 import { uploadOnCloudinary } from '../utils/cloudinary.js';
 import { AssetAuditLog } from '../models/assetAuditLog.model.js';
+import { User } from '../models/user.model.js';
+import { Location } from '../models/location.model.js';
+import mongoose from 'mongoose';
 
 // To add a new asset audit
 const addNewAssetAudit = catchAsync(async (req, res) => {
@@ -58,10 +61,10 @@ const addNewAssetAudit = catchAsync(async (req, res) => {
         auditorRemark,
         proposedChanges: proposedChangesData || undefined,
         attachmentOne: auditImage1,
-        attachmentTwo: auditImage2 || 'N/A',
-        attachmentThree: auditImage3 || 'N/A',
+        attachmentTwo: auditImage2 || '',
+        attachmentThree: auditImage3 || '',
         auditStatus: true,
-        reviewStatus: req.user.role==='auditor'? 'pending' : 'approved',
+        reviewStatus: req.user.role === 'auditor' ? 'pending' : 'approved',
         createdBy: req.user._id,
         updatedBy: req.user._id,
     });
@@ -81,26 +84,49 @@ const reviewAuditStatus = catchAsync(async (req, res) => {
     const { reviewStatus, rejectedRemark } = req.body;
 
     const audit = await AssetAuditLog.findById(auditId);
-    if (!audit) {
-        throw new ApiError(404, 'Audit not found');
-    }
+    if (!audit) throw new ApiError(404, 'Audit not found');
 
     if (!['approved', 'rejected'].includes(reviewStatus)) {
         throw new ApiError(400, 'Invalid review status');
     }
 
-    if (reviewStatus === 'rejected' && !rejectedRemark) {
-        throw new ApiError(400, 'Rejected remark is required for rejection');
+    if (reviewStatus === 'rejected') {
+        if (!rejectedRemark) throw new ApiError(400, 'Rejected remark is required for rejection');
+        audit.reviewStatus = 'rejected';
+        audit.rejectedRemark = rejectedRemark;
+        audit.updatedBy = req.user._id;
+        await audit.save();
+        return res.status(200).json(new ApiResponse(200, {}, 'Audit status updated successfully'));
     }
 
-    audit.reviewStatus = reviewStatus;
-    audit.rejectedRemark = rejectedRemark || null;
+    // If approved
+    const updateData = { updatedBy: req.user._id };
+    const fields = ['name', 'description', 'purchaseValue', 'year', 'artist', 'place', 'size', 'image'];
+
+    fields.forEach(field => {
+        if (audit?.proposedChanges?.[field]) {
+            updateData[field] = audit.proposedChanges[field];
+        }
+    });
+
+    if (audit?.proposedChanges?.location) {
+        updateData.locationId = audit.proposedChanges.location;
+    }
+
+    const updatedAsset = await Asset.findByIdAndUpdate(
+        audit.assetId,
+        updateData,
+        { new: true, runValidators: true }
+    );
+
+    if (!updatedAsset) throw new ApiError(500, 'Failed to update asset');
+
+    audit.reviewStatus = 'approved';
+    audit.rejectedRemark = null;
     audit.updatedBy = req.user._id;
     await audit.save();
 
-    return res.status(200).json(
-        new ApiResponse(200, {}, 'Audit status updated successfully')
-    );
+    return res.status(200).json(new ApiResponse(200, updatedAsset, 'Audit approved and asset updated successfully'));
 });
 
 // To get all audit logs with pagination and filtering
@@ -164,6 +190,48 @@ const getAuditLogs = catchAsync(async (req, res) => {
     const totalCount = await AssetAuditLog.countDocuments(assetAuditMatch);
     const totalPages = Math.ceil(totalCount / limit);
     const updatedAssetAudit = await AssetAuditLog.find(assetAuditMatch)
+        .populate({
+            path: 'proposedChanges.locationId',
+            model: 'Location',
+            select: 'name',
+            strictPopulate: false
+        })
+        .populate({
+            path: 'assetId',
+            populate: [
+                {
+                    path: 'locationId',
+                    populate: [
+                        {
+                            path: 'stateId',
+                            select: 'name',
+                        },
+                    ]
+                },
+                {
+                    path: 'createdBy',
+                    model: 'User',
+                    select: 'userName'
+                },
+                {
+                    path: 'updatedBy',
+                    model: 'User',
+                    select: 'userName'
+                }
+            ]
+        })
+        .populate({
+            path: 'locationId',
+            select: 'name',
+        })
+        .populate({
+            path: 'proposedChanges.location',
+            select: 'name',
+        })
+        .populate({
+            path: 'createdBy',
+            select: 'userName',
+        })
         .sort({ createdAt: -1 });
 
     // Apply pagination on combined results
@@ -289,7 +357,7 @@ const viewAuditLog = catchAsync(async (req, res) => {
             populate: [
                 {
                     path: 'locationId',
-                   select: 'name',
+                    select: 'name',
                 },
                 {
                     path: 'createdBy',
@@ -316,10 +384,21 @@ const viewAuditLog = catchAsync(async (req, res) => {
     );
 });
 
+const addId = catchAsync(async (req, res) => {
+
+    await AssetAuditLog.updateMany(
+        {},
+        { $set: { "proposedChanges.year": 1980 } }
+    );
+
+    return res.send("success");
+});
+
 export {
     addNewAssetAudit,
     reviewAuditStatus,
     getAuditLogs,
     getAssetAuditLogs,
-    viewAuditLog
+    viewAuditLog,
+    addId
 };
