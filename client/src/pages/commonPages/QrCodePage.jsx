@@ -17,7 +17,7 @@ import { LocalizationProvider } from "@mui/x-date-pickers/LocalizationProvider";
 import { DatePicker } from "@mui/x-date-pickers/DatePicker";
 import { AdapterDayjs } from "@mui/x-date-pickers/AdapterDayjs";
 import dayjs from "dayjs";
-import { viewAssetPublic } from "../../api/assetMasterApi";
+import { viewAsset } from "../../api/assetMasterApi";
 import { useDispatch } from "react-redux";
 import { showNotificationWithTimeout } from "../../redux/slices/notificationSlice";
 import { handleAxiosError } from "../../utils/handleAxiosError";
@@ -35,7 +35,7 @@ const QrCodePage = () => {
     try {
       setLoading(true);
       setError("");
-      const response = await viewAssetPublic(id);
+      const response = await viewAsset(id);
       setAsset(response.data);
     } catch (error) {
       setError("Failed to load asset details. Asset may not be found or approved.");
