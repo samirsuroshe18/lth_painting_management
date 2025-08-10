@@ -16,6 +16,7 @@ const viewAsset = async (id) => {
     return response.data;
 };
 
+
 const createNewAsset = async (assetData) => {
     const form = new FormData();
 
