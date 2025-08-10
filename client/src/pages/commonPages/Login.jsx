@@ -109,7 +109,21 @@ const Login = () => {
         })
       );
       dispatch(login(res.data));
-      navigate("/");
+      
+      // Check if there's an asset ID stored for editing
+      const assetIdForEdit = localStorage.getItem("assetIdForEdit");
+      if (assetIdForEdit) {
+        localStorage.removeItem("assetIdForEdit");
+        // Navigate to edit asset screen with the asset ID
+        navigate("/masters/asset-master/edit-asset", { 
+          state: { 
+            assetId: assetIdForEdit,
+            fromQrCode: true
+          } 
+        });
+      } else {
+        navigate("/");
+      }
     } catch (error) {
       setIsLoading(false);
       dispatch(

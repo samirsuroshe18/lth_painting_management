@@ -19,7 +19,7 @@ import { getAllLocations } from "../../api/locationApi";
 import { useDispatch, useSelector } from "react-redux";
 import { showNotificationWithTimeout } from "../../redux/slices/notificationSlice";
 import { handleAxiosError } from "../../utils/handleAxiosError";
-import { updateAsset } from "../../api/assetMasterApi";
+import { updateAsset, viewAsset } from "../../api/assetMasterApi";
 
 const statusOptions = [
   { label: "Active", value: "Active" },
@@ -29,6 +29,7 @@ const statusOptions = [
 export default function EditAssetScreen() {
   const userData = useSelector((state) => state.auth.userData?.user);
   const [loading, setLoading] = useState(false);
+  const [loadingAsset, setLoadingAsset] = useState(false);
   const [locations, setLocations] = useState(userData.location);
   const [yearError, setYearError] = useState("");
   const dispatch = useDispatch();
@@ -36,6 +37,8 @@ export default function EditAssetScreen() {
   const { state } = useLocation();
   const initialAsset = state?.asset || {};
   const read = state?.read === true;
+  const fromQrCode = state?.fromQrCode === true;
+  const assetIdFromQrCode = state?.assetId;
   const [asset, setAsset] = useState({
     id: initialAsset._id,
     name: initialAsset.name || "",
@@ -51,6 +54,48 @@ export default function EditAssetScreen() {
   });
 
   const [imagePreview, setImagePreview] = useState(asset.imageUrl);
+
+  // Fetch asset data when coming from QR code
+  useEffect(() => {
+    const fetchAssetFromQrCode = async () => {
+      if (fromQrCode && assetIdFromQrCode) {
+        try {
+          setLoadingAsset(true);
+          const response = await viewAsset(assetIdFromQrCode);
+          const fetchedAsset = response.data;
+          
+          setAsset({
+            id: fetchedAsset._id,
+            name: fetchedAsset.name || "",
+            imageUrl: fetchedAsset.image || "",
+            location: fetchedAsset.locationId?._id || "",
+            place: fetchedAsset.place || "",
+            currentValue: fetchedAsset.purchaseValue || "",
+            year: dayjs().year(fetchedAsset.year),
+            description: fetchedAsset.description || "",
+            artist: fetchedAsset.artist || "",
+            size: fetchedAsset.size || "",
+            status: fetchedAsset.status === true ? "Active" : "Inactive",
+          });
+          
+          setImagePreview(fetchedAsset.image || "");
+        } catch (error) {
+          dispatch(
+            showNotificationWithTimeout({
+              show: true,
+              type: "error",
+              message: handleAxiosError(error),
+            })
+          );
+          navigate(-1);
+        } finally {
+          setLoadingAsset(false);
+        }
+      }
+    };
+
+    fetchAssetFromQrCode();
+  }, [fromQrCode, assetIdFromQrCode, dispatch, navigate]);
 
   const handleChange = (e) => {
     const { name, value, files } = e.target;
@@ -105,6 +150,22 @@ export default function EditAssetScreen() {
     }
   };
 
+  if (loadingAsset) {
+    return (
+      <Box
+        sx={{
+          display: "flex",
+          justifyContent: "center",
+          alignItems: "center",
+          height: "100vh",
+          bgcolor: "background.default",
+        }}
+      >
+        <CircularProgress size={50} />
+      </Box>
+    );
+  }
+
   return (
     <Box
       sx={{
@@ -115,7 +176,7 @@ export default function EditAssetScreen() {
       }}
     >
       <Typography variant="h5" fontWeight={700} mb={3} align="left">
-        Edit Asset Details
+        {fromQrCode ? "Edit Asset Details (from QR Code)" : "Edit Asset Details"}
       </Typography>
 
       <form onSubmit={handleSubmit} autoComplete="off">

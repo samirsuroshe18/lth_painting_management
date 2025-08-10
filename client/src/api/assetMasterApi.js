@@ -16,6 +16,13 @@ const viewAsset = async (id) => {
     return response.data;
 };
 
+const viewAssetPublic = async (id) => {
+    const response = await axiosInstance.get(
+        `/api/v1/assetmaster/view-asset/public/${id}`
+    );
+    return response.data;
+};
+
 const createNewAsset = async (assetData) => {
     const form = new FormData();
 
@@ -89,6 +96,7 @@ const removeAsset = async (id) => {
 export {
     getAssets,
     viewAsset,
+    viewAssetPublic,
     createNewAsset,
     updateAsset,
     removeAsset
