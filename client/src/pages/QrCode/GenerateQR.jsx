@@ -1,8 +1,41 @@
 import React, { useEffect, useState } from 'react';
+import {
+  Container,
+  Grid,
+  Card,
+  CardContent,
+  Typography,
+  TextField,
+  InputAdornment,
+  IconButton,
+  Button,
+  Box,
+  Chip,
+  CircularProgress,
+  Alert,
+  useMediaQuery,
+  useTheme,
+  FormControl,
+  Select,
+  MenuItem,
+  InputLabel,
+  Fab,
+} from '@mui/material';
+import {
+  Search as SearchIcon,
+  Cancel,
+  QrCode,
+  Download as DownloadIcon,
+  LocationOn,
+  Refresh,
+  FilterList,
+} from '@mui/icons-material';
 import { getAssets } from '../../api/assetMasterApi';
-import { FaQrcode, FaMapMarkerAlt, FaDownload, FaSearch, FaFilter } from 'react-icons/fa';
 
 const GenerateQR = () => {
+  const theme = useTheme();
+  const isMobile = useMediaQuery(theme.breakpoints.down("md"));
+
   const [assets, setAssets] = useState([]);
   const [filteredAssets, setFilteredAssets] = useState([]);
   const [locations, setLocations] = useState([]);
@@ -11,33 +44,38 @@ const GenerateQR = () => {
   const [error, setError] = useState(null);
   const [searchTerm, setSearchTerm] = useState('');
 
-  // Fetch all assets
   const fetchAssets = async () => {
     try {
       setLoading(true);
+      const startTime = Date.now();
+      
       const res = await getAssets('');
       const allAssets = res?.data?.assets || [];
-      
-      // Filter assets that have QR codes
       const assetsWithQR = allAssets.filter(asset => asset.qrCode);
-      
+
       setAssets(assetsWithQR);
       setFilteredAssets(assetsWithQR);
-      
-      // Extract unique locations
+
       const uniqueLocations = [...new Set(
         assetsWithQR
           .map(asset => asset.locationId?.name)
           .filter(location => location)
       )];
-      
       setLocations(uniqueLocations);
       setError(null);
+
+      // Ensure minimum loading time of 1.5 seconds for skeleton visibility
+      const elapsedTime = Date.now() - startTime;
+      const minLoadingTime = 600; // 1.5 seconds
+      const remainingTime = Math.max(0, minLoadingTime - elapsedTime);
+      
+      setTimeout(() => {
+        setLoading(false);
+      }, remainingTime);
     } catch (err) {
       console.error('Failed to fetch assets:', err);
       setError('Failed to load QR codes. Please try again.');
-    } finally {
-      setLoading(false);
+      setLoading(false); // No delay for errors
     }
   };
 
@@ -45,28 +83,21 @@ const GenerateQR = () => {
     fetchAssets();
   }, []);
 
-  // Filter assets based on location and search term
   useEffect(() => {
     let filtered = assets;
-
-    // Filter by location
     if (selectedLocation !== 'all') {
-      filtered = filtered.filter(asset => 
+      filtered = filtered.filter(asset =>
         asset.locationId?.name === selectedLocation
       );
     }
-
-    // Filter by search term
     if (searchTerm) {
       filtered = filtered.filter(asset =>
         asset.name?.toLowerCase().includes(searchTerm.toLowerCase())
       );
     }
-
     setFilteredAssets(filtered);
   }, [selectedLocation, searchTerm, assets]);
 
-  // Handle QR code download
   const downloadQRCode = (qrCode, assetName) => {
     const link = document.createElement('a');
     link.href = qrCode;
@@ -76,189 +107,470 @@ const GenerateQR = () => {
     document.body.removeChild(link);
   };
 
-  if (loading) {
-    return (
-      <div className="flex justify-center items-center min-h-screen">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#009ef7] mx-auto mb-4"></div>
-          <p className="text-gray-600 dark:text-gray-400">Loading QR codes...</p>
-        </div>
-      </div>
-    );
-  }
+  const handleRefresh = () => {
+    fetchAssets();
+  };
+
+  const clearFilters = () => {
+    setSearchTerm('');
+    setSelectedLocation('all');
+  };
+
+
 
   if (error) {
     return (
-      <div className="flex flex-col items-center justify-center min-h-screen">
-        <div className="text-red-500 text-xl mb-4">{error}</div>
-        <button
-          onClick={fetchAssets}
-          className="px-4 py-2 bg-[#009ef7] text-white rounded-lg hover:bg-blue-600 transition"
-        >
-          Retry
-        </button>
-      </div>
+      <Container maxWidth="xl" sx={{ py: 3 }}>
+        <Box display="flex" flexDirection="column" alignItems="center" justifyContent="center" minHeight="60vh">
+          <Alert severity="error" sx={{ mb: 3 }}>
+            {error}
+          </Alert>
+          <Button
+            variant="contained"
+            onClick={handleRefresh}
+            startIcon={<Refresh />}
+          >
+            Retry
+          </Button>
+        </Box>
+      </Container>
     );
   }
 
   return (
-    <div className="p-6 max-w-7xl mx-auto">
-      {/* Header */}
-      <div className="mb-8">
-        <h1 className="text-3xl font-bold text-gray-800 dark:text-white mb-2 flex items-center">
-          <FaQrcode className="mr-3 text-[#009ef7]" />
-          QR Code Gallery
-        </h1>
-        <p className="text-gray-600 dark:text-gray-400">
-          View and download QR codes for all assets
-        </p>
-      </div>
+    <Container maxWidth="xl" sx={{ py: 3 }}>
+      {/* Header card with title + actions */}
+      <Card elevation={2}>
+        <CardContent>
+          <Grid
+            container
+            alignItems="center"
+            justifyContent="space-between"
+            spacing={2}
+          >
+            <Grid item>
+              <Typography variant="h4" fontWeight={700} color="primary">
+                QR Code Gallery
+              </Typography>
+              <Typography variant="body2" color="text.secondary">
+                View and download QR codes for all assets in the system
+              </Typography>
+            </Grid>
 
-      {/* Filters */}
-      <div className="bg-white dark:bg-gray-800 rounded-lg shadow-md p-6 mb-6">
-        <div className="flex flex-col md:flex-row gap-4 items-center">
-          {/* Search Bar */}
-          <div className="flex-1 relative">
-            <FaSearch className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
-            <input
-              type="text"
-              placeholder="Search assets by name..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="w-full pl-10 pr-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-[#009ef7] focus:border-transparent dark:bg-gray-700 dark:text-white"
-            />
-          </div>
+            <Grid item>
+              <Box display="flex" gap={1} flexWrap="wrap">
+                <Button
+                  variant="outlined"
+                  startIcon={<Refresh />}
+                  onClick={handleRefresh}
+                  disabled={loading}
+                >
+                  Refresh
+                </Button>
 
-          {/* Location Filter */}
-          <div className="flex items-center space-x-2">
-            <FaFilter className="text-gray-500 dark:text-gray-400" />
-            <select
-              value={selectedLocation}
-              onChange={(e) => setSelectedLocation(e.target.value)}
-              className="px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-[#009ef7] focus:border-transparent dark:bg-gray-700 dark:text-white min-w-[200px]"
-            >
-              <option value="all">All Locations</option>
-              {locations.map(location => (
-                <option key={location} value={location}>
-                  {location}
-                </option>
-              ))}
-            </select>
-          </div>
+                <Button
+                  variant="outlined"
+                  startIcon={<Cancel />}
+                  onClick={clearFilters}
+                  disabled={!searchTerm && selectedLocation === 'all'}
+                >
+                  Clear Filters
+                </Button>
+              </Box>
+            </Grid>
+          </Grid>
+        </CardContent>
+      </Card>
 
-          {/* Results Count */}
-          <div className="text-sm text-gray-500 dark:text-gray-400 whitespace-nowrap">
-            {filteredAssets.length} of {assets.length} assets
-          </div>
-        </div>
-      </div>
+      {/* Search & Filter Card */}
+      <Card sx={{ mt: 3 }}>
+        <CardContent>
+          <Grid container spacing={2} alignItems="center">
+            <Grid item xs={12} md={6}>
+              <TextField
+                fullWidth
+                placeholder="Search assets by name..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                variant="outlined"
+                size="small"
+                InputProps={{
+                  startAdornment: (
+                    <InputAdornment position="start">
+                      <SearchIcon color="action" />
+                    </InputAdornment>
+                  ),
+                  endAdornment: searchTerm && (
+                    <InputAdornment position="end">
+                      <IconButton
+                        size="small"
+                        onClick={() => setSearchTerm("")}
+                        edge="end"
+                      >
+                        <Cancel fontSize="small" />
+                      </IconButton>
+                    </InputAdornment>
+                  ),
+                }}
+              />
+            </Grid>
 
-      {/* QR Code Grid */}
-      {filteredAssets.length === 0 ? (
-        <div className="text-center py-12">
-          <FaQrcode className="mx-auto text-6xl text-gray-300 dark:text-gray-600 mb-4" />
-          <h3 className="text-xl font-semibold text-gray-500 dark:text-gray-400 mb-2">
-            No QR codes found
-          </h3>
-          <p className="text-gray-400 dark:text-gray-500">
-            {searchTerm || selectedLocation !== 'all' 
-              ? 'Try adjusting your filters'
-              : 'No assets with QR codes available'
-            }
-          </p>
-        </div>
-      ) : (
-        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-6">
-          {filteredAssets.map(asset => (
-            <div
-              key={asset._id}
-              className="bg-white dark:bg-gray-800 rounded-lg shadow-md hover:shadow-lg transition-all duration-300 p-4 group h-80 flex flex-col"
-            >
-              {/* QR Code Image - Fixed Height */}
-              <div className="relative mb-4 flex-shrink-0">
-                <div className="bg-gray-50 dark:bg-gray-700 rounded-lg p-4 flex justify-center items-center h-40">
-                  <img
-                    src={asset.qrCode}
-                    alt={`QR Code for ${asset.name}`}
-                    className="w-full h-full max-w-[120px] max-h-[120px] object-contain"
+            <Grid item xs={12} md={3}>
+              <FormControl fullWidth size="small">
+                <InputLabel>Location Filter</InputLabel>
+                <Select
+                  value={selectedLocation}
+                  onChange={(e) => setSelectedLocation(e.target.value)}
+                  label="Location Filter"
+                  startAdornment={
+                    <InputAdornment position="start">
+                      <FilterList fontSize="small" color="action" />
+                    </InputAdornment>
+                  }
+                >
+                  <MenuItem value="all">All Locations</MenuItem>
+                  {locations.map(location => (
+                    <MenuItem key={location} value={location}>
+                      {location}
+                    </MenuItem>
+                  ))}
+                </Select>
+              </FormControl>
+            </Grid>
+
+            <Grid item xs={12} md={3}>
+              <Box display="flex" gap={1} justifyContent="flex-end">
+                <Chip
+                  label={`${filteredAssets.length} of ${assets.length} QR codes`}
+                  color="primary"
+                  variant="outlined"
+                />
+                {loading && (
+                  <Chip
+                    icon={<CircularProgress size={14} color="inherit" />}
+                    label="Loading..."
+                    color="info"
+                    variant="outlined"
+                    sx={{
+                      px: 1.5,
+                      fontWeight: 500,
+                      backgroundColor: "rgba(0, 123, 255, 0.08)",
+                      borderRadius: "16px",
+                      ".MuiChip-icon": { marginLeft: "4px" },
+                    }}
                   />
-                </div>
-                
-                
-              </div>
+                )}
+              </Box>
+            </Grid>
+          </Grid>
+        </CardContent>
+      </Card>
 
-              {/* Asset Information - Flexible Content */}
-              <div className="text-center flex-grow flex flex-col justify-between">
-                <div>
-                  {/* Asset Name - Fixed Height with Tooltip */}
-                  <div className="h-12 mb-2 flex items-center justify-center">
-                    <h3 
-                      className="font-semibold text-gray-800 dark:text-white text-sm leading-tight line-clamp-2 px-1"
+      {/* QR Code Grid - Direct on background */}
+      <Box sx={{ mt: 3 }}>
+        {loading && assets.length === 0 ? (
+          // Initial loading state - show skeleton
+          <Grid container spacing={6}>
+            {Array.from({ length: 8 }).map((_, index) => (
+              <Grid item xs={6} sm={4} md={3} lg={2.4} xl={2} key={`initial-skeleton-${index}`}>
+                <Box
+                  sx={{
+                    textAlign: 'center',
+                  }}
+                >
+                  {/* QR Code Skeleton */}
+                  <Box 
+                    sx={{ 
+                      display: 'inline-block',
+                      p: 1.5,
+                      bgcolor: 'white',
+                      borderRadius: 2,
+                      boxShadow: '0 2px 12px rgba(0,0,0,0.08)',
+                      border: '1px solid rgba(0,0,0,0.06)',
+                      mb: 1.5
+                    }}
+                  >
+                    <Box
+                      sx={{ 
+                        width: 110, 
+                        height: 110,
+                        bgcolor: 'grey.200',
+                        borderRadius: 1,
+                        animation: 'pulse 1.5s ease-in-out infinite',
+                        '@keyframes pulse': {
+                          '0%': {
+                            opacity: 1,
+                          },
+                          '50%': {
+                            opacity: 0.4,
+                          },
+                          '100%': {
+                            opacity: 1,
+                          },
+                        },
+                      }}
+                    />
+                  </Box>
+
+                  {/* Asset Name Skeleton */}
+                  <Box
+                    sx={{ 
+                      height: 16,
+                      bgcolor: 'grey.200',
+                      borderRadius: 0.5,
+                      mb: 0.5,
+                      mx: 1,
+                      animation: 'pulse 1.5s ease-in-out infinite',
+                      animationDelay: '0.1s',
+                    }}
+                  />
+
+                  {/* Location Skeleton */}
+                  <Box
+                    sx={{ 
+                      height: 12,
+                      bgcolor: 'grey.200',
+                      borderRadius: 0.5,
+                      mb: 1.5,
+                      mx: 2,
+                      animation: 'pulse 1.5s ease-in-out infinite',
+                      animationDelay: '0.2s',
+                    }}
+                  />
+
+                  {/* Download Button Skeleton */}
+                  <Box
+                    sx={{ 
+                      width: 36,
+                      height: 36,
+                      bgcolor: 'grey.200',
+                      borderRadius: '50%',
+                      mx: 'auto',
+                      animation: 'pulse 1.5s ease-in-out infinite',
+                      animationDelay: '0.3s',
+                    }}
+                  />
+                </Box>
+              </Grid>
+            ))}
+          </Grid>
+        ) : filteredAssets.length === 0 ? (
+          <Card>
+            <CardContent>
+              <Box textAlign="center" py={8}>
+                <QrCode sx={{ fontSize: 80, color: 'text.disabled', mb: 2 }} />
+                <Typography variant="h6" color="text.secondary" gutterBottom>
+                  No QR codes found
+                </Typography>
+                <Typography variant="body2" color="text.disabled">
+                  {searchTerm || selectedLocation !== 'all'
+                    ? 'Try adjusting your filters'
+                    : 'No assets with QR codes available'}
+                </Typography>
+              </Box>
+            </CardContent>
+          </Card>
+        ) : (
+          <Grid container spacing={6}>
+            {loading && assets.length > 0 ? (
+              // Refreshing existing data - show skeleton
+              Array.from({ length: 8 }).map((_, index) => (
+                <Grid item xs={6} sm={4} md={3} lg={2.4} xl={2} key={`refresh-skeleton-${index}`}>
+                  <Box
+                    sx={{
+                      textAlign: 'center',
+                    }}
+                  >
+                    {/* QR Code Skeleton */}
+                    <Box 
+                      sx={{ 
+                        display: 'inline-block',
+                        p: 1.5,
+                        bgcolor: 'white',
+                        borderRadius: 2,
+                        boxShadow: '0 2px 12px rgba(0,0,0,0.08)',
+                        border: '1px solid rgba(0,0,0,0.06)',
+                        mb: 1.5
+                      }}
+                    >
+                      <Box
+                        sx={{ 
+                          width: 110, 
+                          height: 110,
+                          bgcolor: 'grey.200',
+                          borderRadius: 1,
+                          animation: 'pulse 1.5s ease-in-out infinite',
+                          '@keyframes pulse': {
+                            '0%': {
+                              opacity: 1,
+                            },
+                            '50%': {
+                              opacity: 0.4,
+                            },
+                            '100%': {
+                              opacity: 1,
+                            },
+                          },
+                        }}
+                      />
+                    </Box>
+
+                    {/* Asset Name Skeleton */}
+                    <Box
+                      sx={{ 
+                        height: 16,
+                        bgcolor: 'grey.200',
+                        borderRadius: 0.5,
+                        mb: 0.5,
+                        mx: 1,
+                        animation: 'pulse 1.5s ease-in-out infinite',
+                        animationDelay: '0.1s',
+                      }}
+                    />
+
+                    {/* Location Skeleton */}
+                    <Box
+                      sx={{ 
+                        height: 12,
+                        bgcolor: 'grey.200',
+                        borderRadius: 0.5,
+                        mb: 1.5,
+                        mx: 2,
+                        animation: 'pulse 1.5s ease-in-out infinite',
+                        animationDelay: '0.2s',
+                      }}
+                    />
+
+                    {/* Download Button Skeleton */}
+                    <Box
+                      sx={{ 
+                        width: 36,
+                        height: 36,
+                        bgcolor: 'grey.200',
+                        borderRadius: '50%',
+                        mx: 'auto',
+                        animation: 'pulse 1.5s ease-in-out infinite',
+                        animationDelay: '0.3s',
+                      }}
+                    />
+                  </Box>
+                </Grid>
+              ))
+            ) : (
+              filteredAssets.map(asset => (
+                <Grid item xs={6} sm={4} md={3} lg={2.4} xl={2} key={asset._id}>
+                  <Box
+                    sx={{
+                      textAlign: 'center',
+                      transition: 'transform 0.2s ease',
+                      '&:hover': {
+                        transform: 'translateY(-2px)',
+                      }
+                    }}
+                  >
+                    {/* QR Code Container */}
+                    <Box 
+                      sx={{ 
+                        display: 'inline-block',
+                        p: 1.5,
+                        bgcolor: 'white',
+                        borderRadius: 2,
+                        boxShadow: '0 2px 12px rgba(0,0,0,0.08)',
+                        border: '1px solid rgba(0,0,0,0.06)',
+                        mb: 1.5
+                      }}
+                    >
+                      <Box
+                        component="img"
+                        src={asset.qrCode}
+                        alt={`QR Code for ${asset.name}`}
+                        sx={{ 
+                          width: 110, 
+                          height: 110,
+                          display: 'block'
+                        }}
+                      />
+                    </Box>
+
+                    {/* Asset Name */}
+                    <Typography 
+                      variant="body2" 
+                      fontWeight={600}
+                      color="text.primary"
+                      sx={{ 
+                        mt: -1,
+                        mb: 0.25,
+                        minHeight: 28,
+                        display: '-webkit-box',
+                        WebkitLineClamp: 2,
+                        WebkitBoxOrient: 'vertical',
+                        overflow: 'hidden',
+                        textOverflow: 'ellipsis',
+                        lineHeight: 1.2
+                      }}
                       title={asset.name || 'Unnamed Asset'}
                     >
                       {asset.name || 'Unnamed Asset'}
-                    </h3>
-                  </div>
-                  
-                  {/* Location - Fixed Height */}
-                  <div className="h-6 mb-2 flex items-center justify-center">
+                    </Typography>
+
+                    {/* Location */}
                     {asset.locationId?.name && (
-                      <div className="flex items-center text-xs text-gray-500 dark:text-gray-400">
-                        <FaMapMarkerAlt className="mr-1 flex-shrink-0" />
-                        <span className="truncate max-w-[140px]" title={asset.locationId.name}>
+                      <Box display="flex" alignItems="center" justifyContent="center" mt={-1} mb={1}>
+                        <LocationOn fontSize="small" sx={{ color: 'grey.500', mr: 0.5 }} />
+                        <Typography 
+                          variant="caption" 
+                          color="text.secondary"
+                          sx={{ 
+                            maxWidth: 120,
+                            overflow: 'hidden',
+                            textOverflow: 'ellipsis',
+                            whiteSpace: 'nowrap'
+                          }}
+                          title={asset.locationId.name}
+                        >
                           {asset.locationId.name}
-                        </span>
-                      </div>
+                        </Typography>
+                      </Box>
                     )}
-                  </div>
 
-                  {/* Asset ID */}
-                  <p className="text-xs text-gray-400 dark:text-gray-500 font-mono mb-3">
-                    ID: {asset._id.slice(-8)}
-                  </p>
-                </div>
+                    {/* Minimal Download Icon Button */}
+                    <IconButton
+                      onClick={() => downloadQRCode(asset.qrCode, asset.name)}
+                      sx={{ 
+                        backgroundColor: (theme) => theme.palette.mode === 'dark' ? '#0d47a1' : '#1976d2',
+                        color: 'white',
+                        '&:hover': {
+                          backgroundColor: (theme) => theme.palette.mode === 'dark' ? '#1565c0' : '#1565c0',
+                        },
+                        width: 36,
+                        height: 36,
+                        boxShadow: '0 2px 8px rgba(25, 118, 210, 0.3)',
+                      }}
+                      size="small"
+                    >
+                      <DownloadIcon fontSize="small" />
+                    </IconButton>
+                  </Box>
+                </Grid>
+              ))
+            )}
+          </Grid>
+        )}
+      </Box>
 
-                {/* Download Button - Always at Bottom */}
-                <button
-                  onClick={() => downloadQRCode(asset.qrCode, asset.name)}
-                  className="w-full px-3 py-2 bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors duration-200 text-sm flex items-center justify-center space-x-2 mt-auto"
-                >
-                  <FaDownload />
-                  <span>Download</span>
-                </button>
-              </div>
-            </div>
-          ))}
-        </div>
+      {/* Mobile FAB for refresh */}
+      {isMobile && (
+        <Fab
+          color="primary"
+          aria-label="refresh"
+          onClick={handleRefresh}
+          sx={{ position: "fixed", bottom: 46, right: 36 }}
+          disabled={loading}
+        >
+          <Refresh />
+        </Fab>
       )}
-
-      {/* Bulk Actions */}
-      {/* {filteredAssets.length > 0 && (
-        <div className="mt-8 text-center">
-          <button
-            onClick={() => {
-              filteredAssets.forEach(asset => {
-                setTimeout(() => downloadQRCode(asset.qrCode, asset.name), 100);
-              });
-            }}
-            className="px-6 py-3 bg-[#009ef7] text-white rounded-lg hover:bg-blue-600 transition-colors duration-200 flex items-center space-x-2 mx-auto"
-          >
-            <FaDownload />
-            <span>Download All QR Codes</span>
-          </button>
-        </div>
-      )} */}
-
-      {/* Add CSS for line-clamp */}
-      <style jsx>{`
-        .line-clamp-2 {
-          display: -webkit-box;
-          -webkit-line-clamp: 2;
-          -webkit-box-orient: vertical;
-          overflow: hidden;
-        }
-      `}</style>
-    </div>
+    </Container>
   );
 };
 

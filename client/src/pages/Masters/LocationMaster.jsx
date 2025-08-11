@@ -1,19 +1,42 @@
 import React, { useEffect, useState } from "react";
 import {
-  getAllLocations,
-  addLocation,
-  updateLocation,
-} from "../../api/locationApi";
-import { getAllStates } from "../../api/stateApi";
+  IconButton,
+  Box,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogActions,
+  Button,
+  Typography,
+  CircularProgress,
+  Container,
+  Grid,
+  Card,
+  CardContent,
+  Chip,
+  TextField,
+  InputAdornment,
+  Tooltip,
+} from "@mui/material";
+import {
+  Cancel,
+  Add as AddIcon,
+  Search as SearchIcon,
+  Refresh,
+  Edit as EditIcon,
+} from "@mui/icons-material";
+import { DataGrid } from "@mui/x-data-grid";
 import { useDispatch } from "react-redux";
-import { showNotificationWithTimeout } from "../../redux/slices/notificationSlice";
-import editIcon from "@/assets/icons/edit.png";
 import { motion, AnimatePresence } from "framer-motion";
-import { FaChevronLeft } from "react-icons/fa";
+import { getAllLocations, addLocation, updateLocation } from "../../api/locationApi";
+import { getAllStates } from "../../api/stateApi";
+import { showNotificationWithTimeout } from "../../redux/slices/notificationSlice";
 import { handleAxiosError } from "../../utils/handleAxiosError";
 
 const LocationMaster = () => {
-  const [locations, setLocations] = useState([]);
+  const dispatch = useDispatch();
+
+  // States for modal form
   const [states, setStates] = useState([]);
   const [locationName, setLocationName] = useState("");
   const [selectedStates, setSelectedStates] = useState("");
@@ -22,17 +45,26 @@ const LocationMaster = () => {
   const [showModal, setShowModal] = useState(false);
   const [editMode, setEditMode] = useState(false);
   const [editStateId, setEditStateId] = useState(null);
-  const [currentPage, setCurrentPage] = useState(1);
-  const itemsPerPage = 5;
-  const dispatch = useDispatch();
-  const indexOfLastItem = currentPage * itemsPerPage;
-  const indexOfFirstItem = indexOfLastItem - itemsPerPage;
-  const currentLocation = locations.slice(indexOfFirstItem, indexOfLastItem);
 
-  const fetchLocations = async () => {
+  // Grid + data
+  const [loading, setLoading] = useState(true);
+  const [allLocations, setAllLocations] = useState([]); // full dataset (unfiltered)
+  const [rows, setRows] = useState([]); // filtered rows
+  const [searchTerm, setSearchTerm] = useState("");
+
+  // CLIENT-SIDE pagination model
+  const [paginationModel, setPaginationModel] = useState({
+    page: 0,
+    pageSize: 10,
+  });
+
+  // Fetch all locations once (and on refresh)
+  const fetchAll = async () => {
     try {
-      const result = await getAllLocations();
-      setLocations(result?.data || []);
+      setLoading(true);
+      const locResult = await getAllLocations();
+      const apiLocations = locResult?.data ?? [];
+      setAllLocations(apiLocations);
     } catch (error) {
       dispatch(
         showNotificationWithTimeout({
@@ -41,28 +73,40 @@ const LocationMaster = () => {
           message: handleAxiosError(error),
         })
       );
-    }
-  };
-
-  const fetchStates = async () => {
-    try {
-      const result = await getAllStates();
-      setStates(result?.data || []);
-    } catch (error) {
-      dispatch(
-        showNotificationWithTimeout({
-          show: true,
-          type: "error",
-          message: handleAxiosError(error),
-        })
-      );
+    } finally {
+      setLoading(false);
     }
   };
 
   useEffect(() => {
-    fetchLocations();
-    fetchStates();
+    fetchAll();
   }, []);
+
+  // Apply client-side search filter
+  useEffect(() => {
+    const term = (searchTerm || "").toLowerCase();
+
+    const filtered = allLocations
+      .filter((loc) => {
+        const name = loc.name?.toLowerCase() || "";
+        const stateName = loc.stateId?.name?.toLowerCase() || "";
+        const areaVal = loc.area?.toLowerCase() || "";
+        return name.includes(term) || stateName.includes(term) || areaVal.includes(term);
+      })
+      .map((location, index) => ({
+        srNo: index + 1,
+        id: location._id || index,
+        name: location.name,
+        area: location.area,
+        stateId: location.stateId?._id,
+        stateName: location.stateId?.name,
+        status: location.status,
+      }));
+
+    // Reset to first page whenever search/filter changes
+    setPaginationModel((prev) => ({ ...prev, page: 0 }));
+    setRows(filtered);
+  }, [allLocations, searchTerm]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -82,11 +126,10 @@ const LocationMaster = () => {
       if (editMode) {
         await updateLocation(editStateId, {
           name: locationName,
-          state: selectedStates, 
-          area: area,
-          status: status,
+          state: selectedStates,
+          area,
+          status,
         });
-
         dispatch(
           showNotificationWithTimeout({
             show: true,
@@ -97,11 +140,10 @@ const LocationMaster = () => {
       } else {
         await addLocation({
           name: locationName,
-          state: selectedStates, 
-          area: area,
-          status: status,
+          state: selectedStates,
+          area,
+          status,
         });
-
         dispatch(
           showNotificationWithTimeout({
             show: true,
@@ -111,6 +153,7 @@ const LocationMaster = () => {
         );
       }
 
+      // Reset form + close
       setLocationName("");
       setSelectedStates("");
       setArea("");
@@ -118,7 +161,9 @@ const LocationMaster = () => {
       setEditStateId(null);
       setEditMode(false);
       setShowModal(false);
-      fetchLocations();
+
+      // Refresh dataset (client-side)
+      fetchAll();
     } catch (error) {
       dispatch(
         showNotificationWithTimeout({
@@ -130,14 +175,51 @@ const LocationMaster = () => {
     }
   };
 
-  const handleEditClick = (state) => {
-    setLocationName(state.name);
-    setSelectedStates(state.stateId._id);
-    setArea(state.area);
-    setStatus(state.status ? "active" : "inactive");
-    setEditStateId(state._id);
-    setEditMode(true);
-    setShowModal(true);
+  const handleEdit = async (row) => {
+    try {
+      // Load states when editing
+      const stateResult = await getAllStates();
+      setStates(stateResult?.data ?? []);
+
+      setLocationName(row.name);
+      setSelectedStates(row.stateId); // preselect by _id
+      setArea(row.area);
+      setStatus(row.status ? "active" : "inactive");
+      setEditStateId(row.id);
+      setEditMode(true);
+      setShowModal(true);
+    } catch (error) {
+      dispatch(
+        showNotificationWithTimeout({
+          show: true,
+          type: "error",
+          message: handleAxiosError(error),
+        })
+      );
+    }
+  };
+
+  // Modal to create a new location
+  const handleCreateClick = async () => {
+    try {
+      const stateResult = await getAllStates();
+      setStates(stateResult?.data ?? []);
+
+      setShowModal(true);
+      setEditMode(false);
+      setLocationName("");
+      setSelectedStates("");
+      setArea("");
+      setStatus("");
+    } catch (error) {
+      dispatch(
+        showNotificationWithTimeout({
+          show: true,
+          type: "error",
+          message: handleAxiosError(error),
+        })
+      );
+    }
   };
 
   const handleCloseModal = () => {
@@ -150,9 +232,95 @@ const LocationMaster = () => {
     setEditStateId(null);
   };
 
+  const handleRefresh = () => {
+    fetchAll();
+  };
+
+  // Columns (no change)
+  const columns = [
+    {
+      field: "srNo",
+      headerName: "Sr. No",
+      width: 80,
+      sortable: false,
+      filterable: false,
+      align: "center",
+      headerAlign: "center",
+    },
+    {
+      field: "name",
+      headerName: "Location Name",
+      width: 230,
+      sortable: false,
+      filterable: false,
+      align: "center",
+      headerAlign: "center",
+    },
+    {
+      field: "stateName",
+      headerName: "State",
+      width: 230,
+      sortable: false,
+      filterable: false,
+      align: "center",
+      headerAlign: "center",
+    },
+    {
+      field: "area",
+      headerName: "Area",
+      width: 140,
+      sortable: false,
+      filterable: false,
+      align: "center",
+      headerAlign: "center",
+    },
+    {
+      field: "status",
+      headerName: "Status",
+      width: 120,
+      align: "center",
+      sortable: false,
+      filterable: false,
+      headerAlign: "center",
+      renderCell: (params) => (
+        <Chip
+          label={params.value ? "Active" : "Inactive"}
+          size="small"
+          color={params.value ? "success" : "default"}
+          variant={params.value ? "filled" : "outlined"}
+        />
+      ),
+    },
+    {
+      field: "actions",
+      headerName: "Actions",
+      width: 160,
+      sortable: false,
+      filterable: false,
+      align: "center",
+      headerAlign: "center",
+      renderCell: (params) => (
+        <Box display="flex" alignItems="center" justifyContent="center" gap={0.5}>
+          <Tooltip title="Edit Location">
+            <IconButton
+              size="small"
+              color="warning"
+              onClick={(e) => {
+                e.stopPropagation();
+                handleEdit(params.row);
+              }}
+            >
+              <EditIcon fontSize="small" />
+            </IconButton>
+          </Tooltip>
+        </Box>
+      ),
+    },
+  ];
+
   return (
-    <div className="p-6 text-gray-800 dark:text-gray-100 transition-colors duration-300">
-      {/* Modal with Animation */}
+    <Container maxWidth="xl" sx={{ py: 3 }}>
+      {/* Modal with Animation (Tailwind for look; MUI for grid elsewhere) */}
       <AnimatePresence>
         {showModal && (
           <motion.div
@@ -162,7 +330,7 @@ const LocationMaster = () => {
             exit={{ opacity: 0 }}
           >
             <motion.div
-              className="relative bg-white dark:bg-[#1e1e1e] p-6 rounded-2xl w-full max-w-2xl shadow-xl border border-gray-200 dark:border-gray-700 transition-colors duration-300"
+              className="relative bg-white dark:bg-[#1e1e1e] p-6 w-full max-w-2xl shadow-xl border border-gray-200 dark:border-gray-700 transition-colors duration-300"
               initial={{ opacity: 0, scale: 0.9 }}
               animate={{ opacity: 1, scale: 1 }}
               exit={{ opacity: 0, scale: 0.9 }}
@@ -181,7 +349,7 @@ const LocationMaster = () => {
               </h2>
 
               <form onSubmit={handleSubmit}>
-                <div className="grid grid-cols-2 gap-4 mb-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
                   {/* Name */}
                   <div>
                     <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
@@ -191,8 +359,8 @@ const LocationMaster = () => {
                       type="text"
                       value={locationName}
                       onChange={(e) => setLocationName(e.target.value)}
-                      placeholder="Enter Location name"
-                      className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 bg-white dark:bg-[#2a2a2a] text-gray-900 dark:text-white rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      placeholder="Enter location name"
+                      className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 bg-white dark:bg-[#2a2a2a] text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500 rounded-md"
                     />
                   </div>
 
@@ -204,7 +372,7 @@ const LocationMaster = () => {
                     <select
                       value={selectedStates}
                       onChange={(e) => setSelectedStates(e.target.value)}
-                      className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 bg-white dark:bg-[#2a2a2a] text-gray-900 dark:text-white rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      className="w-full px-4 py-2.5 border border-gray-300 dark:border-gray-600 bg-white dark:bg-[#2a2a2a] text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500 rounded-md"
                     >
                       <option value="">Choose state</option>
                       {states.map((state) => (
@@ -225,7 +393,7 @@ const LocationMaster = () => {
                       value={area}
                       onChange={(e) => setArea(e.target.value)}
                       placeholder="Enter area"
-                      className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 bg-white dark:bg-[#2a2a2a] text-gray-900 dark:text-white rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 bg-white dark:bg-[#2a2a2a] text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500 rounded-md"
                     />
                   </div>
 
@@ -237,7 +405,7 @@ const LocationMaster = () => {
                     <select
                       value={status}
                       onChange={(e) => setStatus(e.target.value)}
-                      className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 bg-white dark:bg-[#2a2a2a] text-gray-900 dark:text-white rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      className="w-full px-4 py-2.5 border border-gray-300 dark:border-gray-600 bg-white dark:bg-[#2a2a2a] text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500 rounded-md"
                     >
                       <option value="">Select status</option>
                       <option value="active">Active</option>
@@ -246,7 +414,6 @@ const LocationMaster = () => {
                   </div>
                 </div>
 
-                {/* Buttons - centered below the grid */}
                 <div className="flex justify-center gap-4">
                   <button
                     type="button"
@@ -268,153 +435,118 @@ const LocationMaster = () => {
         )}
       </AnimatePresence>
 
-      <div className="bg-gray-100 dark:bg-[#1e1e1e] p-6 rounded-2xl shadow-md transition-colors duration-300">
-        <div className="flex justify-between items-center mb-4">
-          <h3 className="text-xl font-semibold text-gray-700 dark:text-gray-100">
-            Location List
-          </h3>
-          <button
-            className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-sm shadow transition cursor-pointer"
-            onClick={() => {
-              setShowModal(true);
-              setEditMode(false);
-              setLocationName("");
-              setSelectedStates("");
-              setArea("");
-              setStatus("");
-            }}
-          >
-            + Add New Location
-          </button>
-        </div>
+      {/* Header Card */}
+      <Card elevation={2}>
+        <CardContent>
+          <Grid container alignItems="center" justifyContent="space-between" spacing={2}>
+            <Grid item>
+              <Typography variant="h4" fontWeight={700} color="primary">
+                Location Master
+              </Typography>
+              <Typography variant="body2" color="text.secondary">
+                Manage and monitor all locations in the system
+              </Typography>
+            </Grid>
 
-        {locations.length === 0 ? (
-          <div className="text-gray-500 dark:text-gray-400 text-center py-6">
-            No states found.
-          </div>
-        ) : (
-          <div className="border border-gray-300 dark:border-gray-700 rounded-lg overflow-hidden">
-            {/* Desktop Header */}
-            <div className="hidden sm:grid grid-cols-6 font-semibold bg-gray-200 dark:bg-gray-800 text-gray-700 dark:text-gray-100 py-2 px-2">
-              <div>Sr.No</div>
-              <div>Name</div>
-              <div>State</div>
-              <div>Area</div>
-              <div>Status</div>
-              <div>Action</div>
-            </div>
-
-            {/* Responsive Rows */}
-            {currentLocation.map((state, index) => (
-              <div
-                key={state._id}
-                className={`grid sm:grid-cols-6 grid-cols-1 sm:items-center py-2 px-4 gap-1 text-gray-800 dark:text-gray-200 border-t border-gray-200 dark:border-gray-700 ${
-                  index % 2 === 0
-                    ? "bg-white/60 dark:bg-white/5"
-                    : "bg-transparent"
-                }`}
-              >
-                <div className="text-center sm:text-left">
-                  <span className="sm:hidden font-medium text-gray-500 dark:text-gray-400">
-                    Sr.No:{" "}
-                  </span>
-                  {indexOfFirstItem + index + 1}
-                </div>
-                <div className="break-words">
-                  <span className="sm:hidden font-medium text-gray-500 dark:text-gray-400">
-                    Name:{" "}
-                  </span>
-                  {state.name}
-                </div>
-                <div className="break-words">
-                  <span className="sm:hidden font-medium text-gray-500 dark:text-gray-400">
-                    State:{" "}
-                  </span>
-                  {state.stateId.name}
-                </div>
-                <div className="break-words">
-                  <span className="sm:hidden font-medium text-gray-500 dark:text-gray-400">
-                    State:{" "}
-                  </span>
-                  {state.area}
-                </div>
-                <div>
-                  <span className="sm:hidden font-medium text-gray-500 dark:text-gray-400">
-                    Status:{" "}
-                  </span>
-                  <span
-                    className={`inline-block px-3 py-1 text-xs font-medium rounded-full ${
-                      state.status
-                        ? "bg-green-100 text-green-700 dark:bg-green-900 dark:text-green-300"
-                        : "bg-red-100 text-red-700 dark:bg-red-900 dark:text-red-300"
-                    }`}
-                  >
-                    {state.status ? "Active" : "Inactive"}
-                  </span>
-                </div>
-                <div>
-                  <span className="sm:hidden font-medium text-gray-500 dark:text-gray-400">
-                    Action:{" "}
-                  </span>
-                  <button
-                    className="transition cursor-pointer"
-                    title="Edit"
-                    onClick={() => handleEditClick(state)}
-                  >
-                    <img
-                      src={editIcon}
-                      alt="Edit"
-                      className="h-8 w-14 object-contain transition duration-200 hover:brightness-150"
-                    />
-                  </button>
-                </div>
-              </div>
-            ))}
-          </div>
-        )}
-        {Math.ceil(locations.length / itemsPerPage) > 1 && (
-          <div className="flex justify-center items-center mt-4 gap-2">
-            <button
-              onClick={() => setCurrentPage((prev) => Math.max(prev - 1, 1))}
-              disabled={currentPage === 1}
-              className="px-3 py-1 border border-gray-300 dark:border-gray-600 rounded-full hover:bg-gray-200 dark:hover:bg-gray-600 disabled:opacity-50"
-            >
-              &lt;
-            </button>
-
-            {[...Array(Math.ceil(locations.length / itemsPerPage)).keys()].map(
-              (page) => (
-                <button
-                  key={page + 1}
-                  onClick={() => setCurrentPage(page + 1)}
-                  className={`px-3 py-1 rounded ${
-                    currentPage === page + 1
-                      ? "bg-blue-600 text-white hover:bg-blue-700"
-                      : "border-gray-300 dark:border-gray-600 hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-800 dark:text-gray-200"
-                  }`}
+            <Grid item>
+              <Box display="flex" gap={1} flexWrap="wrap">
+                <Button
+                  variant="outlined"
+                  startIcon={<Refresh />}
+                  onClick={handleRefresh}
+                  disabled={loading}
                 >
-                  {page + 1}
-                </button>
-              )
-            )}
+                  Refresh
+                </Button>
+                <Button variant="contained" startIcon={<AddIcon />} onClick={handleCreateClick}>
+                  Add New Location
+                </Button>
+              </Box>
+            </Grid>
+          </Grid>
+        </CardContent>
+      </Card>
 
-            <button
-              onClick={() =>
-                setCurrentPage((prev) =>
-                  Math.min(prev + 1, Math.ceil(locations.length / itemsPerPage))
-                )
-              }
-              disabled={
-                currentPage === Math.ceil(locations.length / itemsPerPage)
-              }
-              className="px-3 py-1 border border-gray-300 dark:border-gray-600 rounded-full hover:bg-gray-200 dark:hover:bg-gray-600 disabled:opacity-50"
-            >
-              &gt;
-            </button>
-          </div>
-        )}
-      </div>
-    </div>
+      {/* Search & total chips */}
+      <Card sx={{ mt: 3 }}>
+        <CardContent>
+          <Grid container spacing={2} alignItems="center">
+            <Grid item xs={12} md={6}>
+              <TextField
+                fullWidth
+                placeholder="Search location by name, state or area"
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                variant="outlined"
+                size="small"
+                slotProps={{
+                  startAdornment: (
+                    <InputAdornment position="start">
+                      <SearchIcon color="action" />
+                    </InputAdornment>
+                  ),
+                  endAdornment: searchTerm && (
+                    <InputAdornment position="end">
+                      <IconButton size="small" onClick={() => setSearchTerm("")} edge="end">
+                        <Cancel fontSize="small" />
+                      </IconButton>
+                    </InputAdornment>
+                  ),
+                }}
+              />
+            </Grid>
+
+            <Grid item xs={12} md={6}>
+              <Box display="flex" gap={1} justifyContent="flex-end">
+                <Chip label={`${rows.length} locations`} color="primary" variant="outlined" />
+                {loading && (
+                  <Chip
+                    icon={<CircularProgress size={14} color="inherit" />}
+                    label="Loading..."
+                    color="info"
+                    variant="outlined"
+                    sx={{
+                      px: 1.5,
+                      fontWeight: 500,
+                      backgroundColor: "rgba(0, 123, 255, 0.08)",
+                      borderRadius: "16px",
+                      ".MuiChip-icon": { marginLeft: "4px" },
+                    }}
+                  />
+                )}
+              </Box>
+            </Grid>
+          </Grid>
+        </CardContent>
+      </Card>
+
+      {/* CLIENT-SIDE DataGrid */}
+      <Card sx={{ mt: 3 }}>
+        <Box sx={{ height: 420, width: "100%" }}>
+          <DataGrid
+            rows={rows}
+            columns={columns}
+            pagination
+            paginationMode="client"
+            paginationModel={paginationModel}
+            onPaginationModelChange={setPaginationModel}
+            pageSizeOptions={[5, 10, 25, 50]}
+            loading={loading}
+            disableRowSelectionOnClick
+            rowHeight={60}
+            headerHeight={50}
+            sx={{
+              "& .MuiDataGrid-columnHeaders": {
+                backgroundColor: "rgba(99,102,241,0.06)",
+              },
+              borderRadius: 2,
+              border: "1px solid",
+              borderColor: "divider",
+            }}
+          />
+        </Box>
+      </Card>
+    </Container>
   );
 };
 
