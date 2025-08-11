@@ -1,5 +1,4 @@
 import { useState } from "react";
-import { useLocation, useNavigate } from "react-router-dom";
 import {
   Box,
   Typography,
@@ -11,51 +10,51 @@ import {
   Avatar,
   CircularProgress,
 } from "@mui/material";
-import { LocalizationProvider } from "@mui/x-date-pickers/LocalizationProvider";
-import { DatePicker } from "@mui/x-date-pickers/DatePicker";
+import {
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogActions,
+} from "@mui/material";
 import { AdapterDayjs } from "@mui/x-date-pickers/AdapterDayjs";
 import dayjs from "dayjs";
-import { useDispatch, useSelector } from "react-redux";
+import { LocalizationProvider } from "@mui/x-date-pickers/LocalizationProvider";
+import { DatePicker } from "@mui/x-date-pickers/DatePicker";
+import AddPhotoAlternateIcon from "@mui/icons-material/AddPhotoAlternate";
+import { createNewAsset } from "../../api/assetMasterApi";
+import { useDispatch } from "react-redux";
 import { showNotificationWithTimeout } from "../../redux/slices/notificationSlice";
 import { handleAxiosError } from "../../utils/handleAxiosError";
-import { updateAsset } from "../../api/assetMasterApi";
+import { useLocation, useNavigate } from "react-router-dom";
 
-const statusOptions = [
-  { label: "Active", value: "Active" },
-  { label: "Inactive", value: "Inactive" },
-];
-
-export default function EditAssetScreen() {
-  const userData = useSelector((state) => state.auth.userData?.user);
+const CreateNewAssset = () => {
+  const { state } = useLocation();
+  const locations = state?.locations;
   const [loading, setLoading] = useState(false);
-  const [locations, setLocations] = useState(userData.location);
-  const [yearError, setYearError] = useState("");
+  const [fileImage, setFileImage] = useState(null);
   const dispatch = useDispatch();
   const navigate = useNavigate();
-  const { state } = useLocation();
-  const initialAsset = state?.asset || {};
-  const read = state?.read === true;
+  const [yearError, setYearError] = useState("");
+  const [successDialogOpen, setSuccessDialogOpen] = useState(false);
   const [asset, setAsset] = useState({
-    id: initialAsset._id,
-    name: initialAsset.name || "",
-    imageUrl: initialAsset.image || "",
-    location: initialAsset.locationId?._id || "",
-    place: initialAsset.place || "",
-    currentValue: initialAsset.purchaseValue || "",
-    year: dayjs().year(initialAsset.year),
-    description: initialAsset.description || "",
-    artist: initialAsset.artist || "",
-    size: initialAsset.size || "",
-    status: initialAsset.status === true ? "Active" : "Inactive",
+    name: "",
+    image: null,
+    location: "",
+    place: "",
+    currentValue: "",
+    year: null,
+    description: "",
+    artist: "",
+    size: "",
+    status: "",
   });
-
-  const [imagePreview, setImagePreview] = useState(asset.imageUrl);
 
   const handleChange = (e) => {
     const { name, value, files } = e.target;
     if (name === "image" && files && files[0]) {
       setAsset((prev) => ({ ...prev, image: files[0] }));
-      setImagePreview(URL.createObjectURL(files[0]));
+      const imageUrl = URL.createObjectURL(files[0]); // Create an object URL for the image
+      setFileImage(imageUrl);
     } else {
       setAsset((prev) => ({ ...prev, [name]: value }));
     }
@@ -63,8 +62,8 @@ export default function EditAssetScreen() {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-
-    if (!asset.image && !imagePreview) {
+    // Validate image field
+    if (!asset.image) {
       dispatch(
         showNotificationWithTimeout({
           show: true,
@@ -82,7 +81,7 @@ export default function EditAssetScreen() {
 
     try {
       setLoading(true);
-      const response = await updateAsset(asset);
+      const response = await createNewAsset(asset);
       dispatch(
         showNotificationWithTimeout({
           show: true,
@@ -90,6 +89,7 @@ export default function EditAssetScreen() {
           message: response.message,
         })
       );
+      setSuccessDialogOpen(true);
     } catch (error) {
       dispatch(
         showNotificationWithTimeout({
@@ -113,12 +113,12 @@ export default function EditAssetScreen() {
       }}
     >
       <Typography variant="h5" fontWeight={700} mb={3} align="left">
-        Edit Asset Details
+        Create New Asset
       </Typography>
 
-      <form onSubmit={handleSubmit} autoComplete="off">
+      <form onSubmit={loading ? null : handleSubmit} autoComplete="off">
         <Grid container spacing={4} sx={{ display: "flex" }}>
-          <Grid item sx={{ flex: 1 }}>
+          <Grid sx={{ flex: 1 }}>
             <Box sx={{ height: "100%" }}>
               <Stack spacing={3}>
                 <TextField
@@ -129,11 +129,6 @@ export default function EditAssetScreen() {
                   required
                   fullWidth
                   autoFocus
-                  slotProps={{
-                    input: {
-                      readOnly: read,
-                    },
-                  }}
                 />
 
                 <TextField
@@ -143,11 +138,6 @@ export default function EditAssetScreen() {
                   value={asset.location}
                   onChange={handleChange}
                   required
-                  slotProps={{
-                    input: {
-                      readOnly: read,
-                    },
-                  }}
                   fullWidth
                 >
                   {locations.map((data) => (
@@ -164,56 +154,49 @@ export default function EditAssetScreen() {
                   onChange={handleChange}
                   required
                   fullWidth
-                  slotProps={{
-                    input: {
-                      readOnly: read,
-                    },
-                  }}
                 />
 
                 <TextField
                   name="artist"
                   label="Artist"
                   value={asset.artist}
-                  onChange={handleChange}
                   required
+                  onChange={handleChange}
                   fullWidth
-                  slotProps={{
-                    input: {
-                      readOnly: read,
-                    },
-                  }}
                 />
 
                 <Stack direction="row" alignItems="center" spacing={2}>
                   <Avatar
-                    src={imagePreview}
+                    src={fileImage}
                     alt={asset.name}
-                    sx={{ width: 65, height: 65, bgcolor: "#f2f2f2" }}
+                    sx={{
+                      width: 65,
+                      height: 65,
+                      bgcolor: (theme) => theme.palette.primary, // adjusts with theme
+                      color: (theme) => theme.palette.text.primary,
+                    }}
                     variant="rounded"
                   >
-                    {asset.name?.[0]}
+                    {!fileImage && <AddPhotoAlternateIcon />}
                   </Avatar>
                   <Box>
-                    {!read && (
-                      <label htmlFor="image-upload">
-                        <Button variant="contained" component="span">
-                          {imagePreview ? "Change Image" : "Upload Image *"}
-                        </Button>
-                        <input
-                          type="file"
-                          accept="image/*"
-                          name="image"
-                          id="image-upload"
-                          hidden
-                          onChange={handleChange}
-                        />
-                      </label>
-                    )}
-                    {imagePreview && (
+                    <label htmlFor="image-upload">
+                      <Button variant="contained" component="span">
+                        {asset.image ? "Change Image" : "Upload Image *"}
+                      </Button>
+                      <input
+                        type="file"
+                        accept="image/*"
+                        name="image"
+                        id="image-upload"
+                        hidden
+                        onChange={handleChange}
+                      />
+                    </label>
+                    {fileImage && (
                       <Typography variant="body2" mt={1}>
                         <a
-                          href={imagePreview}
+                          href={fileImage}
                           target="_blank"
                           rel="noopener noreferrer"
                           style={{ textDecoration: "underline" }}
@@ -227,7 +210,7 @@ export default function EditAssetScreen() {
               </Stack>
             </Box>
           </Grid>
-          <Grid item sx={{ flex: 1 }}>
+          <Grid sx={{ flex: 1 }}>
             <Box sx={{ height: "100%" }}>
               <Stack spacing={3}>
                 <TextField
@@ -238,22 +221,19 @@ export default function EditAssetScreen() {
                   required
                   placeholder="e.g. 10x20"
                   fullWidth
-                  slotProps={{
-                    input: {
-                      readOnly: read,
-                    },
-                  }}
                 />
 
                 <LocalizationProvider dateAdapter={AdapterDayjs}>
                   <DatePicker
-                    label={"year"}
+                    label="Year"
                     views={["year"]}
                     value={asset.year}
-                    onChange={(value) => setAsset({ ...asset, year: value })}
                     minDate={dayjs("1500-01-01")}
                     maxDate={dayjs()}
-                    disabled={read}
+                    onChange={(value) => {
+                      setAsset({ ...asset, year: value });
+                      setYearError(""); // clear error on selection
+                    }}
                     slotProps={{
                       textField: {
                         error: Boolean(yearError),
@@ -272,33 +252,7 @@ export default function EditAssetScreen() {
                   value={asset.currentValue}
                   onChange={handleChange}
                   fullWidth
-                  slotProps={{
-                    input: {
-                      readOnly: read,
-                    },
-                  }}
                 />
-
-                <TextField
-                  name="status"
-                  label="Status"
-                  select
-                  required
-                  value={asset.status}
-                  onChange={handleChange}
-                  fullWidth
-                  slotProps={{
-                    input: {
-                      readOnly: read,
-                    },
-                  }}
-                >
-                  {statusOptions.map((option) => (
-                    <MenuItem value={option.value} key={option.value}>
-                      {option.label}
-                    </MenuItem>
-                  ))}
-                </TextField>
 
                 <TextField
                   name="description"
@@ -309,11 +263,6 @@ export default function EditAssetScreen() {
                   multiline
                   rows={3}
                   fullWidth
-                  slotProps={{
-                    input: {
-                      readOnly: read, // new approach
-                    },
-                  }}
                 />
               </Stack>
             </Box>
@@ -335,33 +284,78 @@ export default function EditAssetScreen() {
           >
             Cancel
           </Button>
-          {!read && (
-            <Button
-              type="submit"
-              variant="contained"
-              color="primary"
-              fullWidth={window.innerWidth < 600}
-              disabled={loading}
+          <Button
+            type="submit"
+            variant="contained"
+            color="primary"
+            fullWidth={window.innerWidth < 600}
+            disabled={loading}
+          >
+            <Box
+              sx={{
+                display: "inline-flex",
+                alignItems: "center",
+                justifyContent: "center",
+                minWidth: "72px",
+                height: "24px",
+              }}
             >
-              <Box
-                sx={{
-                  display: "inline-flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  minWidth: "72px",
-                  height: "24px",
-                }}
-              >
-                {loading ? (
-                  <CircularProgress size={20} color="inherit" />
-                ) : (
-                  "Save Changes"
-                )}
-              </Box>
-            </Button>
-          )}
+              {loading ? (
+                <CircularProgress size={20} color="inherit" />
+              ) : (
+                "Submit"
+              )}
+            </Box>
+          </Button>
         </Stack>
       </form>
+
+      <Dialog
+        open={successDialogOpen}
+        onClose={() => setSuccessDialogOpen(false)}
+      >
+        <DialogTitle>Asset Created</DialogTitle>
+        <DialogContent>
+          <Typography>Your asset has been created successfully.</Typography>
+        </DialogContent>
+        <DialogActions>
+          <Button
+            onClick={() => {
+              setSuccessDialogOpen(false);
+              navigate(-1); // Go back to previous page
+            }}
+            color="primary"
+            variant="outlined"
+          >
+            Go Back
+          </Button>
+          <Button
+            onClick={() => {
+              // Reset form for new entry
+              setAsset({
+                name: "",
+                image: null,
+                location: "",
+                place: "",
+                currentValue: "",
+                year: null,
+                description: "",
+                artist: "",
+                size: "",
+                status: "",
+              });
+              setFileImage(null);
+              setSuccessDialogOpen(false);
+            }}
+            color="primary"
+            variant="contained"
+          >
+            Create Another
+          </Button>
+        </DialogActions>
+      </Dialog>
     </Box>
   );
-}
+};
+
+export default CreateNewAssset;

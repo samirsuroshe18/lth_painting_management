@@ -2,11 +2,15 @@ import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { getAllUsers } from "../../api/userApi";
 import { HiPencilAlt, HiKey } from "react-icons/hi";
+import { useDispatch } from "react-redux";
+import { showNotificationWithTimeout } from "../../redux/slices/notificationSlice";
+import { handleAxiosError } from "../../utils/handleAxiosError";
 
 const USERS_PER_PAGE = 5;
 
 const UserMaster = () => {
   const navigate = useNavigate();
+  const dispatch = useDispatch();
   const [users, setUsers] = useState([]);
   const [currentPage, setCurrentPage] = useState(1);
 
@@ -17,23 +21,28 @@ const UserMaster = () => {
   const fetchUsers = async () => {
     try {
       const response = await getAllUsers();
-      console.log("Fetched users:", response);
       setUsers(response.data);
     } catch (error) {
-      console.error("Error fetching users:", error);
+      dispatch(
+        showNotificationWithTimeout({
+          show: true,
+          type: "error",
+          message: handleAxiosError(error),
+        })
+      );
     }
   };
 
   const handleAddUser = () => {
-    navigate("/masters/add-user");
+    navigate("add-user");
   };
 
   const handleEditUser = (userId) => {
-    navigate(`/masters/edit-user/${userId}`);
+    navigate(`edit-user/${userId}`);
   };
 
   const handleEditRights = (userId) => {
-    navigate(`/edit-rights/${userId}`);
+    navigate(`edit-rights/${userId}`);
   };
 
   const indexOfLastUser = currentPage * USERS_PER_PAGE;

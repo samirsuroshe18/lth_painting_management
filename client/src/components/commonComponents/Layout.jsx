@@ -1,6 +1,5 @@
 import { Outlet } from "react-router";
 import { DashboardLayout } from "@toolpad/core/DashboardLayout";
-import { PageContainer } from "@toolpad/core/PageContainer";
 import ProfileComponent from "../ProfileComponent";
 import { Box } from "@mui/material";
 

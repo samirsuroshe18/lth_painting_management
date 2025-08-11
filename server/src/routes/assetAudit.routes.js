@@ -2,7 +2,7 @@ import { Router } from "express";
 import { verifyJwt } from "../middlewares/auth.middleware.js";
 import { checkAccess } from "../middlewares/checkAccess.middleware.js";
 import { upload } from "../middlewares/multer.middleware.js";
-import { addId, addNewAssetAudit, getAssetAuditLogs, getAuditLogs, reviewAuditStatus, viewAuditLog } from "../controllers/assetAudit.controller.js";
+import { addNewAssetAudit, fetchAudits, getAssetAuditLogs, getAuditLogs, reviewAuditStatus, viewAuditLog } from "../controllers/assetAudit.controller.js";
 
 const router = Router();
 
@@ -16,6 +16,6 @@ router.route('/review-audit-status/:auditId').put(verifyJwt, checkAccess('assetM
 router.route('/get-audit-logs').get(verifyJwt, checkAccess('assetMaster'), getAuditLogs)
 router.route('/get-asset-audit-logs/:assetId').get(verifyJwt, checkAccess('assetMaster'), getAssetAuditLogs)
 router.route('/view-audit-log/:auditId').get(verifyJwt, checkAccess('assetMaster'), viewAuditLog);
-router.route('/add-id').get(verifyJwt, addId);
+router.route('/fetch-audits').post(verifyJwt, checkAccess('assetMaster'), fetchAudits);
 
 export default router;

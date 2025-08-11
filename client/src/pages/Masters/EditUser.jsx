@@ -2,8 +2,9 @@ import React, { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { fetchUser, updateUser } from "../../api/userApi";
 import { getAllLocations } from "../../api/locationApi";
-import { useDispatch } from 'react-redux';
+import { useDispatch } from "react-redux";
 import { showNotificationWithTimeout } from "../../redux/slices/notificationSlice";
+import { handleAxiosError } from "../../utils/handleAxiosError";
 
 const EditUser = () => {
   const { id } = useParams();
@@ -22,7 +23,6 @@ const EditUser = () => {
     status: "active",
   });
 
-  
   useEffect(() => {
     const fetchData = async () => {
       try {
@@ -38,7 +38,6 @@ const EditUser = () => {
           status: user.isActive ? "active" : "inactive",
         });
       } catch (err) {
-        console.error("Error fetching user:", err);
         dispatch(
           showNotificationWithTimeout({
             show: true,
@@ -56,8 +55,14 @@ const EditUser = () => {
           setLocations([]);
           console.warn("No locations found");
         }
-      } catch (err) {
-        console.error("Failed to fetch locations:", err);
+      } catch (error) {
+        dispatch(
+          showNotificationWithTimeout({
+            show: true,
+            type: "error",
+            message: handleAxiosError(error),
+          })
+        );
         setLocations([]);
       }
     };
@@ -118,7 +123,6 @@ const EditUser = () => {
 
       navigate("/masters/user-master");
     } catch (err) {
-      console.error("Error updating user:", err);
       dispatch(
         showNotificationWithTimeout({
           show: true,
@@ -132,13 +136,17 @@ const EditUser = () => {
   return (
     <div className="min-w-5xl mx-auto mt-12 px-5">
       <div className="bg-white dark:bg-gray-900 rounded-xl shadow-lg p-7">
-        <h2 className="text-2xl font-bold mb-6 text-gray-800 dark:text-white">Edit User</h2>
+        <h2 className="text-2xl font-bold mb-6 text-gray-800 dark:text-white">
+          Edit User
+        </h2>
 
         <form onSubmit={handleSubmit}>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             {/* Username */}
             <div>
-              <label className="block text-sm font-medium text-gray-700 dark:text-white mb-2">Username</label>
+              <label className="block text-sm font-medium text-gray-700 dark:text-white mb-2">
+                Username
+              </label>
               <input
                 type="text"
                 name="userName"
@@ -151,7 +159,9 @@ const EditUser = () => {
 
             {/* Email */}
             <div>
-              <label className="block text-sm font-medium text-gray-700 dark:text-white mb-2">Email</label>
+              <label className="block text-sm font-medium text-gray-700 dark:text-white mb-2">
+                Email
+              </label>
               <input
                 type="email"
                 name="email"
@@ -164,7 +174,9 @@ const EditUser = () => {
 
             {/* Mobile */}
             <div>
-              <label className="block text-sm font-medium text-gray-700 dark:text-white mb-2">Mobile No</label>
+              <label className="block text-sm font-medium text-gray-700 dark:text-white mb-2">
+                Mobile No
+              </label>
               <input
                 type="text"
                 name="mobileNo"
@@ -177,7 +189,9 @@ const EditUser = () => {
 
             {/* Role */}
             <div>
-              <label className="block text-sm font-medium text-gray-700 dark:text-white mb-2">Role</label>
+              <label className="block text-sm font-medium text-gray-700 dark:text-white mb-2">
+                Role
+              </label>
               <select
                 name="role"
                 value={formData.role}
@@ -193,7 +207,9 @@ const EditUser = () => {
 
             {/* Password */}
             <div>
-              <label className="block text-sm font-medium text-gray-700 dark:text-white mb-2">Password</label>
+              <label className="block text-sm font-medium text-gray-700 dark:text-white mb-2">
+                Password
+              </label>
               <input
                 type="password"
                 name="password"
@@ -205,7 +221,9 @@ const EditUser = () => {
 
             {/* Confirm Password */}
             <div>
-              <label className="block text-sm font-medium text-gray-700 dark:text-white mb-2">Confirm Password</label>
+              <label className="block text-sm font-medium text-gray-700 dark:text-white mb-2">
+                Confirm Password
+              </label>
               <input
                 type="password"
                 name="confirmPassword"
@@ -217,7 +235,9 @@ const EditUser = () => {
 
             {/* Status */}
             <div>
-              <label className="block text-sm font-medium text-gray-700 dark:text-white mb-2">Status</label>
+              <label className="block text-sm font-medium text-gray-700 dark:text-white mb-2">
+                Status
+              </label>
               <select
                 name="status"
                 value={formData.status}
@@ -231,7 +251,9 @@ const EditUser = () => {
 
             {/* Location */}
             <div>
-              <label className="block text-sm font-medium text-gray-700 dark:text-white mb-2">Location</label>
+              <label className="block text-sm font-medium text-gray-700 dark:text-white mb-2">
+                Location
+              </label>
               <select
                 name="location"
                 multiple

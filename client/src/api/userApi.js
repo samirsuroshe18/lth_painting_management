@@ -1,34 +1,63 @@
-// userApi.js
-
 import axiosInstance from './config.js';
 
-// Get all users
 const getAllUsers = async () => {
-  const response = await axiosInstance.get('/api/v1/usermaster/get-all-users');
-  return response.data;
+  try {
+    const response = await axiosInstance.get('/api/v1/usermaster/get-all-users');
+    return response.data;
+  } catch (error) {
+    if (import.meta.env.VITE_DEVELOPMENT === 'development') {
+      console.error('Error fetching all users:', error);
+    }
+    throw error;
+  }
 };
 
-// Create a new user
 const createUser = async (userData) => {
-  const response = await axiosInstance.post('/api/v1/usermaster/create-user', userData);
-  return response.data;
+  try {
+    const response = await axiosInstance.post('/api/v1/usermaster/create-user', userData);
+    return response.data;
+  } catch (error) {
+    if (import.meta.env.VITE_DEVELOPMENT === 'development') {
+      console.error('Error creating user:', error);
+    }
+    throw error;
+  }
 };
 
-// Update an existing user
 const updateUser = async (userId, updatedData) => {
-  const response = await axiosInstance.put(`/api/v1/usermaster/update-user/${userId}`, updatedData);
-  return response.data;
+  try {
+    const response = await axiosInstance.put(`/api/v1/usermaster/update-user/${userId}`, updatedData);
+    return response.data;
+  } catch (error) {
+    if (import.meta.env.VITE_DEVELOPMENT === 'development') {
+      console.error('Error updating user:', error);
+    }
+    throw error;
+  }
 };
 
-// Fetch a specific user by ID
 const fetchUser = async (userId) => {
-  const response = await axiosInstance.get(`/api/v1/usermaster/fetch-user/${userId}`);
-  return response.data.data; 
+  try {
+    const response = await axiosInstance.get(`/api/v1/usermaster/fetch-user/${userId}`);
+    return response.data.data;
+  } catch (error) {
+    if (import.meta.env.VITE_DEVELOPMENT === 'development') {
+      console.error('Error fetching user:', error);
+    }
+    throw error;
+  }
 };
 
 const updatePermissions = async (userId, permissions) => {
-  const response = await axiosInstance.put(`/api/v1/usermaster/update-user-permissions/${userId}`, { permissions });
-  return response.data;
+  try {
+    const response = await axiosInstance.put(`/api/v1/usermaster/update-user-permissions/${userId}`, { permissions });
+    return response.data;
+  } catch (error) {
+    if (import.meta.env.VITE_DEVELOPMENT === 'development') {
+      console.error('Error updating user permissions:', error);
+    }
+    throw error;
+  }
 };
 
 export {

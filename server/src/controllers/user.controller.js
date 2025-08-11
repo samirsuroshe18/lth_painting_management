@@ -149,13 +149,12 @@ const refreshAccessToken = catchAsync(async (req, res) => {
         sameSite: process.env.SAME_SITE === 'true' ? 'Strict' : 'Lax',
     };
 
-    const { accessToken, refreshToken } = await generateAccessAndRefreshToken(user._id);
+    const { accessToken } = await generateAccessAndRefreshToken(user._id);
 
     return res
         .status(200)
         .cookie('accessToken', accessToken, option)
-        .cookie('refreshToken', refreshToken, option)
-        .json(new ApiResponse(200, { accessToken, refreshToken }, "Access token refreshed"));
+        .json(new ApiResponse(200, { accessToken }, "Access token refreshed"));
 });
 
 const changeCurrentPassword = catchAsync(async (req, res) => {

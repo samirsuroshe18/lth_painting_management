@@ -111,7 +111,7 @@ export default function AssetMaster() {
       setLoading(true);
 
       const response = await getAssets({
-        page: paginationModel.page + 1, // API expects 1-based page
+        page: paginationModel.page + 1,
         limit: paginationModel.pageSize,
         search: searchTerm,
       });

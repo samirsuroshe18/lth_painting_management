@@ -1,10 +1,14 @@
 import React, { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { updatePermissions, fetchUser } from '../../api/userApi';
+import { useDispatch } from 'react-redux';
+import { showNotificationWithTimeout } from '../../redux/slices/notificationSlice';
+import { handleAxiosError } from '../../utils/handleAxiosError';
 
 const EditRights = () => {
   const { id } = useParams();
   const navigate = useNavigate();
+  const dispatch = useDispatch();
   const [user, setUser] = useState(null);
   const [permissions, setPermissions] = useState([]);
   const [selectAll, setSelectAll] = useState(false);
@@ -20,8 +24,14 @@ const EditRights = () => {
 
         const allAllowed = existingPermissions.every(p => p.effect === 'Allow');
         setSelectAll(allAllowed);
-      } catch (err) {
-        console.error("Failed to load user", err);
+      } catch (error) {
+        dispatch(
+        showNotificationWithTimeout({
+          show: true,
+          type: "error",
+          message: handleAxiosError(error),
+        })
+      );
       }
     };
 
@@ -45,11 +55,16 @@ const EditRights = () => {
 
   const handleSave = async () => {
     try {
-      console.log("🚀 Sending these permissions to backend:", permissions);
       await updatePermissions(id, permissions);
       setShowDialog(true);
-    } catch (err) {
-      console.error("Failed to save permissions", err);
+    } catch (error) {
+      dispatch(
+        showNotificationWithTimeout({
+          show: true,
+          type: "error",
+          message: handleAxiosError(error),
+        })
+      );
     }
   };
 

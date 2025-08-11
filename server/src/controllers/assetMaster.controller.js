@@ -2,6 +2,7 @@ import ApiResponse from '../utils/ApiResponse.js';
 import ApiError from '../utils/ApiError.js';
 import catchAsync from '../utils/catchAsync.js';
 import { Asset } from '../models/asset.model.js';
+import { Location } from '../models/location.model.js';
 import { uploadOnCloudinary } from '../utils/cloudinary.js';
 import QRCode from 'qrcode'
 
@@ -85,15 +86,22 @@ const viewAssetPublic = catchAsync(async (req, res) => {
     }
     const asset = await Asset.findOne({ _id: assetId, status: true, reviewStatus: 'approved' })
         .select('-updatedAt -reviewedBy -reviewStatus -status -qrCode -__v')
-        .populate('locationId', 'name')
+        .populate('locationId', 'name area')
         .populate('createdBy', 'userName');
 
     if (!asset) {
         throw new ApiError(404, 'Asset not found');
     }
 
+    const locations = await Location.find()
+        .select('name area stateId')
+        .populate('stateId', 'name');
+
     return res.status(200).json(
-        new ApiResponse(200, asset, "Asset retrieved successfully")
+        new ApiResponse(200, {
+            asset,
+            locations
+        }, "Asset and locations retrieved successfully")
     );
 });
 
@@ -282,8 +290,8 @@ const getAssets = catchAsync(async (req, res) => {
 });
 
 const removeAsset = catchAsync(async (req, res) => {
-    const {id} = req.params;
-    if(!id){
+    const { id } = req.params;
+    if (!id) {
         throw new ApiError(404, "id is missing");
     }
 
@@ -298,7 +306,7 @@ const removeAsset = catchAsync(async (req, res) => {
         }
     );
 
-    if(!deletedAsset){
+    if (!deletedAsset) {
         throw new ApiError(500, "Something went wrong");
     }
 
@@ -307,6 +315,23 @@ const removeAsset = catchAsync(async (req, res) => {
     );
 })
 
+const getAssetsByLocation = catchAsync(async (req, res) => {
+    const { locationIds } = req.body; // expecting array of location IDs
+
+    if (!Array.isArray(locationIds) || locationIds.length === 0) {
+        throw new ApiError(400, 'locationIds must be a non-empty array');
+    }
+
+    // Query assets that match any of the location IDs
+    const assets = await Asset.find({
+        locationId: { $in: locationIds }
+    });
+
+    return res.status(200).json(
+        new ApiResponse(200, { assets }, "success")
+    );
+});
+
 export {
     addNewAsset,
     viewAsset,
@@ -314,5 +339,6 @@ export {
     viewAssetPublic,
     reviewAssetStatus,
     getAssets,
-    removeAsset
+    removeAsset,
+    getAssetsByLocation
 };

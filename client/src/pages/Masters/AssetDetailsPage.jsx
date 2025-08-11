@@ -17,17 +17,22 @@ import {
   FaPaperclip,
   FaImage,
 } from "react-icons/fa";
-import { reviewAuditStatus } from "../../api/assetMasterApi";
+import { reviewAuditStatus } from "../../api/auditLogApi";
+import { useDispatch } from "react-redux";
+import { showNotificationWithTimeout } from "../../redux/slices/notificationSlice";
+import { handleAxiosError } from "../../utils/handleAxiosError";
 
 const AssetDetailsPage = () => {
   const { state } = useLocation();
   const auditLog = state?.auditLog || {};
   const navigate = useNavigate();
+  const dispatch = useDispatch();
 
   const [status, setStatus] = useState(auditLog?.reviewStatus || "pending");
   const [loadingAction, setLoadingAction] = useState(false);
   const [rejectOpen, setRejectOpen] = useState(false);
   const [rejectRemark, setRejectRemark] = useState("");
+  const isProposedChangesEmpty = !auditLog?.proposedChanges || Object.keys(auditLog.proposedChanges).length === 0;
 
   const auditItems = [
     {
@@ -164,9 +169,14 @@ const AssetDetailsPage = () => {
       setLoadingAction(true);
       await reviewAuditStatus(auditLog._id, { reviewStatus: "approved" });
       setStatus("approved");
-    } catch (err) {
-      console.error("Error approving audit:", err);
-      alert("Failed to approve. Please try again.");
+    } catch (error) {
+      dispatch(
+        showNotificationWithTimeout({
+          show: true,
+          type: "error",
+          message: handleAxiosError(error),
+        })
+      );
     } finally {
       setLoadingAction(false);
     }
@@ -182,9 +192,14 @@ const AssetDetailsPage = () => {
       setStatus("rejected");
       setRejectOpen(false);
       setRejectRemark("");
-    } catch (err) {
-      console.error("Error rejecting audit:", err);
-      alert("Failed to reject. Please try again.");
+    } catch (error) {
+      dispatch(
+        showNotificationWithTimeout({
+          show: true,
+          type: "error",
+          message: handleAxiosError(error),
+        })
+      );
     } finally {
       setLoadingAction(false);
     }
@@ -284,7 +299,7 @@ const AssetDetailsPage = () => {
       </div>
 
       {/* Edited Asset Details */}
-      {auditLog?.proposedChanges && (
+      {isProposedChangesEmpty && (
         <div className="bg-white dark:bg-[#1E1E1E] shadow-md rounded-lg overflow-hidden mb-6">
           <div className="bg-gray-300 dark:bg-gray-800 px-6 py-4">
             <h3 className="text-lg font-semibold text-gray-700 dark:text-white flex items-center">

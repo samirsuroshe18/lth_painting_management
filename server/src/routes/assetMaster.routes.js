@@ -1,7 +1,7 @@
 import { Router } from "express";
 import { verifyJwt } from "../middlewares/auth.middleware.js";
 import { checkAccess } from "../middlewares/checkAccess.middleware.js";
-import { addNewAsset, getAssets, removeAsset, reviewAssetStatus, updateAsset, viewAsset, viewAssetPublic } from "../controllers/assetMaster.controller.js";
+import { addNewAsset, getAssets, getAssetsByLocation, removeAsset, reviewAssetStatus, updateAsset, viewAsset, viewAssetPublic } from "../controllers/assetMaster.controller.js";
 import { upload } from "../middlewares/multer.middleware.js";
 
 const router = Router();
@@ -13,5 +13,6 @@ router.route('/update-asset/:assetId').put(verifyJwt, checkAccess('assetMaster')
 router.route('/review-asset-status/:assetId').put(verifyJwt, checkAccess('assetMaster'), reviewAssetStatus);
 router.route('/get-assets').get(verifyJwt, checkAccess('assetMaster'), getAssets)
 router.route('/remove-asset/:id').delete(verifyJwt, checkAccess('assetMaster'), removeAsset);
+router.route('/get-assets-by-loc').post(verifyJwt, checkAccess('assetMaster'), getAssetsByLocation);
 
 export default router;

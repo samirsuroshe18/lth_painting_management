@@ -37,7 +37,7 @@ const addNewAssetAudit = catchAsync(async (req, res) => {
             const uploadResult = await uploadOnCloudinary(assetImagePath);
             assetImage = uploadResult.secure_url;
         }
-        proposedChangesData.image = assetImage || 'N/A';
+        proposedChangesData.image = assetImage || undefined;
     }
 
     if (auditImagePath1) {
@@ -61,10 +61,10 @@ const addNewAssetAudit = catchAsync(async (req, res) => {
         auditorRemark,
         proposedChanges: proposedChangesData || undefined,
         attachmentOne: auditImage1,
-        attachmentTwo: auditImage2 || '',
-        attachmentThree: auditImage3 || '',
+        attachmentTwo: auditImage2 || undefined,
+        attachmentThree: auditImage3 || undefined,
         auditStatus: true,
-        reviewStatus: req.user.role === 'auditor' ? 'pending' : 'approved',
+        reviewStatus: 'pending',
         createdBy: req.user._id,
         updatedBy: req.user._id,
     });
@@ -318,6 +318,48 @@ const getAssetAuditLogs = catchAsync(async (req, res) => {
     const totalCount = await AssetAuditLog.countDocuments(assetAuditMatch);
     const totalPages = Math.ceil(totalCount / limit);
     const updatedAssetAudit = await AssetAuditLog.find(assetAuditMatch)
+        .populate({
+            path: 'proposedChanges.locationId',
+            model: 'Location',
+            select: 'name',
+            strictPopulate: false
+        })
+        .populate({
+            path: 'assetId',
+            populate: [
+                {
+                    path: 'locationId',
+                    populate: [
+                        {
+                            path: 'stateId',
+                            select: 'name',
+                        },
+                    ]
+                },
+                {
+                    path: 'createdBy',
+                    model: 'User',
+                    select: 'userName'
+                },
+                {
+                    path: 'updatedBy',
+                    model: 'User',
+                    select: 'userName'
+                }
+            ]
+        })
+        .populate({
+            path: 'locationId',
+            select: 'name',
+        })
+        .populate({
+            path: 'proposedChanges.location',
+            select: 'name',
+        })
+        .populate({
+            path: 'createdBy',
+            select: 'userName',
+        })
         .sort({ createdAt: -1 });
 
     // Apply pagination on combined results
@@ -384,15 +426,80 @@ const viewAuditLog = catchAsync(async (req, res) => {
     );
 });
 
-const addId = catchAsync(async (req, res) => {
+const fetchAudits = catchAsync(async (req, res) => {
+    const { locationIds, assetIds, startDate, endDate } = req.body;
 
-    await AssetAuditLog.updateMany(
-        {},
-        { $set: { "proposedChanges.year": 1980 } }
+    if (!Array.isArray(locationIds) || locationIds.length === 0) {
+        throw new ApiError(400, 'locationIds must be a non-empty array');
+    }
+
+    if (!Array.isArray(assetIds) || assetIds.length === 0) {
+        throw new ApiError(400, 'locationIds must be a non-empty array');
+    }
+
+    if (!startDate || !endDate) {
+        throw new ApiError(400, 'Both startDate and endDate are required');
+    }
+
+    // Build the query object dynamically
+    const query = {
+        locationId: { $in: locationIds },
+        assetId: { $in: assetIds },
+        createdAt: {
+            $gte: new Date(startDate),
+            $lte: new Date(endDate)
+        }
+    };
+
+    const audits = await AssetAuditLog.find(query).populate({
+        path: 'proposedChanges.locationId',
+        model: 'Location',
+        select: 'name',
+        strictPopulate: false
+    })
+        .populate({
+            path: 'assetId',
+            populate: [
+                {
+                    path: 'locationId',
+                    populate: [
+                        {
+                            path: 'stateId',
+                            select: 'name',
+                        },
+                    ]
+                },
+                {
+                    path: 'createdBy',
+                    model: 'User',
+                    select: 'userName'
+                },
+                {
+                    path: 'updatedBy',
+                    model: 'User',
+                    select: 'userName'
+                }
+            ]
+        })
+        .populate({
+            path: 'locationId',
+            select: 'name',
+        })
+        .populate({
+            path: 'proposedChanges.location',
+            select: 'name',
+        })
+        .populate({
+            path: 'createdBy',
+            select: 'userName',
+        })
+        .sort({ createdAt: -1 });
+
+    return res.status(200).json(
+        new ApiResponse(200, { audits }, 'Success')
     );
-
-    return res.send("success");
 });
+
 
 export {
     addNewAssetAudit,
@@ -400,5 +507,5 @@ export {
     getAuditLogs,
     getAssetAuditLogs,
     viewAuditLog,
-    addId
+    fetchAudits,
 };

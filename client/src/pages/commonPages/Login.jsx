@@ -1,69 +1,17 @@
-// import React, { useState } from "react";
-// import { googleLoginUser } from "../../api/authApi";
-// import { GoogleOAuthProvider, GoogleLogin } from "@react-oauth/google";
-// import { jwtDecode } from "jwt-decode";
-// import { Loader2 } from "lucide-react";
-// import { useDispatch } from 'react-redux'
-// import { login } from "../../redux/slices/authSlice";
-// import { useNavigate } from "react-router-dom";
-// import { showNotificationWithTimeout } from "../../redux/slices/notificationSlice";
-// import { handleAxiosError } from "../../utils/handleAxiosError";
-// import SnackBar from "../../utils/SnackBar";
-// import { motion } from "framer-motion";
-// import iitBombayLogo from "../../assets/college.png";
-
-// const Login = () => {
-// const [loading, setLoading] = useState(false);
-// const navigate = useNavigate();
-// const dispatch = useDispatch();
-
-// const handleSuccess = async (response) => {
-//   const token = response.credential;
-//   const decoded = jwtDecode(token);
-
-// try {
-//   const res = await googleLoginUser(decoded, setLoading, dispatch);
-//   dispatch(login(res.data));
-//   navigate('/');
-// } catch (error) {
-//   setLoading(false);
-//   dispatch(showNotificationWithTimeout({ show: true, type: "error", message: handleAxiosError(error) }));
-// }
-// };
-// const handleError = (error) => {
-//   dispatch(showNotificationWithTimeout({show:true, type:"error", message:handleAxiosError(error)}));
-// };
-
-// if (loading) {
-//   return (
-//     <div className="min-h-screen flex items-center justify-center bg-[#131314] text-amber-500">
-//       <div className="text-center">
-//         <Loader2 className="w-12 h-12 animate-spin mx-auto mb-4" />
-//         <p className="text-lg">Loading...</p>
-//       </div>
-//     </div>
-//   );
-// }
-
-//   return (
-//     <>
-//       <h1>Login screen</h1>
-//     </>
-//   );
-// };
-
-// export default Login;
-
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Eye, EyeOff, Mail, Lock, Loader2 } from "lucide-react";
 import { useDispatch } from "react-redux";
-import { Link, useNavigate } from "react-router-dom";
+import { Link, useLocation, useNavigate } from "react-router-dom";
 import { loginUser } from "../../api/authApi";
 import { login } from "../../redux/slices/authSlice";
 import { handleAxiosError } from "../../utils/handleAxiosError";
 import { showNotificationWithTimeout } from "../../redux/slices/notificationSlice";
+import { setAdmin } from "../../redux/slices/isAdminSlice";
 
 const Login = () => {
+  const { state } = useLocation();
+  const isAdmin = state?.isAdmin;
+  const message = state?.message;
   const dispatch = useDispatch();
   const navigate = useNavigate();
   const [formData, setFormData] = useState({
@@ -74,6 +22,20 @@ const Login = () => {
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [errors, setErrors] = useState({});
+  const hasShownMessage = useRef(false);
+
+  useEffect(() => {
+    if (message && !hasShownMessage.current) {
+      dispatch(
+        showNotificationWithTimeout({
+          show: true,
+          type: "error",
+          message,
+        })
+      );
+      hasShownMessage.current = true;
+    }
+  }, [message, dispatch]);
 
   const validateForm = () => {
     const newErrors = {};
@@ -109,9 +71,14 @@ const Login = () => {
         })
       );
       dispatch(login(res.data));
-      navigate("/");
+
+      if (isAdmin) {
+        dispatch(setAdmin(true));
+        navigate(-1, { state: { isAdmin: true } });
+      } else {
+        navigate("/");
+      }
     } catch (error) {
-      setIsLoading(false);
       dispatch(
         showNotificationWithTimeout({
           show: true,
@@ -119,7 +86,7 @@ const Login = () => {
           message: handleAxiosError(error),
         })
       );
-    }finally{
+    } finally {
       setIsLoading(false);
     }
   };
@@ -141,7 +108,6 @@ const Login = () => {
   };
 
   return (
-    
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-tr from-[#0082A2] via-[#FFE600] to-[#FF8700] p-4">
       {/* Background Pattern */}
       <div className="absolute inset-0 bg-[url('data:image/svg+xml,%3Csvg width=\'60\' height=\'60\' viewBox=\'0 0 60 60\' xmlns=\'http://www.w3.org/2000/svg\'%3E%3Cg fill=\'none\' fill-rule=\'evenodd\'%3E%3Cg fill=\'%239C92AC\' fill-opacity=\'0.1\'%3E%3Ccircle cx=\'30\' cy=\'30\' r=\'2\'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E')] opacity-20"></div>
@@ -163,7 +129,7 @@ const Login = () => {
               {/* <div className="w-16 h-16 bg-gradient-to-r from-purple-500 to-pink-500 rounded-full flex items-center justify-center mx-auto mb-4"> */}
               {/* <Lock className="w-8 h-8 text-white" /> */}
             </div>
-         
+
             <h1 className="text-3xl font-bold text-black mb-2">Welcome Back</h1>
             <p className="text-gray-700">Sign in to your account to continue</p>
           </div>
@@ -179,7 +145,6 @@ const Login = () => {
 
             {/* Email Field */}
             <div className="space-y-2">
-              
               <div className="text-sm font-medium text-black block">
                 Email Address
               </div>
@@ -212,7 +177,7 @@ const Login = () => {
                 <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
                   <Lock className="h-5 w-5 text-gray-400" />
                 </div>
-               
+
                 <input
                   type={showPassword ? "text" : "password"}
                   name="password"
@@ -224,7 +189,6 @@ const Login = () => {
                   placeholder="Enter your password"
                 />
 
-            
                 <button
                   type="button"
                   onClick={() => setShowPassword(!showPassword)}
@@ -253,12 +217,12 @@ const Login = () => {
                   className="w-4 h-4 text-purple-500 bg-white/10 border-white/20 rounded focus:ring-purple-500 focus:ring-2"
                 /> */}
                 <input
-                 type="checkbox"
-                 name="isRemember"
-                 checked={formData.isRemember}
-                 onChange={handleInputChange}
-                 className="custom-checkbox w-4 h-4 appearance-none bg-white border border-gray-400 rounded-sm checked:bg-[#009ff6] checked:border-[#009ff6] focus:outline-none focus:ring-2 focus:ring-[#009ff6] cursor-pointer"
-                  />
+                  type="checkbox"
+                  name="isRemember"
+                  checked={formData.isRemember}
+                  onChange={handleInputChange}
+                  className="custom-checkbox w-4 h-4 appearance-none bg-white border border-gray-400 rounded-sm checked:bg-[#009ff6] checked:border-[#009ff6] focus:outline-none focus:ring-2 focus:ring-[#009ff6] cursor-pointer"
+                />
                 <span className="ml-2 text-sm text-gray-700">Remember me</span>
               </div>
               <button

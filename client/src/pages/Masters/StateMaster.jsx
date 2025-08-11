@@ -4,6 +4,7 @@ import { useDispatch } from 'react-redux';
 import { showNotificationWithTimeout } from '../../redux/slices/notificationSlice';
 import editIcon from "@/assets/icons/edit.png";
 import { motion, AnimatePresence } from 'framer-motion';
+import { handleAxiosError } from '../../utils/handleAxiosError';
 
 const StateMaster = () => {
   const [states, setStates] = useState([]);
@@ -18,12 +19,19 @@ const StateMaster = () => {
   const indexOfLastItem = currentPage * itemsPerPage;
   const indexOfFirstItem = indexOfLastItem - itemsPerPage;
   const currentStates = states.slice(indexOfFirstItem, indexOfLastItem);
+  
   const fetchStates = async () => {
     try {
       const result = await getAllStates();
       setStates(result?.data || []);
     } catch (error) {
-      console.error("Error fetching states:", error);
+      dispatch(
+        showNotificationWithTimeout({
+          show: true,
+          type: "error",
+          message: handleAxiosError(error),
+        })
+      );
     }
   };
 

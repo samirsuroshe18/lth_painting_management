@@ -18,7 +18,6 @@ const proposedChangesSchema = new Schema({
     purchaseValue: {
         type: String,
         maxlength: 100,
-        default: '0'
     },
 
     location: {
@@ -42,7 +41,6 @@ const proposedChangesSchema = new Schema({
     size: {
         type: String,
         maxlength: 100,
-        default: 'N/A'
     },
 });
 

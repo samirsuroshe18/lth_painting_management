@@ -5,13 +5,6 @@ import { ReactRouterAppProvider } from "@toolpad/core/react-router";
 import { getCurrentUser } from "./api/authApi";
 import { currentUser } from "./redux/slices/authSlice";
 import { LinearProgress } from "@mui/material";
-import AnnouncementIcon from "@mui/icons-material/Campaign";
-import HowToVoteIcon from "@mui/icons-material/HowToVote";
-import BusinessCenterIcon from "@mui/icons-material/BusinessCenter";
-import AssignmentIcon from "@mui/icons-material/Assignment";
-import ReportProblemIcon from "@mui/icons-material/ReportProblem";
-import LayersIcon from "@mui/icons-material/Layers";
-import ShoppingCartIcon from "@mui/icons-material/ShoppingCart";
 import DashboardIcon from "@mui/icons-material/Dashboard";
 import SettingsIcon from "@mui/icons-material/Settings";
 import PeopleIcon from "@mui/icons-material/People";
@@ -22,6 +15,7 @@ import QrCodeIcon from "@mui/icons-material/QrCode";
 import AssessmentIcon from "@mui/icons-material/Assessment";
 import SnackBar from "./components/commonComponents/SnackBar";
 import canAccess from "./utils/canAccess";
+import { setNavigate } from "./utils/navigationHelper";
 
 function App() {
   const userRole = useSelector((state) => state.auth.userData?.user?.role);
@@ -29,6 +23,10 @@ function App() {
   const [loading, setLoading] = useState(true);
   const navigate = useNavigate();
   const dispatch = useDispatch();
+
+  useEffect(() => {
+    setNavigate(navigate);
+  }, [navigate]);
 
   useEffect(() => {
     const fetchData = async () => {

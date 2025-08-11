@@ -2,9 +2,13 @@ import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { createUser } from "../../api/userApi";
 import { getAllLocations } from "../../api/locationApi"; // Uncomment if used
+import { useDispatch } from "react-redux";
+import { showNotificationWithTimeout } from "../../redux/slices/notificationSlice";
+import { handleAxiosError } from "../../utils/handleAxiosError";
 
 const AddUser = () => {
   const navigate = useNavigate();
+  const dispatch = useDispatch();
   const [formData, setFormData] = useState({
     userName: "",
     email: "",
@@ -21,19 +25,23 @@ const AddUser = () => {
   useEffect(() => {
   const fetchLocations = async () => {
     try {
-      const data = await getAllLocations(); // get the `.data` part directly
-      console.log("Locations fetched:", data);
-
+      const data = await getAllLocations();
       // Check for success
       if (data?.success && Array.isArray(data.data)) {
         setLocations(data.data);
       } else {
-        setLocations([]); // fallback
+        setLocations([]);
         console.warn("No locations found");
       }
-    } catch (err) {
-      console.error("Failed to fetch locations:", err);
-      setLocations([]); // fallback
+    } catch (error) {
+      dispatch(
+        showNotificationWithTimeout({
+          show: true,
+          type: "error",
+          message: handleAxiosError(error),
+        })
+      );
+      setLocations([]);
     }
   };
 
@@ -58,8 +66,13 @@ const AddUser = () => {
       alert("User created successfully");
       navigate("/masters/user-master");
     } catch (error) {
-      console.error("Error creating user:", error);
-      alert("Failed to create user");
+      dispatch(
+        showNotificationWithTimeout({
+          show: true,
+          type: "error",
+          message: handleAxiosError(error),
+        })
+      );
     }
   };
 

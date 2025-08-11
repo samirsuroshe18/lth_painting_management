@@ -27,8 +27,10 @@ import {
   Refresh,
 } from "@mui/icons-material";
 import { DataGrid } from "@mui/x-data-grid";
-import { getAllAudits, getAssets } from "../../api/assetMasterApi";
+import { getAllAudits } from "../../api/auditLogApi";
 import { useDispatch } from "react-redux";
+import { showNotificationWithTimeout } from "../../redux/slices/notificationSlice";
+import { handleAxiosError } from "../../utils/handleAxiosError";
 
 const statusFilters = [
   { label: "All Audits", value: "all", icon: <ListAlt /> },
@@ -103,8 +105,15 @@ const SuperAdminDashboard = () => {
               key: s,
               total: res?.data?.pagination?.totalEntries ?? 0,
             };
-          } catch {
-            return { key: s, total: 0 }; // error → default to 0
+          } catch (error) {
+            dispatch(
+              showNotificationWithTimeout({
+                show: true,
+                type: "error",
+                message: handleAxiosError(error),
+              })
+            );
+            return { key: s, total: 0 };
           }
         })
       );
@@ -131,7 +140,7 @@ const SuperAdminDashboard = () => {
       setLoading(true);
 
       const res = await getAllAudits({
-        page: paginationModel.page + 1, // server expects 1-based
+        page: paginationModel.page + 1,
         limit: paginationModel.pageSize,
         status: lowerStatusParam(activeFilter),
         search: searchTerm,
@@ -152,8 +161,14 @@ const SuperAdminDashboard = () => {
           res?.data?.count ??
           0
       );
-    } catch (e) {
-      console.error("Failed to fetch assets", e);
+    } catch (error) {
+      dispatch(
+        showNotificationWithTimeout({
+          show: true,
+          type: "error",
+          message: handleAxiosError(error),
+        })
+      );
       setRows([]);
       setRowCount(0);
     } finally {
@@ -162,7 +177,7 @@ const SuperAdminDashboard = () => {
   };
 
   const handleViewAsset = (auditLog) => {
-    navigate("asset", { state: { auditLog } });
+    navigate("view-audit", { state: { auditLog } });
   };
 
   const columns = useMemo(

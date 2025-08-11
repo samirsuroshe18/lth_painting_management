@@ -10,6 +10,7 @@ import { showNotificationWithTimeout } from "../../redux/slices/notificationSlic
 import editIcon from "@/assets/icons/edit.png";
 import { motion, AnimatePresence } from "framer-motion";
 import { FaChevronLeft } from "react-icons/fa";
+import { handleAxiosError } from "../../utils/handleAxiosError";
 
 const LocationMaster = () => {
   const [locations, setLocations] = useState([]);
@@ -27,12 +28,19 @@ const LocationMaster = () => {
   const indexOfLastItem = currentPage * itemsPerPage;
   const indexOfFirstItem = indexOfLastItem - itemsPerPage;
   const currentLocation = locations.slice(indexOfFirstItem, indexOfLastItem);
+
   const fetchLocations = async () => {
     try {
       const result = await getAllLocations();
       setLocations(result?.data || []);
     } catch (error) {
-      console.error("Error fetching Location:", error);
+      dispatch(
+        showNotificationWithTimeout({
+          show: true,
+          type: "error",
+          message: handleAxiosError(error),
+        })
+      );
     }
   };
 
@@ -41,7 +49,13 @@ const LocationMaster = () => {
       const result = await getAllStates();
       setStates(result?.data || []);
     } catch (error) {
-      console.error("Error fetching States:", error);
+      dispatch(
+        showNotificationWithTimeout({
+          show: true,
+          type: "error",
+          message: handleAxiosError(error),
+        })
+      );
     }
   };
 
@@ -159,7 +173,7 @@ const LocationMaster = () => {
                 className="absolute top-3 right-3 text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-white text-xl font-bold"
                 aria-label="Close"
               >
-                ×
+                X
               </button>
 
               <h2 className="text-xl font-semibold mb-4 text-gray-800 dark:text-gray-100">

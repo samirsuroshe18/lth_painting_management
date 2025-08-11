@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import {
   Box,
   Typography,
@@ -21,7 +21,6 @@ import dayjs from "dayjs";
 import { LocalizationProvider } from "@mui/x-date-pickers/LocalizationProvider";
 import { DatePicker } from "@mui/x-date-pickers/DatePicker";
 import AddPhotoAlternateIcon from "@mui/icons-material/AddPhotoAlternate";
-import { getAllLocations } from "../../api/locationApi";
 import { createNewAsset } from "../../api/assetMasterApi";
 import { useDispatch, useSelector } from "react-redux";
 import { showNotificationWithTimeout } from "../../redux/slices/notificationSlice";
@@ -97,7 +96,6 @@ function CreateAsset() {
       );
       setSuccessDialogOpen(true);
     } catch (error) {
-      setLoading(false);
       dispatch(
         showNotificationWithTimeout({
           show: true,
