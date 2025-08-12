@@ -1,7 +1,7 @@
 import { Router } from "express";
 import { verifyJwt } from "../middlewares/auth.middleware.js";
 import { checkAccess } from "../middlewares/checkAccess.middleware.js";
-import { createUser, getAllUsers, updateUser, fetchUser,updatePermissions, removeUser, updateAllUsersIsDelete } from "../controllers/userMaster.controller.js";
+import { createUser, getAllUsers, updateUser, fetchUser,updatePermissions, removeUser } from "../controllers/userMaster.controller.js";
 
 const router = Router();
 
@@ -11,6 +11,5 @@ router.route('/update-user/:userId').put(verifyJwt, checkAccess('userMaster:edit
 router.route('/fetch-user/:userId').get(verifyJwt, checkAccess('roleMaster:view'), fetchUser);
 router.route('/update-user-permissions/:userId').put(verifyJwt, checkAccess('roleMaster:view'), updatePermissions);
 router.route('/remove-user/:id').delete(verifyJwt, checkAccess('userMaster:edit'), removeUser);
-router.route('/update-permissions').put(verifyJwt, updateAllUsersIsDelete);
 
 export default router;

@@ -257,48 +257,11 @@ const updatePermissions = catchAsync(async (req, res) => {
     );
 });
 
-const ACTION_MAP = [
-  "allAccess",
-  "dashboard:view",
-  "dashboard:edit",
-  "masters:view",
-  "masters:edit",
-  "userMaster:view",
-  "userMaster:edit",
-  "roleMaster:view",
-  "roleMaster:edit",
-  "assetMaster:view",
-  "assetMaster:edit",
-  "locationMaster:view",
-  "locationMaster:edit",
-  "stateMaster:view",
-  "stateMaster:edit",
-  "generateQrCode",
-  "auditReport:view",
-  "auditReport:edit",
-];
-
-const updateAllUsersIsDelete = async (req, res) => {
-  try {
-    await User.updateMany(
-      {}, // no filter = all documents
-      { $set: { isDeleted: false } }
-    );
-
-    res.json({ message: "isDelete set to false for all users" });
-  } catch (error) {
-    console.error("Error updating users:", error);
-    res.status(500).json({ error: "Internal Server Error" });
-  }
-};
-
-
 export {
     createUser,
     getAllUsers,
     updateUser,
     fetchUser,
     updatePermissions,
-    updateAllUsersIsDelete,
     removeUser
 };
