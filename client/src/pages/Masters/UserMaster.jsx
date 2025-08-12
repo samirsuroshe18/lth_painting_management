@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { getAllUsers } from "../../api/userApi";
+import { getAllUsers, removeUser } from "../../api/userApi";
 import { DataGrid } from "@mui/x-data-grid";
 import {
   Box,
@@ -19,6 +19,11 @@ import {
   useTheme,
   Fab,
   CircularProgress,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  Alert,
+  DialogActions,
 } from "@mui/material";
 import {
   DriveFileRenameOutline as EditIcon,
@@ -27,6 +32,7 @@ import {
   Search as SearchIcon,
   Refresh,
   Cancel,
+  Delete as DeleteIcon,
 } from "@mui/icons-material";
 import { useDispatch } from "react-redux";
 import { showNotificationWithTimeout } from "../../redux/slices/notificationSlice";
@@ -47,6 +53,9 @@ const UserMaster = () => {
 
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [assetToDelete, setAssetToDelete] = useState(null);
+  const [deleteLoading, setDeleteLoading] = useState(false);
 
   // Client-side pagination model
   const [paginationModel, setPaginationModel] = useState({
@@ -65,7 +74,14 @@ const UserMaster = () => {
       setLoading(true);
       const response = await getAllUsers();
       const apiUsers = response?.data || [];
-      setAllUsers(apiUsers);
+      const usersWithIds = apiUsers.map((user, index) => ({
+        ...user,
+        id: user._id,
+        srNo: paginationModel.page * paginationModel.pageSize + index + 1,
+      }));
+
+      // Provide rows to the grid
+      setRows(usersWithIds);
     } catch (error) {
       dispatch(
         showNotificationWithTimeout({
@@ -80,27 +96,30 @@ const UserMaster = () => {
   };
 
   // Apply client-side search filter
-    useEffect(() => {
-      const term = (searchTerm || "").toLowerCase();
-  
-      const filtered = allUsers.filter((user) => {
-      const u = user?.userName?.toLowerCase() || "";
-      const e = user?.email?.toLowerCase() || "";
-      const r = user?.role?.toLowerCase() || "";
-      return u.includes(term) || e.includes(term) || r.includes(term);
-    }).map((user, index) => ({
-          id: user._id,
-      srNo: index + 1,
-      userName: user.userName,
-      email: user.email,
-      role: user.role,
-      lastLogin: user.lastLogin ? new Date(user.lastLogin).toLocaleString() : "Never",
-        }));
-  
-      // Reset to first page whenever search/filter changes
-      setPaginationModel((prev) => ({ ...prev, page: 0 }));
-      setRows(filtered);
-    }, [allUsers, searchTerm]);
+  useEffect(() => {
+    const term = (searchTerm || "").toLowerCase();
+
+    const filtered = allUsers
+      .filter((user) => {
+        const u = user?.userName?.toLowerCase() || "";
+        const e = user?.email?.toLowerCase() || "";
+        const r = user?.role?.toLowerCase() || "";
+        return u.includes(term) || e.includes(term) || r.includes(term);
+      })
+      .map((user, index) => ({
+        id: user._id,
+        srNo: index + 1,
+        userName: user.userName,
+        email: user.email,
+        role: user.role,
+        lastLogin: user.lastLogin
+          ? new Date(user.lastLogin).toLocaleString()
+          : "Never",
+      }));
+
+    // Reset to first page whenever search/filter changes
+    setPaginationModel((prev) => ({ ...prev, page: 0 }));
+  }, [allUsers, searchTerm]);
 
   // Recompute filtered + paged rows whenever source, search, or pagination changes
   // useEffect(() => {
@@ -146,9 +165,55 @@ const UserMaster = () => {
   //   setPaginationModel((prev) => ({ ...prev, page: 0 }));
   // }, [searchTerm]);
 
+  const handleDelete = async () => {
+    if (!assetToDelete) return;
+
+    try {
+      setDeleteLoading(true);
+      const response = await removeUser(assetToDelete.id);
+
+      if (response.success) {
+        // Optimistic removal from local copy
+        setRows((prev) => prev.filter((a) => a.id !== assetToDelete.id));
+
+        // If we removed the last item on this page (and not on page 0) → step back a page
+        const isLastItemOnPage = rows.length <= 1 && paginationModel.page > 0;
+        if (isLastItemOnPage) {
+          setPaginationModel((prev) => ({ ...prev, page: prev.page - 1 }));
+        } else {
+          // Otherwise just refetch the current page
+          await fetchAllUsers();
+        }
+
+        dispatch(
+          showNotificationWithTimeout({
+            show: true,
+            type: "success",
+            message: "Asset deleted successfully",
+          })
+        );
+      }
+    } catch (error) {
+      dispatch(
+        showNotificationWithTimeout({
+          show: true,
+          type: "error",
+          message: handleAxiosError(error),
+        })
+      );
+    } finally {
+      setDeleteLoading(false);
+      setDeleteDialogOpen(false);
+      setAssetToDelete(null);
+    }
+  };
+
   const handleAddUser = () => navigate("add-user");
-  const handleEditUser = (userId) => navigate(`edit-user/${userId}`);
-  const handleEditRights = (userId) => navigate(`edit-rights/${userId}`);
+  const handleEditUser = (user) => {
+    navigate("edit-user", { state: { user } });
+  };
+  const handleEditRights = (user) =>
+    navigate("edit-rights", { state: { user } });
   const handleRefresh = () => fetchAllUsers();
 
   const columns = [
@@ -237,7 +302,7 @@ const UserMaster = () => {
               color="warning"
               onClick={(e) => {
                 e.stopPropagation();
-                handleEditUser(params.row.id);
+                handleEditUser(params.row);
               }}
               sx={{ p: 0.5 }}
             >
@@ -252,7 +317,7 @@ const UserMaster = () => {
                 color="primary"
                 onClick={(e) => {
                   e.stopPropagation();
-                  handleEditRights(params.row.id);
+                  handleEditRights(params.row);
                 }}
                 sx={{ p: 0.5 }}
               >
@@ -260,6 +325,20 @@ const UserMaster = () => {
               </IconButton>
             </Tooltip>
           )}
+
+          <Tooltip title="Delete">
+            <IconButton
+              size="small"
+              color="error"
+              onClick={(e) => {
+                e.stopPropagation();
+                setAssetToDelete(params.row);
+                setDeleteDialogOpen(true);
+              }}
+            >
+              <DeleteIcon fontSize="small" />
+            </IconButton>
+          </Tooltip>
         </Box>
       ),
     },
@@ -270,7 +349,12 @@ const UserMaster = () => {
       {/* Header card */}
       <Card elevation={2}>
         <CardContent>
-          <Grid container alignItems="center" justifyContent="space-between" spacing={2}>
+          <Grid
+            container
+            alignItems="center"
+            justifyContent="space-between"
+            spacing={2}
+          >
             <Grid item>
               <Typography variant="h4" fontWeight={700} color="primary">
                 User Management
@@ -325,7 +409,11 @@ const UserMaster = () => {
                   ),
                   endAdornment: searchTerm && (
                     <InputAdornment position="end">
-                      <IconButton size="small" onClick={() => setSearchTerm("")} edge="end">
+                      <IconButton
+                        size="small"
+                        onClick={() => setSearchTerm("")}
+                        edge="end"
+                      >
                         <Cancel fontSize="small" />
                       </IconButton>
                     </InputAdornment>
@@ -336,7 +424,11 @@ const UserMaster = () => {
 
             <Grid item xs={12} md={6}>
               <Box display="flex" gap={1} justifyContent="flex-end">
-                <Chip label={`${rowCount} users`} color="primary" variant="outlined" />
+                <Chip
+                  label={`${rowCount} users`}
+                  color="primary"
+                  variant="outlined"
+                />
                 {loading && (
                   <Chip
                     icon={<CircularProgress size={14} color="inherit" />}
@@ -387,10 +479,54 @@ const UserMaster = () => {
 
       {/* Mobile FAB */}
       {isMobile && (
-        <Fab color="primary" aria-label="add" onClick={handleAddUser} sx={{ position: "fixed", bottom: 46, right: 36 }}>
+        <Fab
+          color="primary"
+          aria-label="add"
+          onClick={handleAddUser}
+          sx={{ position: "fixed", bottom: 46, right: 36 }}
+        >
           <AddIcon />
         </Fab>
       )}
+
+      {/* Delete confirmation dialog */}
+      <Dialog
+        open={deleteDialogOpen}
+        onClose={() => setDeleteDialogOpen(false)}
+        maxWidth="xs"
+        fullWidth
+      >
+        <DialogTitle color="error">Delete User</DialogTitle>
+        <DialogContent>
+          <Alert severity="warning" sx={{ mb: 2 }}>
+            This action cannot be undone.
+          </Alert>
+          <Typography>
+            Are you sure you want to delete{" "}
+            <strong>{assetToDelete?.name}</strong>?
+          </Typography>
+        </DialogContent>
+        <DialogActions>
+          <Button
+            onClick={() => setDeleteDialogOpen(false)}
+            variant="outlined"
+            disabled={deleteLoading}
+          >
+            Cancel
+          </Button>
+          <Button
+            variant="contained"
+            color="error"
+            disabled={deleteLoading}
+            onClick={handleDelete}
+            startIcon={
+              deleteLoading ? <CircularProgress size={16} /> : <DeleteIcon />
+            }
+          >
+            {deleteLoading ? "Deleting..." : "Delete"}
+          </Button>
+        </DialogActions>
+      </Dialog>
     </Container>
   );
 };

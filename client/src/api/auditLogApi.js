@@ -34,7 +34,7 @@ const reviewAuditStatus = async (id, reviewStatus) => {
     try {
         const response = await axiosInstance.put(
             `/api/v1/assetaudit/review-audit-status/${id}`,
-            { reviewStatus },
+            reviewStatus,
         );
         return response.data;
     } catch (error) {

@@ -19,7 +19,7 @@ import {
   OutlinedInput,
 } from "@mui/material";
 import { ArrowBack as ArrowBackIcon } from "@mui/icons-material";
-import { useDispatch } from "react-redux";
+import { useDispatch, useSelector } from "react-redux";
 import { showNotificationWithTimeout } from "../../redux/slices/notificationSlice";
 import { handleAxiosError } from "../../utils/handleAxiosError";
 
@@ -38,32 +38,8 @@ const AddUser = () => {
     location: [], // array of location _id strings
   });
 
-  const [locations, setLocations] = useState([]);
-
-  useEffect(() => {
-    const fetchLocations = async () => {
-      try {
-        const data = await getAllLocations();
-        if (data?.success && Array.isArray(data.data)) {
-          setLocations(data.data);
-        } else {
-          setLocations([]);
-          console.warn("No locations found");
-        }
-      } catch (error) {
-        dispatch(
-          showNotificationWithTimeout({
-            show: true,
-            type: "error",
-            message: handleAxiosError(error),
-          })
-        );
-        setLocations([]);
-      }
-    };
-
-    fetchLocations();
-  }, [dispatch]);
+  const userData = useSelector((state) => state.auth.userData?.user);
+  const [locations, setLocations] = useState(userData.location);
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -197,7 +173,6 @@ const AddUser = () => {
                 >
                   <option value="user">User</option>
                   <option value="admin">Admin</option>
-                  <option value="superadmin">Super Admin</option>
                   <option value="auditor">Auditor</option>
                 </select>
               </div>

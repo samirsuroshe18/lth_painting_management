@@ -31,17 +31,17 @@ const createUser = catchAsync(async (req, res) => {
 
     const mailResponse = await mailSender(email, role, password);
 
-    if (mailResponse) {
-        return res.status(200).json(
-            new ApiResponse(200, createdUser, "Account created successfully. An email has been sent to the user with login credentials.")
-        );
+    if (!mailResponse) {
+        console.log("Something went wrong!! An email couldn't sent to your account");
     }
 
-    throw new ApiError(500, "Something went wrong!! An email couldn't sent to your account");
+    return res.status(200).json(
+        new ApiResponse(200, createdUser, "Account created successfully. An email has been sent to the user with login credentials.")
+    );
 });
 
 const getAllUsers = catchAsync(async (req, res) => {
-    const users = await User.find({}).find({ role: { $ne: 'superadmin' } })
+    const users = await User.find({}).find({ role: { $ne: 'superadmin' }, isDeleted:false })
         .select('-password -__v')
         .sort({ createdAt: -1 })
         .populate({
@@ -152,6 +152,33 @@ const updateUser = catchAsync(async (req, res) => {
     return res.status(200).json(new ApiResponse(200, user, "User updated successfully"));
 });
 
+const removeUser = catchAsync(async (req, res) => {
+    const { id } = req.params;
+
+    if (!id) {
+        throw new ApiError(404, "id is missing");
+    }
+
+    const deletedUser = await User.findByIdAndUpdate(
+        id,
+        {
+            isDeleted: true
+        },
+        {
+            new: true,
+            runValidators: true
+        }
+    );
+
+    if (!deletedUser) {
+        throw new ApiError(500, "Something went wrong");
+    }
+
+    return res.status(200).json(
+        new ApiResponse(200, {}, "User Removed Successfully")
+    );
+})
+
 const fetchUser = catchAsync(async (req, res) => {
     const { userId } = req.params;
 
@@ -230,11 +257,48 @@ const updatePermissions = catchAsync(async (req, res) => {
     );
 });
 
+const ACTION_MAP = [
+  "allAccess",
+  "dashboard:view",
+  "dashboard:edit",
+  "masters:view",
+  "masters:edit",
+  "userMaster:view",
+  "userMaster:edit",
+  "roleMaster:view",
+  "roleMaster:edit",
+  "assetMaster:view",
+  "assetMaster:edit",
+  "locationMaster:view",
+  "locationMaster:edit",
+  "stateMaster:view",
+  "stateMaster:edit",
+  "generateQrCode",
+  "auditReport:view",
+  "auditReport:edit",
+];
+
+const updateAllUsersIsDelete = async (req, res) => {
+  try {
+    await User.updateMany(
+      {}, // no filter = all documents
+      { $set: { isDeleted: false } }
+    );
+
+    res.json({ message: "isDelete set to false for all users" });
+  } catch (error) {
+    console.error("Error updating users:", error);
+    res.status(500).json({ error: "Internal Server Error" });
+  }
+};
+
 
 export {
     createUser,
     getAllUsers,
     updateUser,
     fetchUser,
-    updatePermissions
+    updatePermissions,
+    updateAllUsersIsDelete,
+    removeUser
 };

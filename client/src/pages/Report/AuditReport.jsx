@@ -26,6 +26,7 @@ import { showNotificationWithTimeout } from "../../redux/slices/notificationSlic
 import { handleAxiosError } from "../../utils/handleAxiosError";
 import { getAssetsByLocations } from "../../api/assetMasterApi";
 import { fetchAudits } from "../../api/auditLogApi";
+import canAccess from "../../utils/canAccess";
 
 // Helpers
 const optionId = (opt) => opt?._id || opt?.id;
@@ -130,6 +131,17 @@ export default function AuditReport() {
   };
 
   const handleExport = () => {
+    if(!canAccess(userData?.permissions, 'auditReport:edit')){
+      dispatch(
+        showNotificationWithTimeout({
+          show: true,
+          type: "error",
+          message: 'Access Denied',
+        })
+      );
+      return;
+    }
+
     if (!audits?.length) return;
     const flat = audits.map((a, idx) => ({
       "Sr. No": idx + 1,
@@ -271,7 +283,8 @@ export default function AuditReport() {
             Audit Report
           </h1>
           <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
-            Filter audits by location, asset, and date range. Export results to Excel.
+            Filter audits by location, asset, and date range. Export results to
+            Excel.
           </p>
         </div>
       </div>

@@ -86,6 +86,11 @@ const userSchema = new Schema({
         type: String
     },
 
+    isDeleted: {
+        type: Boolean,
+        default: false,
+    },
+
     forgotPasswordToken: String,
 
     forgotPasswordTokenExpiry: Date,

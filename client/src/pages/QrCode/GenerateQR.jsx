@@ -30,7 +30,7 @@ import {
   Refresh,
   FilterList,
 } from '@mui/icons-material';
-import { getAssets } from '../../api/assetMasterApi';
+import { getAssets, getQrCodes } from '../../api/assetMasterApi';
 
 const GenerateQR = () => {
   const theme = useTheme();
@@ -49,7 +49,7 @@ const GenerateQR = () => {
       setLoading(true);
       const startTime = Date.now();
       
-      const res = await getAssets('');
+      const res = await getQrCodes({});
       const allAssets = res?.data?.assets || [];
       const assetsWithQR = allAssets.filter(asset => asset.qrCode);
 

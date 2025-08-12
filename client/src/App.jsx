@@ -18,7 +18,6 @@ import canAccess from "./utils/canAccess";
 import { setNavigate } from "./utils/navigationHelper";
 
 function App() {
-  const userRole = useSelector((state) => state.auth.userData?.user?.role);
   const userData = useSelector((state) => state.auth.userData?.user);
   const [loading, setLoading] = useState(true);
   const navigate = useNavigate();
@@ -53,37 +52,37 @@ function App() {
       segment: "",
       title: "Dashboard",
       icon: <DashboardIcon />,
-      permission: "dashboard",
+      permission: "dashboard:view",
     },
     {
       segment: "masters",
       title: "Masters",
       icon: <SettingsIcon />,
-      permission: "masters",
+      permission: "masters:view",
       children: [
         {
           segment: "user-master",
           title: "User Master",
           icon: <PeopleIcon />,
-          permission: "userMaster",
+          permission: "userMaster:view",
         },
         {
           segment: "asset-master",
           title: "Asset Master",
           icon: <DevicesOtherIcon />,
-          permission: "assetMaster",
+          permission: "assetMaster:view",
         },
         {
           segment: "location-master",
           title: "Location Master",
           icon: <LocationOnIcon />,
-          permission: "locationMaster",
+          permission: "locationMaster:view",
         },
         {
           segment: "state-master",
           title: "State Master",
           icon: <PublicIcon />,
-          permission: "stateMaster",
+          permission: "stateMaster:view",
         },
       ],
     },
@@ -97,7 +96,7 @@ function App() {
       segment: "audit-report",
       title: "Audit Report",
       icon: <AssessmentIcon />,
-      permission: "auditReport",
+      permission: "auditReport:view",
     },
   ];
 
@@ -127,61 +126,7 @@ function App() {
       );
   };
 
-  const superAdminNavigation = filterNavigationByPermissions(navigationConfig);
-
-  const userNavigation = [
-    {
-      segment: "",
-      title: "Generate QR Code",
-      icon: <QrCodeIcon />,
-    },
-  ];
-
-  const auditorNavigation = [
-    {
-      segment: "",
-      title: "Dashboard",
-      icon: <DashboardIcon />,
-    },
-    {
-      segment: "generate-qr",
-      title: "Generate QR Code",
-      icon: <QrCodeIcon />,
-    },
-    {
-      segment: "audit-report",
-      title: "Audit Report",
-      icon: <AssessmentIcon />,
-    },
-  ];
-
-  // const getNavigation = () => {
-  //   switch (userRole) {
-  //     case "superadmin":
-  //       return superAdminNavigation;
-  //     case "admin":
-  //       return superAdminNavigation;
-  //     case "auditor":
-  //       return auditorNavigation;
-  //     case "user":
-  //       return userNavigation;
-  //     default:
-  //       return [];
-  //   }
-  // };
-  const getNavigation = () => {
-  switch (userRole) {
-    case "superadmin":
-    case "admin":
-    case "auditor":
-    case "user":
-      return filterNavigationByPermissions(navigationConfig);
-    default:
-      return [];
-  }
-};
-
-  const NAVIGATION = getNavigation();
+  const NAVIGATION = filterNavigationByPermissions(navigationConfig);
 
   // Show loading state
   if (loading) {

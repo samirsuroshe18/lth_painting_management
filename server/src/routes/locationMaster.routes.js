@@ -5,8 +5,8 @@ import { addNewLocation, getLocations, updateLocation } from "../controllers/loc
 
 const router = Router();
 
-router.route('/add-location').post(verifyJwt, checkAccess('userMaster', 'dashboard'), addNewLocation);
-router.route('/update-location/:id').put(verifyJwt, checkAccess('userMaster', 'dashboard'), updateLocation);
-router.route('/get-locations').get(verifyJwt, checkAccess('userMaster', 'dashboard'), getLocations)
+router.route('/add-location').post(verifyJwt, checkAccess('locationMaster:edit'), addNewLocation);
+router.route('/update-location/:id').put(verifyJwt, checkAccess('locationMaster:edit'), updateLocation);
+router.route('/get-locations').get(verifyJwt, checkAccess('locationMaster:view'), getLocations)
 
 export default router;

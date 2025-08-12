@@ -36,6 +36,20 @@ const updateUser = async (userId, updatedData) => {
   }
 };
 
+const removeUser = async (id) => {
+    try {
+        const response = await axiosInstance.delete(
+            `/api/v1/usermaster/remove-user/${id}`,
+        );
+        return response.data;
+    } catch (error) {
+        if (import.meta.env.VITE_DEVELOPMENT === 'development') {
+            console.error('Error removing asset:', error);
+        }
+        throw error;
+    }
+};
+
 const fetchUser = async (userId) => {
   try {
     const response = await axiosInstance.get(`/api/v1/usermaster/fetch-user/${userId}`);
@@ -65,5 +79,6 @@ export {
   createUser,
   updateUser,
   fetchUser,
-  updatePermissions
+  updatePermissions,
+  removeUser
 };

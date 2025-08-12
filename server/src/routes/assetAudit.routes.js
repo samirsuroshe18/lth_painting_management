@@ -12,10 +12,10 @@ router.route('/add-asset-audit').post(verifyJwt, checkAccess('assetMaster'), upl
   { name: 'auditImage2', maxCount: 1 },
   { name: 'auditImage3', maxCount: 1 },
 ]), addNewAssetAudit);
-router.route('/review-audit-status/:auditId').put(verifyJwt, checkAccess('assetMaster'), reviewAuditStatus);
-router.route('/get-audit-logs').get(verifyJwt, checkAccess('assetMaster'), getAuditLogs)
-router.route('/get-asset-audit-logs/:assetId').get(verifyJwt, checkAccess('assetMaster'), getAssetAuditLogs)
+router.route('/review-audit-status/:auditId').put(verifyJwt, checkAccess('dashboard:edit'), reviewAuditStatus);
+router.route('/get-audit-logs').get(verifyJwt, checkAccess('dashboard:view'), getAuditLogs)
+router.route('/get-asset-audit-logs/:assetId').get(verifyJwt, checkAccess('assetMaster:view'), getAssetAuditLogs)
 router.route('/view-audit-log/:auditId').get(verifyJwt, checkAccess('assetMaster'), viewAuditLog);
-router.route('/fetch-audits').post(verifyJwt, checkAccess('assetMaster'), fetchAudits);
+router.route('/fetch-audits').post(verifyJwt, checkAccess('auditReport:view'), fetchAudits);
 
 export default router;

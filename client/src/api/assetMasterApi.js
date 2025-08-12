@@ -15,6 +15,21 @@ const getAssets = async (queryParams) => {
     }
 };
 
+const getQrCodes = async (queryParams) => {
+    try {
+        const response = await axiosInstance.get(
+            "/api/v1/assetmaster/get-qr-codes",
+            { params: queryParams }
+        );
+        return response.data;
+    } catch (error) {
+        if (import.meta.env.VITE_DEVELOPMENT === 'development') {
+            console.error('Error fetching assets:', error);
+        }
+        throw error;
+    }
+};
+
 const reviewAssetStatus = async (id, formData) => {
     try {
         const response = await axiosInstance.put(
@@ -148,5 +163,6 @@ export {
     updateAsset,
     removeAsset,
     reviewAssetStatus,
-    getAssetsByLocations
+    getAssetsByLocations,
+    getQrCodes
 };

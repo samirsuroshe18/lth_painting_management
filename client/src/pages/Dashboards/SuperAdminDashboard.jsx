@@ -313,10 +313,10 @@ const SuperAdminDashboard = () => {
       <Grid container spacing={2} alignItems="center">
         <Grid item xs={12} md="auto">
           <Typography variant="h4" fontWeight={700} color="primary">
-            Super Admin Dashboard
+            Dashboard
           </Typography>
           <Typography variant="body2" color="text.secondary">
-            Overview of audit status and recent assets
+            Audit Overview and Asset Tracking
           </Typography>
         </Grid>
       </Grid>

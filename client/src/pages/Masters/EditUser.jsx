@@ -1,79 +1,28 @@
 import React, { useEffect, useState } from "react";
-import { useParams, useNavigate } from "react-router-dom";
-import { fetchUser, updateUser } from "../../api/userApi";
-import { getAllLocations } from "../../api/locationApi";
-import { useDispatch } from "react-redux";
+import { useNavigate, useLocation } from "react-router-dom";
+import { updateUser } from "../../api/userApi";
+import { useDispatch, useSelector } from "react-redux";
 import { showNotificationWithTimeout } from "../../redux/slices/notificationSlice";
-import { handleAxiosError } from "../../utils/handleAxiosError";
 
 const EditUser = () => {
-  const { id } = useParams();
+  const userData = useSelector((state) => state.auth.userData?.user);
+  const { state } = useLocation();
+  const user = state?.user || {};
   const navigate = useNavigate();
   const dispatch = useDispatch();
 
-  const [locations, setLocations] = useState([]);
+  const [locations, setLocations] = useState(userData.location);
   const [formData, setFormData] = useState({
-    userName: "",
-    email: "",
-    mobileNo: "",
-    role: "user",
-    password: "",
-    confirmPassword: "",
-    location: [],
-    status: "active",
+    userName: user.userName,
+    email: user.email,
+    mobileNo: user.mobileNo,
+    role: user.role,
+    location: user.location,
+    status: user.isActive,
   });
 
-  useEffect(() => {
-    const fetchData = async () => {
-      try {
-        const user = await fetchUser(id);
-        setFormData({
-          userName: user.userName || "",
-          email: user.email || "",
-          mobileNo: user.mobileNo || "",
-          role: user.role || "user",
-          password: "",
-          confirmPassword: "",
-          location: user.location?.map((loc) => loc._id) || [],
-          status: user.isActive ? "active" : "inactive",
-        });
-      } catch (err) {
-        dispatch(
-          showNotificationWithTimeout({
-            show: true,
-            message: "Failed to fetch user data.",
-            type: "error",
-          })
-        );
-      }
-
-      try {
-        const data = await getAllLocations();
-        if (data?.success && Array.isArray(data.data)) {
-          setLocations(data.data);
-        } else {
-          setLocations([]);
-          console.warn("No locations found");
-        }
-      } catch (error) {
-        dispatch(
-          showNotificationWithTimeout({
-            show: true,
-            type: "error",
-            message: handleAxiosError(error),
-          })
-        );
-        setLocations([]);
-      }
-    };
-
-    fetchData();
-  }, [id, dispatch]);
-
-  // ✅ Handle form input changes
   const handleChange = (e) => {
     const { name, value, type, selectedOptions } = e.target;
-
     if (type === "select-multiple") {
       const values = Array.from(selectedOptions, (option) => option.value);
       setFormData({ ...formData, [name]: values });
@@ -82,21 +31,8 @@ const EditUser = () => {
     }
   };
 
-  // ✅ Handle form submission
   const handleSubmit = async (e) => {
     e.preventDefault();
-
-    if (formData.password !== formData.confirmPassword) {
-      dispatch(
-        showNotificationWithTimeout({
-          show: true,
-          message: "Passwords do not match.",
-          type: "error",
-        })
-      );
-      return;
-    }
-
     try {
       const updateData = {
         userName: formData.userName,
@@ -107,11 +43,7 @@ const EditUser = () => {
         status: formData.status,
       };
 
-      if (formData.password) {
-        updateData.password = formData.password;
-      }
-
-      await updateUser(id, updateData);
+      await updateUser(user._id, updateData);
 
       dispatch(
         showNotificationWithTimeout({
@@ -134,163 +66,201 @@ const EditUser = () => {
   };
 
   return (
-    <div className="min-w-5xl mx-auto mt-12 px-5">
-      <div className="bg-white dark:bg-gray-900 rounded-xl shadow-lg p-7">
-        <h2 className="text-2xl font-bold mb-6 text-gray-800 dark:text-white">
-          Edit User
-        </h2>
-
-        <form onSubmit={handleSubmit}>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            {/* Username */}
-            <div>
-              <label className="block text-sm font-medium text-gray-700 dark:text-white mb-2">
-                Username
-              </label>
-              <input
-                type="text"
-                name="userName"
-                value={formData.userName}
-                onChange={handleChange}
-                required
-                className="w-full px-4 py-2 border rounded-md dark:bg-gray-800 dark:border-gray-700 dark:text-white"
-              />
-            </div>
-
-            {/* Email */}
-            <div>
-              <label className="block text-sm font-medium text-gray-700 dark:text-white mb-2">
-                Email
-              </label>
-              <input
-                type="email"
-                name="email"
-                value={formData.email}
-                onChange={handleChange}
-                required
-                className="w-full px-4 py-2 border rounded-md dark:bg-gray-800 dark:border-gray-700 dark:text-white"
-              />
-            </div>
-
-            {/* Mobile */}
-            <div>
-              <label className="block text-sm font-medium text-gray-700 dark:text-white mb-2">
-                Mobile No
-              </label>
-              <input
-                type="text"
-                name="mobileNo"
-                value={formData.mobileNo}
-                onChange={handleChange}
-                required
-                className="w-full px-4 py-2 border rounded-md dark:bg-gray-800 dark:border-gray-700 dark:text-white"
-              />
-            </div>
-
-            {/* Role */}
-            <div>
-              <label className="block text-sm font-medium text-gray-700 dark:text-white mb-2">
-                Role
-              </label>
-              <select
-                name="role"
-                value={formData.role}
-                onChange={handleChange}
-                className="w-full px-4 py-2 border rounded-md dark:bg-gray-800 dark:border-gray-700 dark:text-white"
-              >
-                <option value="user">User</option>
-                <option value="admin">Admin</option>
-                <option value="superadmin">Super Admin</option>
-                <option value="auditor">Auditor</option>
-              </select>
-            </div>
-
-            {/* Password */}
-            <div>
-              <label className="block text-sm font-medium text-gray-700 dark:text-white mb-2">
-                Password
-              </label>
-              <input
-                type="password"
-                name="password"
-                value={formData.password}
-                onChange={handleChange}
-                className="w-full px-4 py-2 border rounded-md dark:bg-gray-800 dark:border-gray-700 dark:text-white"
-              />
-            </div>
-
-            {/* Confirm Password */}
-            <div>
-              <label className="block text-sm font-medium text-gray-700 dark:text-white mb-2">
-                Confirm Password
-              </label>
-              <input
-                type="password"
-                name="confirmPassword"
-                value={formData.confirmPassword}
-                onChange={handleChange}
-                className="w-full px-4 py-2 border rounded-md dark:bg-gray-800 dark:border-gray-700 dark:text-white"
-              />
-            </div>
-
-            {/* Status */}
-            <div>
-              <label className="block text-sm font-medium text-gray-700 dark:text-white mb-2">
-                Status
-              </label>
-              <select
-                name="status"
-                value={formData.status}
-                onChange={handleChange}
-                className="w-full px-4 py-2 border rounded-md dark:bg-gray-800 dark:border-gray-700 dark:text-white"
-              >
-                <option value="active">Active</option>
-                <option value="inactive">Inactive</option>
-              </select>
-            </div>
-
-            {/* Location */}
-            <div>
-              <label className="block text-sm font-medium text-gray-700 dark:text-white mb-2">
-                Location
-              </label>
-              <select
-                name="location"
-                multiple
-                value={formData.location}
-                onChange={handleChange}
-                className="w-full h-32 px-4 py-2 border rounded-md dark:bg-gray-800 dark:border-gray-700 dark:text-white"
-              >
-                {locations.length > 0 ? (
-                  locations.map((loc) => (
-                    <option key={loc._id} value={loc._id}>
-                      {loc.name}
-                    </option>
-                  ))
-                ) : (
-                  <option disabled>No locations available</option>
-                )}
-              </select>
-            </div>
-          </div>
-
-          <div className="mt-8 flex justify-end gap-4">
+    <div className="">
+      <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+        {/* Header */}
+        <div className="mb-4 rounded-xl bg-white dark:bg-[#252525] shadow-sm border border-gray-200 dark:border-gray-700">
+          <div className="p-4 flex items-center gap-3">
             <button
-              type="button"
               onClick={() => navigate("/masters/user-master")}
-              className="bg-gray-500 text-white px-6 py-3 rounded-md font-semibold hover:bg-gray-600 transition-all"
+              className="inline-flex items-center justify-center h-10 w-10 rounded-lg border border-gray-200 text-gray-700 hover:bg-gray-50 dark:border-gray-700 dark:text-gray-100 dark:hover:bg-[#2A2A2A]"
+              aria-label="Back"
+              title="Back"
             >
-              Cancel
+              <svg
+                width="18"
+                height="18"
+                viewBox="0 0 24 24"
+                className="fill-current"
+              >
+                <path d="M15.41 7.41 14 6l-6 6 6 6 1.41-1.41L10.83 12z" />
+              </svg>
             </button>
-
-            <button
-              type="submit"
-              className="bg-blue-600 text-white px-6 py-3 rounded-md font-semibold hover:bg-blue-700 transition-all"
-            >
-              Update User
-            </button>
+            <div>
+              <h1 className="text-2xl font-bold text-gray-900 dark:text-white">
+                Edit User
+              </h1>
+              <p className="text-sm text-gray-500 dark:text-gray-300">
+                Update user details and access scope
+              </p>
+            </div>
           </div>
-        </form>
+        </div>
+
+        {/* Form */}
+        <div className="rounded-xl bg-white dark:bg-[#252525] shadow-sm border border-gray-200 dark:border-gray-700">
+          <form onSubmit={handleSubmit}>
+            <div className="p-6 grid grid-cols-1 md:grid-cols-2 gap-6">
+              {/* Username */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-2">
+                  Username
+                </label>
+                <input
+                  type="text"
+                  name="userName"
+                  value={formData.userName}
+                  onChange={handleChange}
+                  required
+                  className="w-full px-4 py-2.5 rounded-lg border border-gray-300 bg-white text-gray-900 shadow-sm focus:ring-2 focus:ring-blue-500 dark:border-gray-700 dark:bg-[#2A2A2A] dark:text-gray-100"
+                />
+              </div>
+
+              {/* Email */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-2">
+                  Email
+                </label>
+                <input
+                  type="email"
+                  name="email"
+                  value={formData.email}
+                  onChange={handleChange}
+                  required
+                  className="w-full px-4 py-2.5 rounded-lg border border-gray-300 bg-white text-gray-900 shadow-sm focus:ring-2 focus:ring-blue-500 dark:border-gray-700 dark:bg-[#2A2A2A] dark:text-gray-100"
+                />
+              </div>
+
+              {/* Mobile */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-2">
+                  Mobile No
+                </label>
+                <input
+                  type="text"
+                  name="mobileNo"
+                  value={formData.mobileNo}
+                  onChange={handleChange}
+                  required
+                  className="w-full px-4 py-2.5 rounded-lg border border-gray-300 bg-white text-gray-900 shadow-sm focus:ring-2 focus:ring-blue-500 dark:border-gray-700 dark:bg-[#2A2A2A] dark:text-gray-100"
+                />
+              </div>
+
+              {/* Role */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-2">
+                  Role
+                </label>
+                <select
+                  name="role"
+                  value={formData.role}
+                  onChange={handleChange}
+                  className="w-full px-4 py-2.5 rounded-lg border border-gray-300 bg-white text-gray-900 shadow-sm focus:ring-2 focus:ring-blue-500 dark:border-gray-700 dark:bg-[#2A2A2A] dark:text-gray-100"
+                >
+                  <option value="user">User</option>
+                  <option value="admin">Admin</option>
+                  <option value="superadmin">Super Admin</option>
+                  <option value="auditor">Auditor</option>
+                </select>
+              </div>
+
+              {/* Status */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-2">
+                  Status
+                </label>
+                <select
+                  name="status"
+                  value={formData.status === true ? 'Active' : 'Inactive'}
+                  onChange={handleChange}
+                  className="w-full px-4 py-2.5 rounded-lg border border-gray-300 bg-white text-gray-900 shadow-sm focus:ring-2 focus:ring-blue-500 dark:border-gray-700 dark:bg-[#2A2A2A] dark:text-gray-100"
+                >
+                  <option value="active">Active</option>
+                  <option value="inactive">Inactive</option>
+                </select>
+              </div>
+
+              {/* Location */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-2">
+                  Location
+                </label>
+                <select
+                  name="location"
+                  multiple
+                  value={formData.location}
+                  onChange={handleChange}
+                  className="w-full h-[100px] px-4 py-2.5 rounded-lg border border-gray-300 bg-white text-gray-900 shadow-sm focus:ring-2 focus:ring-blue-500 dark:border-gray-700 dark:bg-[#2A2A2A] dark:text-gray-100"
+                >
+                  {Array.isArray(locations) && locations.length > 0 ? (
+                    locations.map((loc) => (
+                      <option key={loc._id || loc} value={loc._id || loc}>
+                        {loc.name || loc}
+                      </option>
+                    ))
+                  ) : (
+                    <option disabled>No locations available</option>
+                  )}
+                </select>
+                <p className="mt-2 text-xs text-gray-500 dark:text-gray-400">
+                  Hold{" "}
+                  <kbd className="px-1.5 py-0.5 rounded bg-gray-100 dark:bg-[#1E1E1E] border dark:border-gray-700">
+                    Ctrl/Cmd
+                  </kbd>{" "}
+                  to select multiple
+                </p>
+              </div>
+
+              {/* Location */}
+              {/* <div className="md:col-span-2">
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-2">
+                  Location
+                </label>
+                <select
+                  name="location"
+                  multiple
+                  value={formData.location}
+                  onChange={handleChange}
+                  className="w-full h-40 px-4 py-2.5 rounded-lg border border-gray-300 bg-white text-gray-900 shadow-sm focus:ring-2 focus:ring-blue-500 dark:border-gray-700 dark:bg-[#2A2A2A] dark:text-gray-100"
+                >
+                  {Array.isArray(locations) && locations.length > 0 ? (
+                    locations.map((loc) => (
+                      <option key={loc._id || loc} value={loc._id || loc}>
+                        {loc.name || loc}
+                      </option>
+                    ))
+                  ) : (
+                    <option disabled>No locations available</option>
+                  )}
+                </select>
+                <p className="mt-2 text-xs text-gray-500 dark:text-gray-400">
+                  Hold{" "}
+                  <kbd className="px-1.5 py-0.5 rounded bg-gray-100 dark:bg-[#1E1E1E] border dark:border-gray-700">
+                    Ctrl/Cmd
+                  </kbd>{" "}
+                  to select multiple
+                </p>
+              </div> */}
+            </div>
+
+            {/* Footer Actions */}
+            <div className="px-6 py-4 border-t border-gray-200 dark:border-gray-700 flex justify-end gap-3">
+              <button
+                type="button"
+                onClick={() => navigate("/masters/user-master")}
+                className="rounded-lg border border-gray-300 px-5 py-2.5 text-sm font-medium text-gray-800 hover:bg-gray-50 dark:border-gray-600 dark:text-gray-100 dark:hover:bg-[#2A2A2A]"
+              >
+                Cancel
+              </button>
+              <button
+                type="submit"
+                className="rounded-lg bg-blue-600 px-5 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500"
+              >
+                Update User
+              </button>
+            </div>
+          </form>
+        </div>
       </div>
     </div>
   );

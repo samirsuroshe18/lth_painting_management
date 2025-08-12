@@ -5,10 +5,8 @@ import { addNewState, getAllStates, updateState } from "../controllers/stateMast
 
 const router = Router();
 
-router.route('/add-state').post(verifyJwt, checkAccess('userMaster', 'dashboard'), addNewState);
-router.route('/get-all-states').get(verifyJwt, checkAccess('userMaster', 'dashboard'), getAllStates);
-router.route('/update-state/:id').put(verifyJwt, checkAccess('userMaster', 'dashboard'), updateState);
-
-
+router.route('/add-state').post(verifyJwt, checkAccess('stateMaster:edit'), addNewState);
+router.route('/get-all-states').get(verifyJwt, checkAccess('stateMaster:view'), getAllStates);
+router.route('/update-state/:id').put(verifyJwt, checkAccess('stateMaster:edit'), updateState);
 
 export default router;

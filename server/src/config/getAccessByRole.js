@@ -1,77 +1,73 @@
+// accessPolicy.js (or wherever your function lives)
+
+// Canonical list of actions (source of truth)
+const ALL_ACTIONS = [
+  'allAccess',
+
+  'dashboard:view',
+  'dashboard:edit',
+
+  'masters:view',
+  'masters:edit',
+
+  'userMaster:view',
+  'userMaster:edit',
+
+  'roleMaster:view',
+  'roleMaster:edit',
+
+  'assetMaster:view',
+  'assetMaster:edit',
+
+  'locationMaster:view',
+  'locationMaster:edit',
+
+  'stateMaster:view',
+  'stateMaster:edit',
+
+  'generateQrCode',
+
+  'auditReport:view',
+  'auditReport:edit',
+];
+
+// Per‑role allow‑lists (everything else is Deny)
+const ROLE_ALLOW = {
+  superadmin: [...ALL_ACTIONS],
+
+  admin: [
+    'dashboard:view', 'dashboard:edit',
+    'masters:view', 'masters:edit',
+    'userMaster:view', 'userMaster:edit',
+    'roleMaster:view',                  // no edit
+    'assetMaster:view', 'assetMaster:edit',
+    'locationMaster:view', 'locationMaster:edit',
+    'stateMaster:view', 'stateMaster:edit',
+    'generateQrCode',
+    'auditReport:view', 'auditReport:edit',
+    // 'allAccess' intentionally not granted
+  ],
+
+  auditor: [
+    'dashboard:view',
+    'masters:view',
+    'assetMaster:view',
+    'generateQrCode',
+    'auditReport:view',
+  ],
+
+  user: [
+    'dashboard:view',                   // view‑only dashboard (as requested)
+    'generateQrCode',
+  ],
+};
+
 function getAccessByRole(role) {
-  const defaultRights = [
-    { action: "allAccess", effect: "Deny" },
-    { action: "dashboard", effect: "Deny" },
-    { action: "masters", effect: "Deny" },
-    { action: "userMaster", effect: "Deny" },
-    { action: "roleMaster", effect: "Deny" },
-    { action: "assetMaster", effect: "Deny" },
-    { action: "locationMaster", effect: "Deny" },
-    { action: "stateMaster", effect: "Deny" },
-    { action: "generateQrCode", effect: "Deny" },
-    { action: "auditReport", effect: "Deny" },
-  ];
-
-  switch (role) {
-    case 'superadmin':
-      return [
-        { action: "allAccess", effect: "Allow" },
-        { action: "dashboard", effect: "Allow" },
-        { action: "masters", effect: "Allow" },
-        { action: "userMaster", effect: "Allow" },
-        { action: "roleMaster", effect: "Allow" },
-        { action: "assetMaster", effect: "Allow" },
-        { action: "locationMaster", effect: "Allow" },
-        { action: "stateMaster", effect: "Allow" },
-        { action: "generateQrCode", effect: "Allow" },
-        { action: "auditReport", effect: "Allow" },
-      ];
-
-    case 'admin':
-      return [
-        { action: "allAccess", effect: "Deny" },
-        { action: "dashboard", effect: "Allow" },
-        { action: "masters", effect: "Allow" },
-        { action: "userMaster", effect: "Allow" },
-        { action: "roleMaster", effect: "Deny" },
-        { action: "assetMaster", effect: "Allow" },
-        { action: "locationMaster", effect: "Allow" },
-        { action: "stateMaster", effect: "Allow" },
-        { action: "generateQrCode", effect: "Allow" },
-        { action: "auditReport", effect: "Allow" },
-      ];
-
-    case 'auditor':
-      return [
-        { action: "allAccess", effect: "Deny" },
-        { action: "dashboard", effect: "Allow" },
-        { action: "masters", effect: "Allow" },
-        { action: "userMaster", effect: "Deny" },
-        { action: "roleMaster", effect: "Deny" },
-        { action: "assetMaster", effect: "Allow" },
-        { action: "locationMaster", effect: "Deny" },
-        { action: "stateMaster", effect: "Deny" },
-        { action: "generateQrCode", effect: "Allow" },
-        { action: "auditReport", effect: "Allow" },
-      ]
-     
-    case 'user':
-      return [
-        { action: "allAccess", effect: "Deny" },
-        { action: "dashboard", effect: "Deny" },
-        { action: "masters", effect: "Deny" },
-        { action: "userMaster", effect: "Deny" },
-        { action: "roleMaster", effect: "Deny" },
-        { action: "assetMaster", effect: "Deny" },
-        { action: "locationMaster", effect: "Deny" },
-        { action: "stateMaster", effect: "Deny" },
-        { action: "generateQrCode", effect: "Allow" },
-        { action: "auditReport", effect: "Deny" },
-      ];
-
-    default:
-      return defaultRights;
-  }
+  const allow = new Set(ROLE_ALLOW[role] || []);
+  return ALL_ACTIONS.map((action) => ({
+    action,
+    effect: allow.has(action) ? 'Allow' : 'Deny',
+  }));
 }
 
 export default getAccessByRole;

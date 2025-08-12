@@ -289,6 +289,99 @@ const getAssets = catchAsync(async (req, res) => {
     );
 });
 
+const getQrCodes = catchAsync(async (req, res) => {
+    // Pagination parameters
+    const page = parseInt(req.query.page) || 1;
+    const limit = parseInt(req.query.limit) || 10;
+    const skip = (page - 1) * limit;
+
+    // Filter parameters
+    const filters = {};
+
+    // Status filter
+    if (req.query.status) {
+        filters.reviewStatus = req.query.status;
+    }
+
+    // Date range filter
+    if (req.query.startDate && req.query.endDate) {
+        const startDate = new Date(req.query.startDate);
+        const endDate = new Date(req.query.endDate);
+        endDate.setHours(23, 59, 59, 999); // Set to end of day
+
+        filters.createdAt = {
+            $gte: startDate,
+            $lte: endDate
+        };
+    }
+
+    if (req.query.startDate) {
+        const startDate = new Date(req.query.startDate);
+
+        filters.createdAt = {
+            $gte: startDate
+        };
+    }
+
+    if (req.query.endDate) {
+        const endDate = new Date(req.query.endDate);
+        endDate.setHours(23, 59, 59, 999);
+
+        filters.createdAt = {
+            $lte: endDate
+        };
+    }
+
+    // Name/keyword search
+    if (req.query.search) {
+        filters.$or = [
+            { name: { $regex: req.query.search, $options: 'i' } },
+        ];
+    }
+
+    // Base match conditions for DeliveryEntry
+    const assetMatch = {
+        isDeleted: false,
+        locationId: { $in: req.user.location.map(loc => loc._id) },
+        ...filters
+    };
+
+    // Sorting parameters
+    let sort = { createdAt: -1 }; // default sort (newest first)
+    if (req.query.sortField && req.query.sortOrder) {
+        const sortField = req.query.sortField;
+        const sortOrder = parseInt(req.query.sortOrder);
+        sort = { [sortField]: sortOrder };
+    }
+
+    // Count total documents for pagination
+    const totalCount = await Asset.countDocuments(assetMatch);
+    const totalPages = Math.ceil(totalCount / limit);
+    const updatedAsset = await Asset.find(assetMatch)
+        .sort(sort)
+        .populate('locationId', 'name')
+        .populate('createdBy', 'userName');
+    // Apply pagination on combined results
+    const response = updatedAsset.slice(skip, skip + limit);
+
+    if (response.length <= 0) {
+        throw new ApiError(404, "No assets found for the given criteria");
+    }
+
+    return res.status(200).json(
+        new ApiResponse(200, {
+            assets: response,
+            pagination: {
+                totalEntries: totalCount,
+                entriesPerPage: limit,
+                currentPage: page,
+                totalPages: totalPages,
+                hasMore: page < totalPages
+            }
+        }, "Audit logs retrieved successfully")
+    );
+});
+
 const removeAsset = catchAsync(async (req, res) => {
     const { id } = req.params;
     if (!id) {
@@ -340,5 +433,6 @@ export {
     reviewAssetStatus,
     getAssets,
     removeAsset,
-    getAssetsByLocation
+    getAssetsByLocation,
+    getQrCodes
 };

@@ -94,17 +94,13 @@ const updateState = catchAsync(async (req, res) => {
     const { id } = req.params;
     const { name, status } = req.body;
 
-    if (!['active', 'inactive'].includes(status)) {
-        throw new ApiError(400, 'Status must be either active or inactive');
-    }
-
-    if (!name) {
+    if (!name || status) {
         throw new ApiError(400, 'Name is a required field');
     }
 
     const updatedState = await State.findByIdAndUpdate(
         id,
-        { name, status: status === 'active' ? true : false, updatedBy: req.user._id },
+        { name, status, updatedBy: req.user._id },
         { new: true, runValidators: true }
     )
     .populate('createdBy', 'userName')
