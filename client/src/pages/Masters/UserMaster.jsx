@@ -56,6 +56,7 @@ const UserMaster = () => {
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [assetToDelete, setAssetToDelete] = useState(null);
   const [deleteLoading, setDeleteLoading] = useState(false);
+ 
 
   // Client-side pagination model
   const [paginationModel, setPaginationModel] = useState({
@@ -82,6 +83,7 @@ const UserMaster = () => {
 
       // Provide rows to the grid
       setRows(usersWithIds);
+      setRowCount(apiUsers.length);
     } catch (error) {
       dispatch(
         showNotificationWithTimeout({
@@ -212,8 +214,15 @@ const UserMaster = () => {
   const handleEditUser = (user) => {
     navigate("edit-user", { state: { user } });
   };
-  const handleEditRights = (user) =>
-    navigate("edit-rights", { state: { user } });
+  // const handleEditRights = (user) =>
+  //   navigate("edit-rights", { state: { user } });
+  const handleEditRights = (user) => {
+  if (!user || !user._id) {
+    console.error('Invalid user:', user);
+    return;
+  }
+  navigate(`edit-rights/${user._id}`, { state: { user } });
+};
   const handleRefresh = () => fetchAllUsers();
 
   const columns = [

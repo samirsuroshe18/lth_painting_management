@@ -52,7 +52,7 @@ const router = createBrowserRouter([
                   { path: "", element: <UserMaster /> },
                   { path: "add-user", element: <AddUser /> },
                   { path: "edit-user", element: <EditUser /> },
-                  { path: "edit-rights", element: <EditRights /> },
+                  { path: "edit-rights/:id", element: <EditRights /> },
                 ],
               },
               {

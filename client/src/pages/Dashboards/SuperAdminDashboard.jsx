@@ -33,10 +33,10 @@ import { showNotificationWithTimeout } from "../../redux/slices/notificationSlic
 import { handleAxiosError } from "../../utils/handleAxiosError";
 
 const statusFilters = [
-  { label: "All Audits", value: "all", icon: <ListAlt /> },
-  { label: "Review Pending", value: "Pending", icon: <Schedule /> },
-  { label: "Approved", value: "Approved", icon: <CheckCircle /> },
-  { label: "Rejected", value: "Rejected", icon: <Cancel /> },
+  { label: "All Audits", value: "all", icon: <ListAlt /> }, // Changed from "All" to "all"
+  { label: "Review Pending", value: "pending", icon: <Schedule /> }, // Changed from "Pending" to "pending"
+  { label: "Approved", value: "approved", icon: <CheckCircle /> }, // Changed from "Approved" to "approved"
+  { label: "Rejected", value: "rejected", icon: <Cancel /> }, // Changed from "Rejected" to "rejected"
 ];
 
 const SuperAdminDashboard = () => {
@@ -51,17 +51,22 @@ const SuperAdminDashboard = () => {
   const [activeFilter, setActiveFilter] = useState("all");
   const [counts, setCounts] = useState({
     all: 0,
-    Pending: 0,
-    Approved: 0,
-    Rejected: 0,
+    pending: 0, // Changed from "Pending" to "pending"
+    approved: 0, // Changed from "Approved" to "approved"
+    rejected: 0, // Changed from "Rejected" to "rejected"
   });
   const [paginationModel, setPaginationModel] = useState({
     page: 0,
     pageSize: 5,
   });
 
-  const lowerStatusParam = (v) =>
-    v && v !== "all" ? v.toLowerCase() : undefined;
+  // Fixed function to handle status parameter correctly
+  const getStatusParam = (filterValue) => {
+    if (!filterValue || filterValue === "all") {
+      return undefined; // Don't filter by status for "all"
+    }
+    return filterValue; // Return the exact value for other filters
+  };
 
   useEffect(() => {
     fetchCounts();
@@ -91,7 +96,7 @@ const SuperAdminDashboard = () => {
   const fetchCounts = async () => {
     try {
       setCountsLoading(true);
-      const statuses = ["all", "Pending", "Approved", "Rejected"];
+      const statuses = ["all", "pending", "approved", "rejected"]; // Fixed casing
 
       const results = await Promise.allSettled(
         statuses.map(async (s) => {
@@ -99,13 +104,14 @@ const SuperAdminDashboard = () => {
             const res = await getAllAudits({
               page: 1,
               limit: 1, // only need total
-              status: lowerStatusParam(s),
+              status: getStatusParam(s), // Use the fixed function
             });
             return {
               key: s,
               total: res?.data?.pagination?.totalEntries ?? 0,
             };
           } catch (error) {
+            console.error(`Error fetching count for ${s}:`, error);
             dispatch(
               showNotificationWithTimeout({
                 show: true,
@@ -118,7 +124,7 @@ const SuperAdminDashboard = () => {
         })
       );
 
-      const next = { all: 0, Pending: 0, Approved: 0, Rejected: 0 };
+      const next = { all: 0, pending: 0, approved: 0, rejected: 0 };
       results.forEach((result) => {
         if (result.status === "fulfilled" && result.value) {
           next[result.value.key] = result.value.total || 0;
@@ -139,10 +145,18 @@ const SuperAdminDashboard = () => {
     try {
       setLoading(true);
 
+      console.log('Fetching assets with:', {
+        page: paginationModel.page + 1,
+        limit: paginationModel.pageSize,
+        status: getStatusParam(activeFilter),
+        search: searchTerm,
+        activeFilter
+      });
+
       const res = await getAllAudits({
         page: paginationModel.page + 1,
         limit: paginationModel.pageSize,
-        status: lowerStatusParam(activeFilter),
+        status: getStatusParam(activeFilter), // Use the fixed function
         search: searchTerm,
       });
 
@@ -162,6 +176,7 @@ const SuperAdminDashboard = () => {
           0
       );
     } catch (error) {
+      console.error('Fetch assets error:', error);
       dispatch(
         showNotificationWithTimeout({
           show: true,
@@ -326,6 +341,7 @@ const SuperAdminDashboard = () => {
           const isActive = activeFilter === filter.value;
           return (
             <Card
+              key={filter.value}
               elevation={isActive ? 4 : 1}
               sx={{
                 borderRadius: 2,
@@ -352,18 +368,18 @@ const SuperAdminDashboard = () => {
                     label={filter.value}
                     variant="outlined"
                     color={
-                      filter.value === "Approved"
+                      filter.value === "approved"
                         ? "success"
-                        : filter.value === "Rejected"
+                        : filter.value === "rejected"
                           ? "error"
-                          : filter.value === "Pending"
+                          : filter.value === "pending"
                             ? "warning"
                             : "default"
                     }
                     sx={{
                       px: 1,
                       fontWeight: 600,
-                      textTransform: "none",
+                      textTransform: "capitalize", // This will capitalize the first letter
                     }}
                   />
 
@@ -374,7 +390,11 @@ const SuperAdminDashboard = () => {
                       lineHeight={1.2}
                       sx={{ my: 3 }}
                     >
-                      {counts[filter.value] ?? 0}
+                      {countsLoading ? (
+                        <CircularProgress size={20} />
+                      ) : (
+                        counts[filter.value] ?? 0
+                      )}
                     </Typography>
                     <Typography variant="subtitle2" color="text.secondary">
                       {filter.label}

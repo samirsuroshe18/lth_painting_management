@@ -137,15 +137,15 @@ const EditRights = () => {
   };
 
   return (
-    <div className="p-6 md:p-8 text-gray-200">
+    <div className="p-6 md:p-8 text-gray-900 dark:text-gray-200">
       {/* Header */}
       <div className="mb-6 flex flex-col md:flex-row md:items-center md:justify-between gap-3">
         <div>
-          <h2 className="text-2xl md:text-3xl font-extrabold tracking-tight text-white">
+          <h2 className="text-2xl md:text-3xl font-extrabold tracking-tight text-gray-900 dark:text-white">
             Edit Permissions
           </h2>
-          <p className="text-sm text-gray-400 mt-1">
-            User: <span className="font-semibold text-gray-100">{user.userName}</span>
+          <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
+            User: <span className="font-semibold text-gray-800 dark:text-gray-100">{user.userName}</span>
           </p>
         </div>
 
@@ -167,7 +167,7 @@ const EditRights = () => {
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             placeholder="Search permissions…"
-            className="w-56 rounded-lg border border-gray-600 bg-[#2A2A2A] px-3 py-2 text-sm text-gray-100 placeholder-gray-500 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500"
+            className="w-56 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-[#2A2A2A] px-3 py-2 text-sm text-gray-900 dark:text-gray-100 placeholder-gray-500 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500"
           />
         </div>
       </div>
@@ -182,29 +182,29 @@ const EditRights = () => {
           const groupAllDenied = rows.every((r) => r.effect === "Deny");
 
           return (
-            <div key={g.key} className="rounded-xl border border-gray-700 bg-[#252525] p-4 shadow">
+            <div key={g.key} className="rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-[#252525] p-4 shadow">
               <div className="mb-3 flex items-center justify-between">
-                <h3 className="text-lg font-semibold text-gray-100">{g.label}</h3>
+                <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100">{g.label}</h3>
                 <div className="flex items-center gap-2">
                   <button
                     onClick={() => handleGroupAllow(g.actions)}
-                    className="rounded-md border border-green-600 px-3 py-1 text-xs text-green-400 hover:bg-green-600 hover:text-white"
+                    className="rounded-md border border-green-600 px-3 py-1 text-xs text-green-600 dark:text-green-400 hover:bg-green-600 hover:text-white"
                   >
                     Allow Group
                   </button>
                   <button
                     onClick={() => handleGroupDeny(g.actions)}
-                    className="rounded-md border border-rose-600 px-3 py-1 text-xs text-rose-400 hover:bg-rose-600 hover:text-white"
+                    className="rounded-md border border-rose-600 px-3 py-1 text-xs text-rose-600 dark:text-rose-400 hover:bg-rose-600 hover:text-white"
                   >
                     Deny Group
                   </button>
                   <span
                     className={`rounded-full px-2 py-0.5 text-[10px] font-semibold ${
                       groupAllAllowed
-                        ? "bg-green-900 text-green-200"
+                        ? "bg-green-100 dark:bg-green-900 text-green-800 dark:text-green-200"
                         : groupAllDenied
-                        ? "bg-gray-700 text-gray-300"
-                        : "bg-amber-900 text-amber-200"
+                        ? "bg-gray-100 dark:bg-gray-700 text-gray-800 dark:text-gray-300"
+                        : "bg-amber-100 dark:bg-amber-900 text-amber-800 dark:text-amber-200"
                     }`}
                   >
                     {groupAllAllowed ? "All Allowed" : groupAllDenied ? "All Denied" : "Mixed"}
@@ -216,18 +216,18 @@ const EditRights = () => {
                 {rows.map((perm) => (
                   <label
                     key={perm.action}
-                    className="flex items-center justify-between rounded-lg border border-gray-700 bg-[#2A2A2A] px-3 py-2 text-sm"
+                    className="flex items-center justify-between rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-[#2A2A2A] px-3 py-2 text-sm"
                   >
                     <div className="mr-3">
-                      <div className="font-medium text-gray-100">{humanize(perm.action)}</div>
-                      <div className="text-[11px] text-gray-500">{perm.action}</div>
+                      <div className="font-medium text-gray-900 dark:text-gray-100">{humanize(perm.action)}</div>
+                      <div className="text-[11px] text-gray-500 dark:text-gray-500">{perm.action}</div>
                     </div>
 
                     <button
                       type="button"
                       onClick={() => togglePermission(perm.action)}
                       className={`relative inline-flex h-6 w-12 items-center rounded-full transition ${
-                        perm.effect === "Allow" ? "bg-blue-600" : "bg-gray-500"
+                        perm.effect === "Allow" ? "bg-blue-600" : "bg-gray-400 dark:bg-gray-500"
                       }`}
                     >
                       <span
@@ -248,7 +248,7 @@ const EditRights = () => {
       <div className="mt-8 flex flex-col-reverse sm:flex-row items-center justify-end gap-3">
         <button
           onClick={() => navigate("/masters/user-master")}
-          className="rounded-lg border border-gray-600 px-5 py-2 text-sm text-gray-300 hover:bg-gray-700"
+          className="rounded-lg border border-gray-300 dark:border-gray-600 px-5 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700"
         >
           Cancel
         </button>
@@ -263,7 +263,7 @@ const EditRights = () => {
       {/* Success dialog */}
       {showDialog && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
-          <div className="mx-4 w-full max-w-sm rounded-xl border border-green-700 bg-[#252525] p-6 shadow-lg">
+          <div className="mx-4 w-full max-w-sm rounded-xl border border-green-200 dark:border-green-700 bg-white dark:bg-[#252525] p-6 shadow-lg">
             <div className="mb-4 flex justify-center">
               <div className="relative h-14 w-14">
                 <div className="absolute inset-0 rounded-full border-4 border-green-500 animate-ping" />
@@ -272,7 +272,7 @@ const EditRights = () => {
                 </div>
               </div>
             </div>
-            <h3 className="mb-2 text-center text-lg font-semibold text-gray-100">
+            <h3 className="mb-2 text-center text-lg font-semibold text-gray-900 dark:text-gray-100">
               Permissions updated successfully!
             </h3>
             <button
