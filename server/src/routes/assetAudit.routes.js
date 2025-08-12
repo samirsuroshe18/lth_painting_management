@@ -6,7 +6,7 @@ import { addNewAssetAudit, fetchAudits, getAssetAuditLogs, getAuditLogs, reviewA
 
 const router = Router();
 
-router.route('/add-asset-audit').post(verifyJwt, checkAccess('assetMaster'), upload.fields([
+router.route('/add-asset-audit').post(verifyJwt, upload.fields([
   { name: 'assetImage', maxCount: 1 },
   { name: 'auditImage1', maxCount: 1 },
   { name: 'auditImage2', maxCount: 1 },
@@ -15,7 +15,7 @@ router.route('/add-asset-audit').post(verifyJwt, checkAccess('assetMaster'), upl
 router.route('/review-audit-status/:auditId').put(verifyJwt, checkAccess('dashboard:edit'), reviewAuditStatus);
 router.route('/get-audit-logs').get(verifyJwt, checkAccess('dashboard:view'), getAuditLogs)
 router.route('/get-asset-audit-logs/:assetId').get(verifyJwt, checkAccess('assetMaster:view'), getAssetAuditLogs)
-router.route('/view-audit-log/:auditId').get(verifyJwt, checkAccess('assetMaster'), viewAuditLog);
+router.route('/view-audit-log/:auditId').get(verifyJwt, checkAccess('assetMaster:view'), viewAuditLog);
 router.route('/fetch-audits').post(verifyJwt, checkAccess('auditReport:view'), fetchAudits);
 
 export default router;

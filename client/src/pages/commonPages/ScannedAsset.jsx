@@ -14,6 +14,7 @@ import {
   TextField,
   Typography,
 } from "@mui/material";
+import { AlertTriangle } from "lucide-react";
 import { showNotificationWithTimeout } from "../../redux/slices/notificationSlice";
 import { useDispatch, useSelector } from "react-redux";
 import { handleAxiosError } from "../../utils/handleAxiosError";
@@ -24,15 +25,33 @@ import { DatePicker } from "@mui/x-date-pickers/DatePicker";
 import { AdapterDayjs } from "@mui/x-date-pickers/AdapterDayjs";
 import { submitAudit } from "../../api/auditLogApi";
 import SnackBar from "../../components/commonComponents/SnackBar";
+import CloudUploadIcon from "@mui/icons-material/CloudUpload";
+import { styled } from "@mui/material/styles";
+
+const VisuallyHiddenInput = styled("input")({
+  clip: "rect(0 0 0 0)",
+  clipPath: "inset(50%)",
+  height: 1,
+  overflow: "hidden",
+  position: "absolute",
+  bottom: 0,
+  left: 0,
+  whiteSpace: "nowrap",
+  width: 1,
+});
 
 export default function ScannedAsset() {
   const { id } = useParams();
   const isAdmin = useSelector((state) => state.admin.admin);
   const navigate = useNavigate();
   const dispatch = useDispatch();
-
   const [loading, setLoading] = useState(true);
   const [submit, setSubmit] = useState(false);
+  const [imageOpen, setImageOpen] = useState({
+    image:null,
+    open: false,
+    name: null,
+  });
   const [data, setData] = useState(null);
   const [showEditForm, setShowEditForm] = useState(false);
   const [formData, setFormData] = useState({
@@ -55,6 +74,7 @@ export default function ScannedAsset() {
   });
 
   const handleChange = (e) => {
+    console.log({ e });
     const { name, value, files } = e.target;
     if (files && files.length > 0) {
       setFormData((prev) => ({ ...prev, [name]: files[0] }));
@@ -143,18 +163,38 @@ export default function ScannedAsset() {
 
   if (loading) {
     return (
-      <div className="min-h-[50vh] grid place-items-center">
-        <div className="flex items-center gap-3 text-slate-500">
-          <CircularProgress size={20} />
-          <span className="text-sm">Loading asset…</span>
+      <div className="min-h-[50vh] flex flex-col items-center justify-center text-slate-600 space-y-4">
+        <CircularProgress size={32} thickness={4} sx={{ color: "#009ff6" }} />
+        <div className="flex flex-col items-center">
+          <span className="text-base font-medium">Loading asset</span>
+          <span className="text-sm text-slate-400">Please wait a moment…</span>
         </div>
       </div>
     );
   }
-  if (!data?.asset)
+
+  if (!data?.asset) {
     return (
-      <div className="p-6 text-center text-slate-500">Asset not found</div>
+      <div className="min-h-[50vh] flex flex-col items-center justify-center space-y-4 text-slate-500">
+        <div className="bg-red-50 text-red-500 p-4 rounded-full">
+          <AlertTriangle className="w-8 h-8" />
+        </div>
+        <div className="text-center">
+          <p className="text-lg font-semibold">Asset Not Found</p>
+          <p className="text-sm text-slate-400 mt-1">
+            We couldn’t locate the asset you’re looking for. It may have been
+            removed or never existed.
+          </p>
+        </div>
+        <button
+          onClick={() => window.history.back()}
+          className="mt-4 px-5 py-2 rounded-lg bg-[#009ff6] text-white text-sm font-medium hover:bg-[#0085cc] transition-colors"
+        >
+          Go Back
+        </button>
+      </div>
     );
+  }
 
   return (
     <Container
@@ -224,57 +264,68 @@ export default function ScannedAsset() {
           }
           className="[&_.MuiCardHeader-action]:self-stretch sm:[&_.MuiCardHeader-action]:self-center"
         />
+
         <CardContent className="pt-0">
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 sm:gap-5">
             <Row label="Asset" value={data.asset.name} />
             <Row label="Year" value={data.asset.year || "-"} />
+            <Row label="Description" value={data.asset.description || "-"} />
 
-            <div className="sm:col-span-2">
-              <Row
-                label="Description"
-                value={
-                  <TextField
-                    fullWidth
-                    size="small"
-                    multiline
-                    minRows={3} // show 3 lines by default
-                    maxRows={3} // fix height so it doesn't grow beyond 3 lines
-                    value={data.asset.description}
-                    variant="outlined"
-                    slotProps={{
-                      readOnly: true,
-                      sx: {
-                        border: "none",
-                        "& .MuiOutlinedInput-notchedOutline": {
-                          border: "none",
-                        },
-                        overflowY: "auto", // enable vertical scroll
-                        resize: "none", // disable resize handle
-                        whiteSpace: "pre-wrap", // preserve line breaks and wrap
-                      },
-                    }}
+            <Row
+              label="Image"
+              value={
+                <div
+                  className="group cursor-pointer"
+                  onClick={() => setImageOpen({image: data.asset.image, name: data.asset.name, open: true})}
+                >
+                  <img
+                    src={data.asset.image}
+                    alt={data.asset.name}
+                    className="w-40 h-28 object-cover rounded-lg border border-slate-200 shadow-sm transition group-hover:shadow-md"
                   />
-                }
-              />
-            </div>
-
-            <div className="sm:col-span-2">
-              <Row
-                label="Image"
-                value={
-                  <div className="group">
-                    <img
-                      src={data.asset.image}
-                      alt={data.asset.name}
-                      className="w-full sm:w-72 h-auto sm:h-44 object-cover rounded-xl border border-slate-200 shadow-sm ring-1 ring-transparent group-hover:shadow-md group-hover:ring-slate-200 transition"
-                    />
-                    <div className="mt-1 text-[11px] text-slate-500">
-                      Tap to zoom (long-press)
-                    </div>
+                  <div className="mt-1 text-[11px] text-slate-500">
+                    Click to enlarge
                   </div>
-                }
-              />
-            </div>
+                </div>
+              }
+            />
+
+            {/* <Row
+              label="Image"
+              value={
+                <a
+                  href={data.asset.image}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="group"
+                >
+                  <img
+                    src={data.asset.image}
+                    alt={data.asset.name}
+                    className="w-40 h-28 object-cover rounded-lg border border-slate-200 shadow-sm transition group-hover:shadow-md"
+                  />
+                  <div className="mt-1 text-[11px] text-slate-500">
+                    Open in new tab
+                  </div>
+                </a>
+              }
+            /> */}
+
+            {imageOpen.open && (
+              <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50">
+                <img
+                  src={imageOpen.image}
+                  alt={imageOpen.name}
+                  className="max-w-[90%] max-h-[90%] object-contain rounded-lg"
+                />
+                <button
+                  onClick={() => setImageOpen(prev => ({ ...prev, open: false }))}
+                  className="absolute top-4 right-4 text-white text-xl"
+                >
+                  ✕
+                </button>
+              </div>
+            )}
 
             <Row label="Location" value={data.asset.locationId?.name || "-"} />
             <Row label="Area" value={data.asset.locationId?.area || "-"} />
@@ -491,30 +542,59 @@ export default function ScannedAsset() {
                   <div className="mb-1 text-sm text-slate-700">{label}</div>
                   <div className="flex flex-col gap-2 sm:flex-row">
                     <Button
-                      variant="outlined"
                       component="label"
-                      className="w-full sm:w-auto !rounded-xl"
+                      role={undefined}
+                      variant="contained"
+                      tabIndex={-1}
+                      startIcon={<CloudUploadIcon />}
                     >
-                      Choose File
-                      <input
+                      Upload files
+                      <VisuallyHiddenInput
                         type="file"
-                        hidden
                         accept="image/*"
                         name={key}
                         onChange={handleChange}
                       />
                     </Button>
                     {formData[key] && (
-                      <img
-                        src={URL.createObjectURL(formData[key])}
-                        alt={label}
-                        className="w-full sm:w-72 h-auto sm:h-44 object-cover rounded-xl border border-slate-200"
-                      />
+                      <div className="relative inline-block">
+                        <p className="text-sm text-gray-500 mb-1">Preview:</p>
+
+                        <div className="relative w-40 h-28">
+                          <img
+                            
+                            src={URL.createObjectURL(formData[key])}
+                            onClick={() => setImageOpen({image: URL.createObjectURL(formData[key]), name: key, open: true})}
+                            alt="Selected"
+                            className="w-full h-full object-cover rounded-lg border border-slate-200 shadow-sm cursor-pointer"
+                          />
+
+                          {/* Remove Button - always visible for mobile */}
+                          <button
+                            type="button"
+                            onClick={() =>
+                              setFormData((prev) => ({
+                                ...prev,
+                                [key]: null,
+                              }))
+                            }
+                            className="absolute top-1 right-1 bg-red-500 hover:bg-red-600 text-white text-xs px-1.5 py-0.5 rounded shadow"
+                          >
+                            ✕
+                          </button>
+                        </div>
+
+                        <div className="mt-1 text-[11px] text-slate-500">
+                          Tap image to enlarge
+                        </div>
+                      </div>
                     )}
                   </div>
-                  <div className="mt-1 text-[11px] text-slate-500">
-                    PNG, JPG or JPEG
-                  </div>
+                  {!formData[key] && (
+                    <div className="mt-1 text-[11px] text-slate-500">
+                      PNG, JPG or JPEG
+                    </div>
+                  )}
                 </div>
               ))}
 
@@ -539,7 +619,6 @@ export default function ScannedAsset() {
           </CardContent>
         </Card>
       )}
-
       <SnackBar />
     </Container>
   );
@@ -551,7 +630,7 @@ function Row({ label, value }) {
       <div className="text-[13px] font-semibold text-slate-600 sm:min-w-[160px]">
         {label}
       </div>
-      <div className="relative rounded-xl border border-slate-200 bg-white px-3 py-2 shadow-sm">
+      <div className="relative bg-white">
         {typeof value === "string" || typeof value === "number" ? (
           <span className="text-slate-700">{value}</span>
         ) : (

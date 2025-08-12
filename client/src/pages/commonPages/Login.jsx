@@ -9,20 +9,20 @@ import { showNotificationWithTimeout } from "../../redux/slices/notificationSlic
 import { setAdmin } from "../../redux/slices/isAdminSlice";
 
 const Login = () => {
+  const dispatch = useDispatch();
+  const navigate = useNavigate();
   const { state } = useLocation();
   const isAdmin = state?.isAdmin;
   const message = state?.message;
-  const dispatch = useDispatch();
-  const navigate = useNavigate();
+  const [isLoading, setIsLoading] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
+  const [errors, setErrors] = useState({});
+  const hasShownMessage = useRef(false);
   const [formData, setFormData] = useState({
     email: "",
     password: "",
     isRemember: false,
   });
-  const [showPassword, setShowPassword] = useState(false);
-  const [isLoading, setIsLoading] = useState(false);
-  const [errors, setErrors] = useState({});
-  const hasShownMessage = useRef(false);
 
   useEffect(() => {
     if (message && !hasShownMessage.current) {
@@ -48,7 +48,7 @@ const Login = () => {
 
     if (!formData.password) {
       newErrors.password = "Password is required";
-    } 
+    }
 
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
@@ -133,7 +133,7 @@ const Login = () => {
           </div>
 
           {/* Form */}
-          <div className="space-y-6">
+          <form onSubmit={handleSubmit} className="space-y-6">
             {/* General Error */}
             {errors.general && (
               <div className="bg-red-500/20 border border-red-500/30 rounded-lg p-3 text-red-200 text-sm">
@@ -207,13 +207,6 @@ const Login = () => {
             {/* Remember Me & Forgot Password */}
             <div className="flex items-center justify-between">
               <div className="flex items-center">
-                {/* <input
-                  type="checkbox"
-                  name="isRemember"
-                  checked={formData.isRemember}
-                  onChange={handleInputChange}
-                  className="w-4 h-4 text-purple-500 bg-white/10 border-white/20 rounded focus:ring-purple-500 focus:ring-2"
-                /> */}
                 <input
                   type="checkbox"
                   name="isRemember"
@@ -233,9 +226,8 @@ const Login = () => {
 
             {/* Submit Button */}
             <button
-              onClick={handleSubmit}
+              type="submit"
               disabled={isLoading}
-              // className="w-full bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 disabled:opacity-50 disabled:cursor-not-allowed text-white font-semibold py-3 px-4 rounded-lg transition duration-200 flex items-center justify-center space-x-2"
               className="w-full bg-[#009ff6] hover:bg-[#0085cc] disabled:opacity-50 disabled:cursor-not-allowed text-white font-semibold py-3 px-4 rounded-lg transition duration-200 flex items-center justify-center space-x-2"
             >
               {isLoading ? (
@@ -247,12 +239,8 @@ const Login = () => {
                 <span>Sign In</span>
               )}
             </button>
-          </div>
+          </form>
         </div>
-
-        {/* Decorative Elements */}
-        {/* <div className="absolute -top-4 -left-4 w-24 h-24 bg-purple-500/20 rounded-full blur-xl"></div>
-        <div className="absolute -bottom-4 -right-4 w-32 h-32 bg-pink-500/20 rounded-full blur-xl"></div> */}
       </div>
     </div>
   );

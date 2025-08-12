@@ -29,7 +29,7 @@ const loginUser = catchAsync(async (req, res) => {
         throw new ApiError(400, "All fields are required");
     }
 
-    const user = await User.findOne({ email });
+    const user = await User.findOne({ email, isDeleted: false });
 
     if (!user) {
         throw new ApiError(404, "Invalid credential");

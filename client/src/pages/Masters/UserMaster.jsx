@@ -274,6 +274,20 @@ const UserMaster = () => {
       filterable: false,
       align: "center",
       headerAlign: "center",
+      valueGetter: (value) => {
+        const dt = value ? new Date(value) : null;
+        console.log(dt);
+        return dt
+          ? dt.toLocaleString("en-IN", {
+              day: "2-digit",
+              month: "long",
+              year: "numeric",
+              hour: "2-digit",
+              minute: "2-digit",
+              hour12: true,
+            })
+          : "-";
+      },
     },
     {
       field: "actions",
