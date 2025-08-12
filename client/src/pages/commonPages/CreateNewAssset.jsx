@@ -9,6 +9,9 @@ import {
   Stack,
   Avatar,
   CircularProgress,
+  Paper,
+  useTheme,
+  useMediaQuery,
 } from "@mui/material";
 import {
   Dialog,
@@ -27,15 +30,19 @@ import { showNotificationWithTimeout } from "../../redux/slices/notificationSlic
 import { handleAxiosError } from "../../utils/handleAxiosError";
 import { useLocation, useNavigate } from "react-router-dom";
 
-const CreateNewAssset = () => {
+const CreateNewAsset = () => {
   const { state } = useLocation();
-  const locations = state?.locations;
+  const locations = state?.locations || [];
   const [loading, setLoading] = useState(false);
   const [fileImage, setFileImage] = useState(null);
   const dispatch = useDispatch();
   const navigate = useNavigate();
   const [yearError, setYearError] = useState("");
   const [successDialogOpen, setSuccessDialogOpen] = useState(false);
+  const theme = useTheme();
+  const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
+  const isTablet = useMediaQuery(theme.breakpoints.down('md'));
+
   const [asset, setAsset] = useState({
     name: "",
     image: null,
@@ -53,8 +60,7 @@ const CreateNewAssset = () => {
     const { name, value, files } = e.target;
     if (name === "image" && files && files[0]) {
       setAsset((prev) => ({ ...prev, image: files[0] }));
-      const imageUrl = URL.createObjectURL(files[0]); // Create an object URL for the image
-      setFileImage(imageUrl);
+      setFileImage(URL.createObjectURL(files[0]));
     } else {
       setAsset((prev) => ({ ...prev, [name]: value }));
     }
@@ -62,7 +68,7 @@ const CreateNewAssset = () => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    // Validate image field
+
     if (!asset.image) {
       dispatch(
         showNotificationWithTimeout({
@@ -71,7 +77,7 @@ const CreateNewAssset = () => {
           message: "Please upload an image.",
         })
       );
-      return; // stop submission
+      return;
     }
 
     if (!asset.year) {
@@ -104,23 +110,41 @@ const CreateNewAssset = () => {
   };
 
   return (
-    <Box
-      sx={{
-        bgcolor: "background.default",
-        p: { xs: 2, md: 4 },
-        boxSizing: "border-box",
-        height: "100vh",
+    <Box 
+      sx={{ 
+        p: { xs: 1, sm: 2, md: 3, lg: 4 }, 
+        bgcolor: "background.default", 
+        minHeight: "100vh",
+        display: "flex",
+        alignItems: { xs: "flex-start", md: "center" },
+        justifyContent: "center"
       }}
     >
-      <Typography variant="h5" fontWeight={700} mb={3} align="left">
-        Create New Asset
-      </Typography>
+      <Paper
+        elevation={3}
+        sx={{
+          width: "100%",
+          maxWidth: { xs: "100%", sm: "600px", md: "800px", lg: "900px" },
+          mx: "auto",
+          p: { xs: 2, sm: 3, md: 4 },
+          borderRadius: { xs: 2, md: 3 },
+          my: { xs: 2, md: 0 },
+        }}
+      >
+        <Typography 
+          variant={isMobile ? "h6" : "h5"} 
+          fontWeight={700} 
+          mb={{ xs: 2, md: 3 }}
+          textAlign={{ xs: "center", md: "left" }}
+        >
+          Create New Asset
+        </Typography>
 
-      <form onSubmit={loading ? null : handleSubmit} autoComplete="off">
-        <Grid container spacing={4} sx={{ display: "flex" }}>
-          <Grid sx={{ flex: 1 }}>
-            <Box sx={{ height: "100%" }}>
-              <Stack spacing={3}>
+        <form onSubmit={loading ? null : handleSubmit} autoComplete="off">
+          <Grid container spacing={{ xs: 2, md: 3 }}>
+            {/* Left Column - Form Fields */}
+            <Grid item xs={12} md={6}>
+              <Stack spacing={{ xs: 2, md: 3 }}>
                 <TextField
                   name="name"
                   label="Asset Name"
@@ -128,7 +152,7 @@ const CreateNewAssset = () => {
                   onChange={handleChange}
                   required
                   fullWidth
-                  autoFocus
+                  size={isMobile ? "small" : "medium"}
                 />
 
                 <TextField
@@ -139,6 +163,7 @@ const CreateNewAssset = () => {
                   onChange={handleChange}
                   required
                   fullWidth
+                  size={isMobile ? "small" : "medium"}
                 >
                   {locations.map((data) => (
                     <MenuItem value={data._id} key={data._id}>
@@ -154,34 +179,51 @@ const CreateNewAssset = () => {
                   onChange={handleChange}
                   required
                   fullWidth
+                  size={isMobile ? "small" : "medium"}
                 />
 
                 <TextField
                   name="artist"
                   label="Artist"
                   value={asset.artist}
-                  required
                   onChange={handleChange}
+                  required
                   fullWidth
+                  size={isMobile ? "small" : "medium"}
                 />
 
-                <Stack direction="row" alignItems="center" spacing={2}>
-                  <Avatar
-                    src={fileImage}
-                    alt={asset.name}
+                {/* Show image upload in left column on mobile */}
+                {isMobile && (
+                  <Box
                     sx={{
-                      width: 65,
-                      height: 65,
-                      bgcolor: (theme) => theme.palette.primary, // adjusts with theme
-                      color: (theme) => theme.palette.text.primary,
+                      border: "2px dashed",
+                      borderColor: "grey.400",
+                      borderRadius: 2,
+                      p: 2,
+                      textAlign: "center",
                     }}
-                    variant="rounded"
                   >
-                    {!fileImage && <AddPhotoAlternateIcon />}
-                  </Avatar>
-                  <Box>
+                    <Avatar
+                      src={fileImage}
+                      alt={asset.name}
+                      variant="rounded"
+                      sx={{
+                        width: { xs: 60, sm: 80 },
+                        height: { xs: 60, sm: 80 },
+                        mx: "auto",
+                        mb: 1,
+                        bgcolor: "grey.100",
+                      }}
+                    >
+                      {!fileImage && <AddPhotoAlternateIcon fontSize={isMobile ? "medium" : "large"} />}
+                    </Avatar>
                     <label htmlFor="image-upload">
-                      <Button variant="contained" component="span">
+                      <Button 
+                        variant="contained" 
+                        component="span"
+                        size={isMobile ? "small" : "medium"}
+                        fullWidth={isMobile}
+                      >
                         {asset.image ? "Change Image" : "Upload Image *"}
                       </Button>
                       <input
@@ -193,26 +235,14 @@ const CreateNewAssset = () => {
                         onChange={handleChange}
                       />
                     </label>
-                    {fileImage && (
-                      <Typography variant="body2" mt={1}>
-                        <a
-                          href={fileImage}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          style={{ textDecoration: "underline" }}
-                        >
-                          View Image
-                        </a>
-                      </Typography>
-                    )}
                   </Box>
-                </Stack>
+                )}
               </Stack>
-            </Box>
-          </Grid>
-          <Grid sx={{ flex: 1 }}>
-            <Box sx={{ height: "100%" }}>
-              <Stack spacing={3}>
+            </Grid>
+
+            {/* Right Column */}
+            <Grid item xs={12} md={6}>
+              <Stack spacing={{ xs: 2, md: 3 }}>
                 <TextField
                   name="size"
                   label="Size"
@@ -221,6 +251,7 @@ const CreateNewAssset = () => {
                   required
                   placeholder="e.g. 10x20"
                   fullWidth
+                  size={isMobile ? "small" : "medium"}
                 />
 
                 <LocalizationProvider dateAdapter={AdapterDayjs}>
@@ -232,13 +263,15 @@ const CreateNewAssset = () => {
                     maxDate={dayjs()}
                     onChange={(value) => {
                       setAsset({ ...asset, year: value });
-                      setYearError(""); // clear error on selection
+                      setYearError("");
                     }}
                     slotProps={{
                       textField: {
                         error: Boolean(yearError),
                         helperText: yearError,
                         required: true,
+                        fullWidth: true,
+                        size: isMobile ? "small" : "medium",
                       },
                     }}
                   />
@@ -248,10 +281,11 @@ const CreateNewAssset = () => {
                   name="currentValue"
                   label="Current Value"
                   type="number"
-                  required
                   value={asset.currentValue}
                   onChange={handleChange}
+                  required
                   fullWidth
+                  size={isMobile ? "small" : "medium"}
                 />
 
                 <TextField
@@ -261,77 +295,142 @@ const CreateNewAssset = () => {
                   onChange={handleChange}
                   required
                   multiline
-                  rows={3}
+                  rows={isMobile ? 2 : 3}
                   fullWidth
+                  size={isMobile ? "small" : "medium"}
                 />
+
+                {/* Show image upload in right column on desktop */}
+                {!isMobile && (
+                  <Box
+                    sx={{
+                      border: "2px dashed",
+                      borderColor: "grey.400",
+                      borderRadius: 2,
+                      p: 2,
+                      textAlign: "center",
+                    }}
+                  >
+                    <Avatar
+                      src={fileImage}
+                      alt={asset.name}
+                      variant="rounded"
+                      sx={{
+                        width: 80,
+                        height: 80,
+                        mx: "auto",
+                        mb: 1,
+                        bgcolor: "grey.100",
+                      }}
+                    >
+                      {!fileImage && <AddPhotoAlternateIcon fontSize="large" />}
+                    </Avatar>
+                    <label htmlFor="image-upload-desktop">
+                      <Button variant="contained" component="span">
+                        {asset.image ? "Change Image" : "Upload Image *"}
+                      </Button>
+                      <input
+                        type="file"
+                        accept="image/*"
+                        name="image"
+                        id="image-upload-desktop"
+                        hidden
+                        onChange={handleChange}
+                      />
+                    </label>
+                  </Box>
+                )}
               </Stack>
-            </Box>
+            </Grid>
           </Grid>
-        </Grid>
-        {/* Action Buttons */}
-        <Stack
-          direction={{ xs: "column", sm: "row" }}
-          spacing={2}
-          mt={4}
-          justifyContent="flex-end"
-          alignItems={{ xs: "stretch", sm: "center" }}
-        >
-          <Button
-            variant="outlined"
-            color="secondary"
-            onClick={() => navigate(-1)}
-            fullWidth={window.innerWidth < 600}
+
+          {/* Buttons */}
+          <Stack
+            direction={{ xs: "column", sm: "row" }}
+            spacing={{ xs: 1, sm: 2 }}
+            mt={{ xs: 3, md: 4 }}
+            justifyContent="flex-end"
           >
-            Cancel
-          </Button>
-          <Button
-            type="submit"
-            variant="contained"
-            color="primary"
-            fullWidth={window.innerWidth < 600}
-            disabled={loading}
-          >
-            <Box
-              sx={{
-                display: "inline-flex",
-                alignItems: "center",
-                justifyContent: "center",
-                minWidth: "72px",
-                height: "24px",
+            <Button
+              variant="outlined"
+              color="secondary"
+              onClick={() => navigate(-1)}
+              fullWidth={isMobile}
+              size={isMobile ? "medium" : "large"}
+              sx={{ 
+                minWidth: { sm: "120px" },
+                order: { xs: 2, sm: 1 }
+              }}
+            >
+              Cancel
+            </Button>
+            <Button
+              type="submit"
+              variant="contained"
+              color="primary"
+              fullWidth={isMobile}
+              disabled={loading}
+              size={isMobile ? "medium" : "large"}
+              sx={{ 
+                minWidth: { sm: "120px" },
+                order: { xs: 1, sm: 2 }
               }}
             >
               {loading ? (
-                <CircularProgress size={20} color="inherit" />
+                <CircularProgress 
+                  size={isMobile ? 16 : 20} 
+                  color="inherit" 
+                />
               ) : (
                 "Submit"
               )}
-            </Box>
-          </Button>
-        </Stack>
-      </form>
+            </Button>
+          </Stack>
+        </form>
+      </Paper>
 
-      <Dialog
-        open={successDialogOpen}
+      {/* Success Dialog - Now responsive */}
+      <Dialog 
+        open={successDialogOpen} 
         onClose={() => setSuccessDialogOpen(false)}
+        fullWidth
+        maxWidth="sm"
+        PaperProps={{
+          sx: {
+            mx: 2,
+            width: { xs: "calc(100% - 32px)", sm: "auto" }
+          }
+        }}
       >
-        <DialogTitle>Asset Created</DialogTitle>
+        <DialogTitle sx={{ fontSize: { xs: "1.1rem", sm: "1.25rem" } }}>
+          Asset Created
+        </DialogTitle>
         <DialogContent>
-          <Typography>Your asset has been created successfully.</Typography>
+          <Typography sx={{ fontSize: { xs: "0.9rem", sm: "1rem" } }}>
+            Your asset has been created successfully.
+          </Typography>
         </DialogContent>
-        <DialogActions>
+        <DialogActions 
+          sx={{ 
+            flexDirection: { xs: "column", sm: "row" },
+            gap: { xs: 1, sm: 0 },
+            p: { xs: 2, sm: 3 }
+          }}
+        >
           <Button
             onClick={() => {
               setSuccessDialogOpen(false);
-              navigate(-1); // Go back to previous page
+              navigate(-1);
             }}
             color="primary"
             variant="outlined"
+            fullWidth={isMobile}
+            size={isMobile ? "medium" : "large"}
           >
             Go Back
           </Button>
           <Button
             onClick={() => {
-              // Reset form for new entry
               setAsset({
                 name: "",
                 image: null,
@@ -349,6 +448,8 @@ const CreateNewAssset = () => {
             }}
             color="primary"
             variant="contained"
+            fullWidth={isMobile}
+            size={isMobile ? "medium" : "large"}
           >
             Create Another
           </Button>
@@ -358,4 +459,4 @@ const CreateNewAssset = () => {
   );
 };
 
-export default CreateNewAssset;
+export default CreateNewAsset;

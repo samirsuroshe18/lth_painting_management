@@ -11,21 +11,41 @@ const EditUser = () => {
   const navigate = useNavigate();
   const dispatch = useDispatch();
 
-  const [locations, setLocations] = useState(userData.location);
+  const [locations, setLocations] = useState(userData.location || []);
   const [formData, setFormData] = useState({
-    userName: user.userName,
-    email: user.email,
-    mobileNo: user.mobileNo,
-    role: user.role,
-    location: user.location,
-    status: user.isActive,
+    userName: user.userName || "",
+    email: user.email || "",
+    mobileNo: user.mobileNo || "",
+    role: user.role || "user",
+    location: user.location || [],
+    status: user.isActive !== undefined ? user.isActive : true,
   });
+
+  // Normalize user location to an array of IDs
+  useEffect(() => {
+    if (user.location) {
+      const userLocationIds = Array.isArray(user.location)
+        ? user.location.map((loc) =>
+            typeof loc === "object" ? loc._id : loc
+          )
+        : [typeof user.location === "object" ? user.location._id : user.location];
+
+      setFormData((prev) => ({
+        ...prev,
+        location: userLocationIds,
+      }));
+    }
+  }, [user.location]);
 
   const handleChange = (e) => {
     const { name, value, type, selectedOptions } = e.target;
     if (type === "select-multiple") {
       const values = Array.from(selectedOptions, (option) => option.value);
       setFormData({ ...formData, [name]: values });
+    } else if (name === "status") {
+      const statusValue =
+        value === "active" || value === true || value === "true";
+      setFormData({ ...formData, [name]: statusValue });
     } else {
       setFormData({ ...formData, [name]: value });
     }
@@ -64,6 +84,10 @@ const EditUser = () => {
       );
     }
   };
+
+  const isLocationSelected = (locationId) =>
+    Array.isArray(formData.location) &&
+    formData.location.includes(locationId);
 
   return (
     <div className="">
@@ -164,86 +188,86 @@ const EditUser = () => {
                 </select>
               </div>
 
-              {/* Status */}
-              <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-2">
-                  Status
-                </label>
-                <select
-                  name="status"
-                  value={formData.status === true ? 'Active' : 'Inactive'}
-                  onChange={handleChange}
-                  className="w-full px-4 py-2.5 rounded-lg border border-gray-300 bg-white text-gray-900 shadow-sm focus:ring-2 focus:ring-blue-500 dark:border-gray-700 dark:bg-[#2A2A2A] dark:text-gray-100"
-                >
-                  <option value="active">Active</option>
-                  <option value="inactive">Inactive</option>
-                </select>
-              </div>
+              {/* Status & Location */}
+              <div className="md:col-span-2 grid grid-cols-1 md:grid-cols-2 gap-6 items-start">
+                {/* Status */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-2">
+                    Status
+                  </label>
+                  <select
+                    name="status"
+                    value={formData.status ? "active" : "inactive"}
+                    onChange={handleChange}
+                    className="w-full px-4 py-2.5 rounded-lg border border-gray-300 bg-white text-gray-900 shadow-sm 
+                      focus:ring-2 focus:ring-blue-500 dark:border-gray-700 dark:bg-[#2A2A2A] dark:text-gray-100"
+                  >
+                    <option value="active">Active</option>
+                    <option value="inactive">Inactive</option>
+                  </select>
+                </div>
 
-              {/* Location */}
-              <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-2">
-                  Location
-                </label>
-                <select
-                  name="location"
-                  multiple
-                  value={formData.location}
-                  onChange={handleChange}
-                  className="w-full h-[100px] px-4 py-2.5 rounded-lg border border-gray-300 bg-white text-gray-900 shadow-sm focus:ring-2 focus:ring-blue-500 dark:border-gray-700 dark:bg-[#2A2A2A] dark:text-gray-100"
-                >
-                  {Array.isArray(locations) && locations.length > 0 ? (
-                    locations.map((loc) => (
-                      <option key={loc._id || loc} value={loc._id || loc}>
-                        {loc.name || loc}
-                      </option>
-                    ))
-                  ) : (
-                    <option disabled>No locations available</option>
-                  )}
-                </select>
-                <p className="mt-2 text-xs text-gray-500 dark:text-gray-400">
-                  Hold{" "}
-                  <kbd className="px-1.5 py-0.5 rounded bg-gray-100 dark:bg-[#1E1E1E] border dark:border-gray-700">
-                    Ctrl/Cmd
-                  </kbd>{" "}
-                  to select multiple
-                </p>
-              </div>
+                {/* Location */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-2">
+                    Location
+                  </label>
+                  <select
+                    name="location"
+                    multiple
+                    value={formData.location}
+                    onChange={handleChange}
+                    className="w-full min-h-[160px] px-4 py-2.5 rounded-lg border border-gray-300 bg-white text-gray-900 shadow-sm 
+                      focus:ring-2 focus:ring-blue-500 dark:border-gray-700 dark:bg-[#2A2A2A] dark:text-gray-100"
+                  >
+                    {Array.isArray(locations) && locations.length > 0 ? (
+                      locations.map((loc, index) => {
+                        const locationId =
+                          typeof loc === "object" ? loc._id : loc;
+                        const locationName =
+                          typeof loc === "object" ? loc.name : loc;
+                        const selected = isLocationSelected(locationId);
 
-              {/* Location */}
-              {/* <div className="md:col-span-2">
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-2">
-                  Location
-                </label>
-                <select
-                  name="location"
-                  multiple
-                  value={formData.location}
-                  onChange={handleChange}
-                  className="w-full h-40 px-4 py-2.5 rounded-lg border border-gray-300 bg-white text-gray-900 shadow-sm focus:ring-2 focus:ring-blue-500 dark:border-gray-700 dark:bg-[#2A2A2A] dark:text-gray-100"
-                >
-                  {Array.isArray(locations) && locations.length > 0 ? (
-                    locations.map((loc) => (
-                      <option key={loc._id || loc} value={loc._id || loc}>
-                        {loc.name || loc}
-                      </option>
-                    ))
-                  ) : (
-                    <option disabled>No locations available</option>
-                  )}
-                </select>
-                <p className="mt-2 text-xs text-gray-500 dark:text-gray-400">
-                  Hold{" "}
-                  <kbd className="px-1.5 py-0.5 rounded bg-gray-100 dark:bg-[#1E1E1E] border dark:border-gray-700">
-                    Ctrl/Cmd
-                  </kbd>{" "}
-                  to select multiple
-                </p>
-              </div> */}
+                        return (
+                          <option
+                            key={locationId || `loc-${index}`}
+                            value={locationId}
+                            className={
+                              selected
+                                ? "bg-grey-100 dark:bg-blue-900"
+                                : ""
+                            }
+                          >
+                            {selected
+                              ? `✓ ${String(locationName)}`
+                              : String(locationName)}
+                          </option>
+                        );
+                      })
+                    ) : (
+                      <option disabled>No locations available</option>
+                    )}
+                  </select>
+                  <div className="mt-2 flex items-center justify-between">
+                    <p className="text-xs text-gray-500 dark:text-gray-400">
+                      Hold{" "}
+                      <kbd className="px-1.5 py-0.5 rounded bg-gray-100 dark:bg-[#1E1E1E] border dark:border-gray-700">
+                        Ctrl/Cmd
+                      </kbd>{" "}
+                      to select multiple locations
+                    </p>
+                    <p className="text-xs text-blue-600 dark:text-blue-400">
+                      Selected:{" "}
+                      {Array.isArray(formData.location)
+                        ? formData.location.length
+                        : 0}
+                    </p>
+                  </div>
+                </div>
+              </div>
             </div>
 
-            {/* Footer Actions */}
+            {/* Footer */}
             <div className="px-6 py-4 border-t border-gray-200 dark:border-gray-700 flex justify-end gap-3">
               <button
                 type="button"
