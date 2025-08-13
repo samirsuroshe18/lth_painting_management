@@ -83,6 +83,7 @@ const EditRights = () => {
   const [permissions, setPermissions] = useState(normalizePermissions(user.permissions || []));
   const [search, setSearch] = useState("");
   const [showDialog, setShowDialog] = useState(false);
+  const [isLoading, setIsLoading] = useState(false); // Add loading state
 
   const allAllowed = useMemo(
     () => permissions.length > 0 && permissions.every((p) => p.effect === "Allow"),
@@ -118,11 +119,20 @@ const EditRights = () => {
   }, [permissions, search]);
 
   const handleSave = async () => {
+    setIsLoading(true); // Start loading
     try {
       const toSave = [...permissions].sort((a, b) => a.action.localeCompare(b.action));
       await updatePermissions(id, toSave);
+      
+      // Add 1 second delay to show loading state
+      await new Promise(resolve => setTimeout(resolve, 1000));
+      
+      setIsLoading(false); // Stop loading before showing success dialog
       setShowDialog(true);
     } catch (error) {
+      // Add delay even for errors to maintain consistent UX
+      await new Promise(resolve => setTimeout(resolve, 1000));
+      setIsLoading(false); // Stop loading on error
       dispatch(showNotificationWithTimeout({
         show: true,
         type: "error",
@@ -152,13 +162,15 @@ const EditRights = () => {
         <div className="flex flex-wrap items-center gap-2">
           <button
             onClick={handleAllowAll}
-            className="rounded-lg bg-green-600 px-4 py-2 text-sm font-semibold text-white hover:bg-green-500"
+            disabled={isLoading}
+            className="rounded-lg bg-green-600 px-4 py-2 text-sm font-semibold text-white hover:bg-green-500 disabled:opacity-50 disabled:cursor-not-allowed"
           >
             Allow All
           </button>
           <button
             onClick={handleDenyAll}
-            className="rounded-lg bg-rose-600 px-4 py-2 text-sm font-semibold text-white hover:bg-rose-500"
+            disabled={isLoading}
+            className="rounded-lg bg-rose-600 px-4 py-2 text-sm font-semibold text-white hover:bg-rose-500 disabled:opacity-50 disabled:cursor-not-allowed"
           >
             Deny All
           </button>
@@ -166,8 +178,9 @@ const EditRights = () => {
             type="text"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
+            disabled={isLoading}
             placeholder="Search permissions…"
-            className="w-56 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-[#2A2A2A] px-3 py-2 text-sm text-gray-900 dark:text-gray-100 placeholder-gray-500 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500"
+            className="w-56 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-[#2A2A2A] px-3 py-2 text-sm text-gray-900 dark:text-gray-100 placeholder-gray-500 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-50"
           />
         </div>
       </div>
@@ -188,13 +201,15 @@ const EditRights = () => {
                 <div className="flex items-center gap-2">
                   <button
                     onClick={() => handleGroupAllow(g.actions)}
-                    className="rounded-md border border-green-600 px-3 py-1 text-xs text-green-600 dark:text-green-400 hover:bg-green-600 hover:text-white"
+                    disabled={isLoading}
+                    className="rounded-md border border-green-600 px-3 py-1 text-xs text-green-600 dark:text-green-400 hover:bg-green-600 hover:text-white disabled:opacity-50 disabled:cursor-not-allowed"
                   >
                     Allow Group
                   </button>
                   <button
                     onClick={() => handleGroupDeny(g.actions)}
-                    className="rounded-md border border-rose-600 px-3 py-1 text-xs text-rose-600 dark:text-rose-400 hover:bg-rose-600 hover:text-white"
+                    disabled={isLoading}
+                    className="rounded-md border border-rose-600 px-3 py-1 text-xs text-rose-600 dark:text-rose-400 hover:bg-rose-600 hover:text-white disabled:opacity-50 disabled:cursor-not-allowed"
                   >
                     Deny Group
                   </button>
@@ -216,7 +231,9 @@ const EditRights = () => {
                 {rows.map((perm) => (
                   <label
                     key={perm.action}
-                    className="flex items-center justify-between rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-[#2A2A2A] px-3 py-2 text-sm"
+                    className={`flex items-center justify-between rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-[#2A2A2A] px-3 py-2 text-sm ${
+                      isLoading ? 'opacity-50 cursor-not-allowed' : ''
+                    }`}
                   >
                     <div className="mr-3">
                       <div className="font-medium text-gray-900 dark:text-gray-100">{humanize(perm.action)}</div>
@@ -226,9 +243,10 @@ const EditRights = () => {
                     <button
                       type="button"
                       onClick={() => togglePermission(perm.action)}
+                      disabled={isLoading}
                       className={`relative inline-flex h-6 w-12 items-center rounded-full transition ${
                         perm.effect === "Allow" ? "bg-blue-600" : "bg-gray-400 dark:bg-gray-500"
-                      }`}
+                      } ${isLoading ? 'cursor-not-allowed' : ''}`}
                     >
                       <span
                         className={`inline-block h-5 w-5 transform rounded-full bg-white transition ${
@@ -248,17 +266,32 @@ const EditRights = () => {
       <div className="mt-8 flex flex-col-reverse sm:flex-row items-center justify-end gap-3">
         <button
           onClick={() => navigate("/masters/user-master")}
-          className="rounded-lg border border-gray-300 dark:border-gray-600 px-5 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700"
+          disabled={isLoading}
+          className="rounded-lg border border-gray-300 dark:border-gray-600 px-5 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 disabled:opacity-50 disabled:cursor-not-allowed"
         >
           Cancel
         </button>
         <button
           onClick={handleSave}
-          className="rounded-lg bg-blue-600 px-5 py-2 text-sm font-semibold text-white hover:bg-blue-500"
+          disabled={isLoading}
+          className="rounded-lg bg-blue-600 px-5 py-2 text-sm font-semibold text-white hover:bg-blue-500 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
         >
-          Save Permissions
+          {isLoading && (
+            <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+          )}
+          {isLoading ? 'Saving...' : 'Save Permissions'}
         </button>
       </div>
+
+      {/* Loading Overlay */}
+      {isLoading && (
+        <div className="fixed inset-0 z-40 bg-black/30 flex items-center justify-center">
+          <div className="bg-white dark:bg-[#252525] rounded-lg p-6 shadow-lg flex flex-col items-center">
+            <div className="w-8 h-8 border-4 border-blue-600 border-t-transparent rounded-full animate-spin mb-4"></div>
+            <p className="text-gray-900 dark:text-gray-100 font-medium">Saving permissions...</p>
+          </div>
+        </div>
+      )}
 
       {/* Success dialog */}
       {showDialog && (

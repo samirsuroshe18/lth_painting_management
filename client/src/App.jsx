@@ -1,10 +1,16 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Outlet, useNavigate } from "react-router";
 import { useDispatch, useSelector } from "react-redux";
 import { ReactRouterAppProvider } from "@toolpad/core/react-router";
 import { getCurrentUser } from "./api/authApi";
 import { currentUser } from "./redux/slices/authSlice";
-import { LinearProgress } from "@mui/material";
+import {
+  LinearProgress,
+  ThemeProvider,
+  CssBaseline,
+  GlobalStyles,
+  createTheme,
+} from "@mui/material";
 import DashboardIcon from "@mui/icons-material/Dashboard";
 import SettingsIcon from "@mui/icons-material/Settings";
 import PeopleIcon from "@mui/icons-material/People";
@@ -20,6 +26,22 @@ import { setNavigate } from "./utils/navigationHelper";
 function App() {
   const userData = useSelector((state) => state.auth.userData?.user);
   const [loading, setLoading] = useState(true);
+
+  // Detect Toolpad dark/light mode from localStorage
+  const [mode, setMode] = useState(localStorage.getItem("mui-mode") || "light");
+
+  useEffect(() => {
+    const handleStorage = () => {
+      setMode(localStorage.getItem("mui-mode") || "light");
+    };
+    window.addEventListener("storage", handleStorage);
+    return () => {
+      window.removeEventListener("storage", handleStorage);
+    };
+  }, []);
+
+  const theme = useMemo(() => createTheme({ palette: { mode } }), [mode]);
+
   const navigate = useNavigate();
   const dispatch = useDispatch();
 
@@ -40,7 +62,7 @@ function App() {
       }
     };
     fetchData();
-  }, []);
+  }, [dispatch, navigate]);
 
   const BRANDING = {
     title: "Artifact E-Gallary Portal",
@@ -100,46 +122,26 @@ function App() {
     },
   ];
 
-  const filterNavigationByPermissions = (items) => {
-    return items.filter((item) => {
-        // Check main item permission
-        if (item.permission && !canAccess(userData?.permissions, item.permission)) {
-          return false;
-        }
-        return true;
-      }).map((item) => {
-        // Filter children if they exist
+  const filterNavigationByPermissions = (items) =>
+    items
+      .filter((item) => !item.permission || canAccess(userData?.permissions, item.permission))
+      .map((item) => {
         if (item.children) {
-          const filteredChildren = item.children.filter((child) =>!child.permission || canAccess(userData?.permissions, child.permission));
-
-          // Only include parent if it has accessible children or no permission requirement
-          return filteredChildren.length > 0
-            ? { ...item, children: filteredChildren }
-            : item;
+          const filteredChildren = item.children.filter(
+            (child) => !child.permission || canAccess(userData?.permissions, child.permission)
+          );
+          return filteredChildren.length > 0 ? { ...item, children: filteredChildren } : item;
         }
         return item;
       })
-      .filter(
-        (item) =>
-          // Remove parent items that have no accessible children
-          !item.children || item.children.length > 0
-      );
-  };
+      .filter((item) => !item.children || item.children.length > 0);
 
   const NAVIGATION = filterNavigationByPermissions(navigationConfig);
 
-  // Show loading state
   if (loading) {
     return (
       <ReactRouterAppProvider>
-        <div
-          style={{
-            width: "100%",
-            height: "100vh",
-            display: "flex",
-            alignItems: "top",
-          }}
-        >
+        <div style={{ width: "100%", height: "100vh", display: "flex", alignItems: "top" }}>
           <LinearProgress style={{ width: "100%" }} />
         </div>
       </ReactRouterAppProvider>
@@ -147,10 +149,40 @@ function App() {
   }
 
   return (
-    <ReactRouterAppProvider navigation={NAVIGATION} branding={BRANDING}>
-      <Outlet />
-      <SnackBar />
-    </ReactRouterAppProvider>
+    <ThemeProvider theme={theme}>
+      <CssBaseline />
+    <GlobalStyles
+  styles={{
+    body: {
+      transition: "background-color 0.35s ease, color 0.35s ease",
+    },
+    "#root": {
+      transition: "background-color 0.35s ease, color 0.35s ease",
+    },
+    ".MuiPaper-root": {
+      transition: "background-color 0.35s ease, color 0.35s ease",
+    },
+    ".MuiAppBar-root": {
+      transition: "background-color 0.35s ease, color 0.35s ease",
+    },
+    ".MuiToolbar-root": {
+      transition: "background-color 0.35s ease, color 0.35s ease",
+    },
+    ".MuiCardHeader-root": {
+      transition: "background-color 0.35s ease, color 0.35s ease",
+    },
+    ".MuiDialogTitle-root": {
+      transition: "background-color 0.35s ease, color 0.35s ease",
+    },
+  }}
+/>
+
+
+      <ReactRouterAppProvider navigation={NAVIGATION} branding={BRANDING}>
+        <Outlet />
+        <SnackBar />
+      </ReactRouterAppProvider>
+    </ThemeProvider>
   );
 }
 
