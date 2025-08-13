@@ -117,157 +117,166 @@ const CreateNewAssset = () => {
       </Typography>
 
       <form onSubmit={loading ? null : handleSubmit} autoComplete="off">
-        <Grid container spacing={4} sx={{ display: "flex" }}>
-          <Grid sx={{ flex: 1 }}>
-            <Box sx={{ height: "100%" }}>
-              <Stack spacing={3}>
-                <TextField
-                  name="name"
-                  label="Asset Name"
-                  value={asset.name}
-                  onChange={handleChange}
-                  required
-                  fullWidth
-                  autoFocus
-                />
-
-                <TextField
-                  name="location"
-                  label="Location"
-                  select
-                  value={asset.location}
-                  onChange={handleChange}
-                  required
-                  fullWidth
-                >
-                  {locations.map((data) => (
-                    <MenuItem value={data._id} key={data._id}>
-                      {data.name}
-                    </MenuItem>
-                  ))}
-                </TextField>
-
-                <TextField
-                  name="place"
-                  label="Place"
-                  value={asset.place}
-                  onChange={handleChange}
-                  required
-                  fullWidth
-                />
-
-                <TextField
-                  name="artist"
-                  label="Artist"
-                  value={asset.artist}
-                  required
-                  onChange={handleChange}
-                  fullWidth
-                />
-
-                <Stack direction="row" alignItems="center" spacing={2}>
-                  <Avatar
-                    src={fileImage}
-                    alt={asset.name}
-                    sx={{
-                      width: 65,
-                      height: 65,
-                      bgcolor: (theme) => theme.palette.primary, // adjusts with theme
-                      color: (theme) => theme.palette.text.primary,
-                    }}
-                    variant="rounded"
-                  >
-                    {!fileImage && <AddPhotoAlternateIcon />}
-                  </Avatar>
-                  <Box>
-                    <label htmlFor="image-upload">
-                      <Button variant="contained" component="span">
-                        {asset.image ? "Change Image" : "Upload Image *"}
-                      </Button>
-                      <input
-                        type="file"
-                        accept="image/*"
-                        name="image"
-                        id="image-upload"
-                        hidden
-                        onChange={handleChange}
-                      />
-                    </label>
-                    {fileImage && (
-                      <Typography variant="body2" mt={1}>
-                        <a
-                          href={fileImage}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          style={{ textDecoration: "underline" }}
-                        >
-                          View Image
-                        </a>
-                      </Typography>
-                    )}
-                  </Box>
-                </Stack>
-              </Stack>
-            </Box>
+        <Grid container spacing={4}>
+          <Grid size={{ xs: 12, md: 6 }}>
+            <TextField
+              name="name"
+              label="Asset Name"
+              value={asset.name}
+              onChange={handleChange}
+              required
+              fullWidth
+              autoFocus
+            />
           </Grid>
-          <Grid sx={{ flex: 1 }}>
-            <Box sx={{ height: "100%" }}>
-              <Stack spacing={3}>
-                <TextField
-                  name="size"
-                  label="Size"
-                  value={asset.size}
-                  onChange={handleChange}
-                  required
-                  placeholder="e.g. 10x20"
-                  fullWidth
-                />
 
-                <LocalizationProvider dateAdapter={AdapterDayjs}>
-                  <DatePicker
-                    label="Year"
-                    views={["year"]}
-                    value={asset.year}
-                    minDate={dayjs("1500-01-01")}
-                    maxDate={dayjs()}
-                    onChange={(value) => {
-                      setAsset({ ...asset, year: value });
-                      setYearError(""); // clear error on selection
-                    }}
-                    slotProps={{
-                      textField: {
-                        error: Boolean(yearError),
-                        helperText: yearError,
-                        required: true,
-                      },
-                    }}
+          <Grid size={{ xs: 12, md: 6 }}>
+            <TextField
+              name="description"
+              label="Description"
+              value={asset.description}
+              onChange={handleChange}
+              required
+              multiline
+              rows={3}
+              fullWidth
+            />
+          </Grid>
+
+          <Grid size={{ xs: 12, md: 6 }}>
+            <TextField
+              name="location"
+              label="Location"
+              select
+              value={asset.location}
+              onChange={handleChange}
+              required
+              fullWidth
+            >
+              {locations.map((data) => (
+                <MenuItem value={data._id} key={data._id}>
+                  {data.name}
+                </MenuItem>
+              ))}
+            </TextField>
+          </Grid>
+
+          <Grid size={{ xs: 12, md: 6 }}>
+            <TextField
+              name="place"
+              label="Place"
+              value={asset.place}
+              onChange={handleChange}
+              required
+              fullWidth
+            />
+          </Grid>
+
+          <Grid size={{ xs: 12, md: 6 }}>
+            <LocalizationProvider dateAdapter={AdapterDayjs}>
+              <DatePicker
+                label="Year"
+                views={["year"]}
+                value={asset.year}
+                minDate={dayjs("1500-01-01")}
+                maxDate={dayjs()}
+                onChange={(value) => {
+                  setAsset({ ...asset, year: value });
+                  setYearError(""); // clear error on selection
+                }}
+                slotProps={{
+                  textField: {
+                    error: Boolean(yearError),
+                    helperText: yearError,
+                    required: true,
+                    fullWidth: true,
+                  },
+                }}
+              />
+            </LocalizationProvider>
+          </Grid>
+
+          <Grid size={{ xs: 12, md: 6 }}>
+            <TextField
+              name="currentValue"
+              label="Current Value"
+              type="number"
+              required
+              value={asset.currentValue}
+              onChange={handleChange}
+              fullWidth
+            />
+          </Grid>
+
+          <Grid size={{ xs: 12, md: 6 }}>
+            <TextField
+              name="artist"
+              label="Artist"
+              value={asset.artist}
+              required
+              onChange={handleChange}
+              fullWidth
+            />
+          </Grid>
+
+          <Grid size={{ xs: 12, md: 6 }}>
+            <TextField
+              name="size"
+              label="Size"
+              value={asset.size}
+              onChange={handleChange}
+              required
+              placeholder="e.g. 10x20"
+              fullWidth
+            />
+          </Grid>
+
+          <Grid size={{ xs: 12, md: 6 }}>
+            <Stack direction="row" alignItems="center" spacing={2}>
+              <Avatar
+                src={fileImage}
+                alt={asset.name}
+                sx={{
+                  width: 65,
+                  height: 65,
+                  bgcolor: (theme) => theme.palette.primary, // adjusts with theme
+                  color: (theme) => theme.palette.text.primary,
+                }}
+                variant="rounded"
+              >
+                {!fileImage && <AddPhotoAlternateIcon />}
+              </Avatar>
+              <Box>
+                <label htmlFor="image-upload">
+                  <Button variant="contained" component="span">
+                    {asset.image ? "Change Image" : "Upload Image *"}
+                  </Button>
+                  <input
+                    type="file"
+                    accept="image/*"
+                    name="image"
+                    id="image-upload"
+                    hidden
+                    onChange={handleChange}
                   />
-                </LocalizationProvider>
-
-                <TextField
-                  name="currentValue"
-                  label="Current Value"
-                  type="number"
-                  required
-                  value={asset.currentValue}
-                  onChange={handleChange}
-                  fullWidth
-                />
-
-                <TextField
-                  name="description"
-                  label="Description"
-                  value={asset.description}
-                  onChange={handleChange}
-                  required
-                  multiline
-                  rows={3}
-                  fullWidth
-                />
-              </Stack>
-            </Box>
+                </label>
+                {fileImage && (
+                  <Typography variant="body2" mt={1}>
+                    <a
+                      href={fileImage}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      style={{ textDecoration: "underline" }}
+                    >
+                      View Image
+                    </a>
+                  </Typography>
+                )}
+              </Box>
+            </Stack>
           </Grid>
         </Grid>
+
         {/* Action Buttons */}
         <Stack
           direction={{ xs: "column", sm: "row" }}

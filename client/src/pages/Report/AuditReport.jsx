@@ -1,21 +1,20 @@
-// AuditReport.jsx
-import { useState } from "react";
+import { Fragment, useState } from "react";
 import {
   Button,
-  Checkbox,
   Chip,
   TextField,
-  InputAdornment,
   CircularProgress,
+  Typography,
+  Grid,
+  Stack,
+  Box,
 } from "@mui/material";
-import { DataGrid, GridToolbarQuickFilter } from "@mui/x-data-grid";
+import ClearIcon from "@mui/icons-material/Clear"; 
+import SendIcon from "@mui/icons-material/Send";
+import { DataGrid } from "@mui/x-data-grid";
 import { DatePicker, LocalizationProvider } from "@mui/x-date-pickers";
 import { AdapterDayjs } from "@mui/x-date-pickers/AdapterDayjs";
-import SearchIcon from "@mui/icons-material/Search";
 import DownloadIcon from "@mui/icons-material/Download";
-import NavigateNextIcon from "@mui/icons-material/NavigateNext";
-import NavigateBeforeIcon from "@mui/icons-material/NavigateBefore";
-import RefreshIcon from "@mui/icons-material/Refresh";
 import CheckCircleRoundedIcon from "@mui/icons-material/CheckCircleRounded";
 import PendingRoundedIcon from "@mui/icons-material/PendingRounded";
 import CloseRoundedIcon from "@mui/icons-material/CloseRounded";
@@ -27,10 +26,10 @@ import { handleAxiosError } from "../../utils/handleAxiosError";
 import { getAssetsByLocations } from "../../api/assetMasterApi";
 import { fetchAudits } from "../../api/auditLogApi";
 import canAccess from "../../utils/canAccess";
+import { Cancel } from "@mui/icons-material";
 
 // Helpers
 const optionId = (opt) => opt?._id || opt?.id;
-const optionLabel = (opt) => opt?.name || "";
 
 export default function AuditReport() {
   const dispatch = useDispatch();
@@ -42,12 +41,9 @@ export default function AuditReport() {
   // Locations
   const [locations] = useState(userData?.location ?? []);
   const [selectedLocations, setSelectedLocations] = useState([]);
-  const [locationsLoading] = useState(false);
 
   // Assets
-  const [assets, setAssets] = useState([]);
   const [selectedAssets, setSelectedAssets] = useState([]);
-  const [assetsLoading, setAssetsLoading] = useState(false);
 
   // Dates
   const [startDate, setStartDate] = useState(null);
@@ -58,41 +54,54 @@ export default function AuditReport() {
   const [submitLoading, setSubmitLoading] = useState(false);
   const [canExport, setCanExport] = useState(false);
 
+  const handleClear = () => {
+    setSelectedLocations([]);
+    setSelectedAssets([]);
+    setStartDate(null);
+    setEndDate(null);
+    setAudits([]);
+    setCanExport(false);
+    setPaginationModel({ page: 0, pageSize: 10 });
+    setOptions([]);
+    setOpen(false);
+  };
+
   // DataGrid pagination
   const [paginationModel, setPaginationModel] = useState({
     page: 0,
     pageSize: 10,
   });
+  const [open, setOpen] = useState(false);
+  console.log("open values : ", open);
+  const [options, setOptions] = useState([]);
+  const [loading, setLoading] = useState(false);
 
-  const handleNextFromLocations = async () => {
-    if (!selectedLocations.length) {
-      dispatch(
-        showNotificationWithTimeout({
-          show: true,
-          type: "warning",
-          message: "Please choose at least one location.",
-        })
-      );
-      return;
-    }
-    try {
-      setAssetsLoading(true);
-      const locationIds = selectedLocations.map(optionId);
-      const res = await getAssetsByLocations({ locationIds });
-      setAssets(res?.data?.assets ?? []);
-      setSelectedAssets([]);
-      setStep(1);
-    } catch (error) {
-      dispatch(
-        showNotificationWithTimeout({
-          show: true,
-          type: "error",
-          message: handleAxiosError(error),
-        })
-      );
-    } finally {
-      setAssetsLoading(false);
-    }
+  const handleOpen = () => {
+    setOpen(true);
+    (async () => {
+      try {
+        setLoading(true);
+        const locationIds = selectedLocations.map(optionId);
+        const res = await getAssetsByLocations({ locationIds });
+        setOptions(res?.data?.assets ?? []);
+      } catch (error) {
+        setOptions([]);
+        dispatch(
+          showNotificationWithTimeout({
+            show: true,
+            type: "error",
+            message: handleAxiosError(error),
+          })
+        );
+      } finally {
+        setLoading(false);
+      }
+    })();
+  };
+
+  const handleClose = () => {
+    setOpen(false);
+    setOptions([]);
   };
 
   const handleSubmit = async () => {
@@ -116,6 +125,7 @@ export default function AuditReport() {
 
       setAudits(rows);
       setPaginationModel({ page: 0, pageSize: 10 });
+      console.log('can export : true 1')
       setCanExport(true);
     } catch (error) {
       dispatch(
@@ -131,30 +141,68 @@ export default function AuditReport() {
   };
 
   const handleExport = () => {
-    if(!canAccess(userData?.permissions, 'auditReport:edit')){
+    console.log("exporting...");
+    if (!canAccess(userData?.permissions, "auditReport:edit")) {
       dispatch(
         showNotificationWithTimeout({
           show: true,
           type: "error",
-          message: 'Access Denied',
+          message: "Access Denied",
         })
       );
       return;
     }
 
     if (!audits?.length) return;
-    const flat = audits.map((a, idx) => ({
+
+    // Arrange columns explicitly
+    const headers = [
+      "Sr. No",
+      "Asset Name",
+      "Location",
+      "Status",
+      "Auditor",
+      "Created At",
+    ];
+
+    // Build flat rows; use real Date for Excel-native date cells
+    const rows = audits.map((a, idx) => ({
       "Sr. No": idx + 1,
       "Asset Name": a?.assetId?.name ?? "-",
       Location: a?.locationId?.name ?? "-",
       Status: a?.reviewStatus ?? "-",
       Auditor: a?.createdBy?.userName ?? "-",
-      "Created At": a?.createdAt
-        ? new Date(a.createdAt).toLocaleString("en-IN")
-        : "-",
+      "Created At": a?.createdAt ? new Date(a.createdAt) : null, // Date or blank
     }));
 
-    const ws = XLSX.utils.json_to_sheet(flat);
+    // Create sheet with desired column order
+    const ws = XLSX.utils.json_to_sheet(rows, { header: headers });
+
+    // Nicer column widths
+    ws["!cols"] = [
+      { wch: 6 }, // Sr. No
+      { wch: 28 }, // Asset Name
+      { wch: 22 }, // Location
+      { wch: 16 }, // Status
+      { wch: 20 }, // Auditor
+      { wch: 22 }, // Created At
+    ];
+
+    // Ensure Excel-native date cells with a readable format
+    const dateColIdx = headers.indexOf("Created At");
+    for (let r = 1; r <= rows.length; r++) {
+      const cellRef = XLSX.utils.encode_cell({ r, c: dateColIdx });
+      const v = rows[r - 1]["Created At"];
+      if (v instanceof Date) {
+        // Create or update the cell with date type + format
+        ws[cellRef] = { v, t: "d", z: "dd-mmm-yy hh:mm" };
+      } else if (!v) {
+        // Make sure empty stays empty (no "undefined")
+        if (ws[cellRef]) delete ws[cellRef];
+      }
+    }
+
+    // Build workbook and save
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, "Audit Report");
     XLSX.writeFile(wb, "audit-report.xlsx");
@@ -264,261 +312,160 @@ export default function AuditReport() {
     },
   ];
 
-  const SelectedSummary = ({ label, items }) =>
-    items?.length ? (
-      <div className="flex items-center gap-2 text-sm">
-        <span className="text-slate-500">{label}:</span>
-        <span className="inline-flex items-center rounded-full bg-slate-100 px-2 py-0.5 text-slate-700">
-          {items.length}
-        </span>
-      </div>
-    ) : null;
-
   return (
-    <div className="mx-auto max-w-[1200px] w-full px-4 py-6">
+    <div className="px-4 py-6">
       {/* Header */}
-      <div className="w-full rounded-2xl bg-gradient-to-r from-indigo-600 via-indigo-500 to-sky-500 p-[1px] shadow-lg">
-        <div className="w-full rounded-2xl bg-white p-5 dark:bg-[#1E1E1E]">
-          <h1 className="text-2xl font-bold text-slate-900 dark:text-slate-100">
+      <Grid container spacing={2} alignItems="center">
+        <Grid xs={12} md="auto">
+          <Typography variant="h4" fontWeight={700} color="primary">
             Audit Report
-          </h1>
-          <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
+          </Typography>
+          <Typography variant="body2" color="text.secondary">
             Filter audits by location, asset, and date range. Export results to
             Excel.
-          </p>
-        </div>
-      </div>
+          </Typography>
+        </Grid>
+      </Grid>
 
       {/* Content */}
-      <div className="mt-5 w-full space-y-4">
-        {/* Step 1 */}
-        {step === 0 && (
-          <div className="w-full rounded-2xl border border-slate-200 bg-white p-4 shadow-sm dark:border-slate-800 dark:bg-[#1E1E1E]">
-            <h2 className="text-lg font-semibold text-slate-800 dark:text-slate-100">
-              Select Locations
-            </h2>
-            <div className="mt-3 w-full">
-              <SearchableMultiSelect
+      <Grid container spacing={2} sx={{ mt: 3 }}>
+        <Grid size={{ xs: 12, md: 6 }}>
+          <Autocomplete
+            multiple
+            disableCloseOnSelect
+            limitTags={1}
+            id="multiple-limit-tags"
+            options={locations}
+            getOptionLabel={(option) => option.name}
+            onChange={(_, val) => setSelectedLocations(val)}
+            renderInput={(params) => (
+              <TextField
+                {...params}
                 label="Locations"
-                loading={locationsLoading}
-                options={locations}
-                selected={selectedLocations}
-                onChange={setSelectedLocations}
-                placeholder="Search locations..."
+                placeholder="search location.."
+                size="small"
               />
-            </div>
-            <div className="mt-4 flex w-full justify-end">
-              <Button
-                className="w-full sm:w-auto"
-                variant="contained"
-                endIcon={<NavigateNextIcon />}
-                disabled={!selectedLocations.length || assetsLoading}
-                onClick={handleNextFromLocations}
-              >
-                Next
-              </Button>
-            </div>
-          </div>
-        )}
-
-        {/* Step 2 */}
-        {step === 1 && (
-          <>
-            <div className="w-full rounded-2xl border border-slate-200 bg-white p-4 shadow-sm dark:border-slate-800 dark:bg-[#1E1E1E]">
-              <div className="flex w-full items-center justify-between gap-2">
-                <h2 className="text-lg font-semibold text-slate-800 dark:text-slate-100">
-                  Filters
-                </h2>
-                <div className="flex gap-2">
-                  <Button
-                    variant="outlined"
-                    startIcon={<NavigateBeforeIcon />}
-                    onClick={() => setStep(0)}
-                  >
-                    Back
-                  </Button>
-                  <Button
-                    variant="outlined"
-                    startIcon={<RefreshIcon />}
-                    onClick={() => {
-                      setSelectedAssets([]);
-                      setStartDate(null);
-                      setEndDate(null);
-                      setAudits([]);
-                      setCanExport(false);
-                    }}
-                  >
-                    Reset
-                  </Button>
-                </div>
-              </div>
-
-              <div className="mt-4 grid w-full gap-4 md:grid-cols-2">
-                <div className="w-full">
-                  <SearchableMultiSelect
-                    label="Assets"
-                    loading={assetsLoading}
-                    options={assets}
-                    selected={selectedAssets}
-                    onChange={setSelectedAssets}
-                    placeholder="Search assets..."
-                    disabled={!assets.length}
-                  />
-                </div>
-
-                <LocalizationProvider dateAdapter={AdapterDayjs}>
-                  <div className="grid w-full grid-cols-1 gap-3 sm:grid-cols-2">
-                    <DatePicker
-                      label="Start Date"
-                      value={startDate}
-                      onChange={setStartDate}
-                      slotProps={{
-                        textField: { fullWidth: true, size: "small" },
-                      }}
-                    />
-                    <DatePicker
-                      label="End Date"
-                      value={endDate}
-                      onChange={setEndDate}
-                      slotProps={{
-                        textField: { fullWidth: true, size: "small" },
-                      }}
-                      minDate={startDate || undefined}
-                    />
-                  </div>
-                </LocalizationProvider>
-              </div>
-
-              <div className="mt-4 flex w-full flex-wrap justify-end gap-2">
-                <Button
-                  className="w-full sm:w-auto"
-                  variant="contained"
-                  onClick={handleSubmit}
-                  disabled={
-                    submitLoading ||
-                    !selectedLocations.length ||
-                    !selectedAssets.length
-                  }
-                >
-                  {submitLoading ? "Loading..." : "Submit"}
-                </Button>
-                <Button
-                  className="w-full sm:w-auto"
-                  variant="outlined"
-                  startIcon={<DownloadIcon />}
-                  onClick={handleExport}
-                  disabled={!canExport || !audits.length}
-                >
-                  Export
-                </Button>
-              </div>
-            </div>
-
-            {/* Results */}
-            <div className="w-full rounded-2xl border border-slate-200 bg-white p-4 shadow-sm dark:border-slate-800 dark:bg-[#1E1E1E]">
-              <div className="mb-3 flex w-full items-center justify-between">
-                <h3 className="text-base font-semibold text-slate-800 dark:text-slate-100">
-                  Results
-                </h3>
-                <Chip
-                  label={`${audits.length} audits`}
-                  color="primary"
-                  variant="outlined"
-                  size="small"
-                />
-              </div>
-
-              <div className="h-[560px] w-full">
-                <DataGrid
-                  rows={audits}
-                  columns={columns}
-                  pagination
-                  paginationModel={paginationModel}
-                  onPaginationModelChange={setPaginationModel}
-                  pageSizeOptions={[10, 25, 50]}
-                  disableRowSelectionOnClick
-                  loading={submitLoading}
-                  density="compact"
-                  slots={{ toolbar: GridToolbarQuickFilter }}
-                  slotProps={{
-                    toolbar: {
-                      quickFilterProps: { debounceMs: 300 },
-                      showQuickFilter: true,
-                    },
-                  }}
-                  sx={{
-                    width: "100%",
-                    borderRadius: "1rem",
-                    border: "1px solid",
-                    borderColor: "divider",
-                    "& .MuiDataGrid-columnHeaders": {
-                      backgroundColor: "rgba(99,102,241,0.06)",
-                    },
-                  }}
-                />
-              </div>
-            </div>
-          </>
-        )}
-      </div>
-    </div>
-  );
-}
-
-function SearchableMultiSelect({
-  label,
-  options,
-  selected,
-  onChange,
-  loading = false,
-  placeholder = "Search...",
-  disabled = false,
-}) {
-  return (
-    <div className="w-full">
-      <Autocomplete
-        fullWidth
-        multiple
-        disableCloseOnSelect
-        options={options}
-        value={selected}
-        getOptionLabel={optionLabel}
-        isOptionEqualToValue={(o, v) => optionId(o) === optionId(v)}
-        onChange={(_, val) => onChange(val)}
-        disabled={disabled}
-        renderOption={(props, option, { selected }) => (
-          <li {...props} key={optionId(option)} className="flex items-center">
-            <Checkbox checked={selected} sx={{ mr: 1 }} />
-            {optionLabel(option)}
-          </li>
-        )}
-        renderInput={(params) => (
-          <TextField
-            {...params}
-            fullWidth
-            label={label}
-            placeholder={placeholder}
-            size="small"
-            InputProps={{
-              ...params.InputProps,
-              startAdornment: (
-                <>
-                  <InputAdornment position="start">
-                    <SearchIcon color="action" fontSize="small" />
-                  </InputAdornment>
-                  {params.InputProps.startAdornment}
-                </>
-              ),
-              endAdornment: (
-                <>
-                  {loading ? <CircularProgress size={18} /> : null}
-                  {params.InputProps.endAdornment}
-                </>
-              ),
-            }}
+            )}
           />
-        )}
-      />
+        </Grid>
+
+        <Grid size={{ xs: 12, md: 6 }}>
+          <Autocomplete
+            disableCloseOnSelect
+            disabled={selectedLocations.length <= 0 ? true : false}
+            multiple
+            limitTags={1}
+            open={open}
+            onOpen={handleOpen}
+            onClose={handleClose}
+            isOptionEqualToValue={(option, value) => option.name === value.name}
+            getOptionLabel={(option) => option.name}
+            onChange={(_, val) => setSelectedAssets(val)}
+            options={options}
+            loading={loading}
+            renderInput={(params) => (
+              <TextField
+                {...params}
+                label="Assets"
+                placeholder="search assets.."
+                slotProps={{
+                  input: {
+                    ...params.InputProps,
+                    endAdornment: (
+                      <Fragment>
+                        {loading ? (
+                          <CircularProgress color="inherit" size={20} />
+                        ) : null}
+                        {params.InputProps.endAdornment}
+                      </Fragment>
+                    ),
+                  },
+                }}
+                size="small"
+              />
+            )}
+          />
+        </Grid>
+
+        <Grid size={{ xs: 12, md: 3 }}>
+          <LocalizationProvider dateAdapter={AdapterDayjs}>
+            <DatePicker
+              label="Start Date"
+              value={startDate}
+              onChange={setStartDate}
+              slotProps={{
+                textField: { fullWidth: true, size: "small" },
+                fullWidth: true,
+              }}
+            />
+          </LocalizationProvider>
+        </Grid>
+
+        <Grid size={{ xs: 12, md: 3 }}>
+          <LocalizationProvider dateAdapter={AdapterDayjs}>
+            <DatePicker
+              label="End Date"
+              value={endDate}
+              onChange={setEndDate}
+              slotProps={{
+                textField: { fullWidth: true, size: "small" },
+                fullWidth: true,
+              }}
+              minDate={startDate || undefined}
+            />
+          </LocalizationProvider>
+        </Grid>
+
+        <Grid size={{ xs: 12, md: 6 }}>
+          <Stack direction="row" spacing={1} justifyContent={"flex-end"}>
+            <Button
+              variant="contained"
+              startIcon={<SendIcon />}
+              onClick={handleSubmit}
+              disabled={selectedAssets.length <= 0 ? true : false}
+              loading={submitLoading}
+            >
+              Submit
+            </Button>
+            <Button
+              variant="outlined"
+              startIcon={<DownloadIcon />}
+              onClick={handleExport}
+              disabled={!canExport}
+            >
+              Export
+            </Button>
+            <Button
+              variant="outlined"
+              startIcon={<Cancel />}
+              onClick={handleClear}
+              disabled={!canExport}
+            >
+              Clear
+            </Button>
+          </Stack>
+        </Grid>
+      </Grid>
+
+      {/* Results */}
+      <Box sx={{ height: "auto", width: "100%", bgcolor: "primary", mt: 3 }}>
+        <Typography variant="h6" fontWeight={700} color="primary">
+          Results : {audits?.length ?? 0}
+        </Typography>
+      </Box>
+
+      <Box sx={{ height: 400, width: "100%" }}>
+        <DataGrid
+          rows={audits}
+          columns={columns}
+          pagination
+          paginationModel={paginationModel}
+          onPaginationModelChange={setPaginationModel}
+          pageSizeOptions={[5, 10, 25, 50]}
+          disableRowSelectionOnClick
+          loading={submitLoading}
+        />
+      </Box>
     </div>
   );
 }
