@@ -36,4 +36,16 @@ const updateLocation = async (locationId, updatedData) => {
   }
 };
 
-export { getAllLocations, addLocation, updateLocation };
+const deleteLocation = async (locationId) => {
+  try {
+    const response = await axiosInstance.delete(`/api/v1/locationmaster/delete-location/${locationId}`);
+    return response.data;
+  } catch (error) {
+    if (import.meta.env.VITE_DEVELOPMENT === 'development') {
+      console.error('Error deleting location:', error);
+    }
+    throw error;
+  }
+};
+
+export { getAllLocations, addLocation, updateLocation, deleteLocation };

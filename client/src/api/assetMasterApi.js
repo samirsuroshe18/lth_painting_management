@@ -15,11 +15,10 @@ const getAssets = async (queryParams) => {
     }
 };
 
-const getQrCodes = async (queryParams) => {
+const getQrCodes = async () => {
     try {
         const response = await axiosInstance.get(
-            "/api/v1/assetmaster/get-qr-codes",
-            { params: queryParams }
+            "/api/v1/assetmaster/get-qr-codes"
         );
         return response.data;
     } catch (error) {

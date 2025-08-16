@@ -48,11 +48,7 @@ const addNewState = catchAsync(async (req, res) => {
         updatedBy: req.user._id
     });
 
-    const isStateCreate = await State.findById(newState._id)
-        .lean()
-        .select('-__v')
-        .populate('createdBy', 'userName')
-        .populate('updatedBy', 'userName');
+    const isStateCreate = await State.findById(newState._id);
 
     if (!isStateCreate) {
         throw new ApiError(500, 'Failed to create new state');
@@ -63,23 +59,8 @@ const addNewState = catchAsync(async (req, res) => {
     );
 });
 
-
-// const getAllStates = catchAsync(async (req, res) => {
-//     const states = await State.find()
-//         .lean()
-//         .select('-__v')
-//         .populate('createdBy', 'userName')
-//         .populate('updatedBy', 'userName');
-
-//     if (!states || states.length === 0) {
-//         throw new ApiError(404, 'No states found');
-//     }
-//     return res.status(200).json(
-//         new ApiResponse(200, states, 'States retrieved successfully')
-//     );
-// });
 const getAllStates = catchAsync(async (req, res) => {
-    const states = await State.find();
+    const states = await State.find({}).sort({ createdAt: -1 });
 
     if (!states || states.length === 0) {
         throw new ApiError(404, 'No states found');
@@ -94,8 +75,8 @@ const updateState = catchAsync(async (req, res) => {
     const { id } = req.params;
     const { name, status } = req.body;
 
-    if (!name || status) {
-        throw new ApiError(400, 'Name is a required field');
+    if (!name || status == null) {
+        throw new ApiError(400, 'Name and status is a required field');
     }
 
     const updatedState = await State.findByIdAndUpdate(
@@ -103,53 +84,39 @@ const updateState = catchAsync(async (req, res) => {
         { name, status, updatedBy: req.user._id },
         { new: true, runValidators: true }
     )
-    .populate('createdBy', 'userName')
-    .populate('updatedBy', 'userName');
+        .populate('createdBy', 'userName')
+        .populate('updatedBy', 'userName');
 
     if (!updatedState) {
         throw new ApiError(404, 'State not found');
     }
-    
+
     return res.status(200).json(
         new ApiResponse(200, updatedState, 'State updated successfully')
     );
 });
 
-// const updateState = catchAsync(async (req, res) => {
-//     const { id } = req.params;
-//     const { name, status } = req.body;
+const deleteState = catchAsync(async (req, res) => {
+    const { id } = req.params;
 
-//     if (!['active', 'inactive'].includes(status)) {
-//         throw new ApiError(400, 'Status must be either active or inactive');
-//     }
+    if (!id) {
+        throw new ApiError(400, 'ID is required');
+    }
 
-//     if (!name) {
-//         throw new ApiError(400, 'Name is a required field');
-//     }
+    const deletedState = await State.findByIdAndDelete(id);
 
-//     const updatedState = await State.findByIdAndUpdate(
-//         id,
-//         {
-//             name,
-//             status: status === 'active'
-//             // updatedBy: req.user._id, // 🔴 Removed for debugging
-//         },
-//         { new: true, runValidators: true }
-//     )
-//     .populate('createdBy', 'userName')
-//     .populate('updatedBy', 'userName');
+    if (!deletedState) {
+        throw new ApiError(404, "State not found");
+    }
 
-//     if (!updatedState) {
-//         throw new ApiError(404, 'State not found');
-//     }
-
-//     return res.status(200).json(
-//         new ApiResponse(200, updatedState, 'State updated successfully')
-//     );
-// });
+    return res.status(200).json(
+        new ApiResponse(200, {}, 'State deleted successfully')
+    );
+});
 
 export {
     addNewState,
     getAllStates,
-    updateState
+    updateState,
+    deleteState
 };

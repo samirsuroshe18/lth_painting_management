@@ -1,22 +1,26 @@
-import React, { useEffect, useState } from "react";
+import { Fragment, useEffect, useState } from "react";
 import {
   IconButton,
   Box,
-  Dialog,
-  DialogTitle,
-  DialogContent,
-  DialogActions,
   Button,
   Typography,
   CircularProgress,
   Container,
   Grid,
-  Card,
-  CardContent,
   Chip,
   TextField,
   InputAdornment,
-  Tooltip,
+  Autocomplete,
+  Stack,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  FormControl,
+  InputLabel,
+  Select,
+  MenuItem,
+  DialogActions,
+  Alert,
 } from "@mui/material";
 import {
   Cancel,
@@ -24,47 +28,222 @@ import {
   Search as SearchIcon,
   Refresh,
   Edit as EditIcon,
+  Close as CloseIcon,
+  Delete as DeleteIcon,
 } from "@mui/icons-material";
 import { DataGrid } from "@mui/x-data-grid";
 import { useDispatch } from "react-redux";
-import { motion, AnimatePresence } from "framer-motion";
-import { getAllLocations, addLocation, updateLocation } from "../../api/locationApi";
+import {
+  getAllLocations,
+  addLocation,
+  updateLocation,
+  deleteLocation,
+} from "../../api/locationApi";
 import { getAllStates } from "../../api/stateApi";
 import { showNotificationWithTimeout } from "../../redux/slices/notificationSlice";
 import { handleAxiosError } from "../../utils/handleAxiosError";
 
 const LocationMaster = () => {
   const dispatch = useDispatch();
-
-  // States for modal form
-  const [states, setStates] = useState([]);
-  const [locationName, setLocationName] = useState("");
-  const [selectedStates, setSelectedStates] = useState("");
-  const [area, setArea] = useState("");
-  const [status, setStatus] = useState("");
-  const [showModal, setShowModal] = useState(false);
-  const [editMode, setEditMode] = useState(false);
-  const [editStateId, setEditStateId] = useState(null);
-
-  // Grid + data
-  const [loading, setLoading] = useState(true);
-  const [allLocations, setAllLocations] = useState([]); // full dataset (unfiltered)
-  const [rows, setRows] = useState([]); // filtered rows
+  const [loading, setLoading] = useState(false);
+  const [rows, setRows] = useState([]);
   const [searchTerm, setSearchTerm] = useState("");
-
-  // CLIENT-SIDE pagination model
+  const [showDialog, setShowDialog] = useState(false);
+  const [editMode, setEditMode] = useState(false);
+  const [editLocationId, setEditLocationId] = useState(null);
+  const [submitLoading, setSubmitLoading] = useState(false);
+  const [locationToDelete, setLocationToDelete] = useState(null);
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [deleteLoading, setDeleteLoading] = useState(false);
+  const [filteredRows, setFilteredRows] = useState([]);
+  const [open, setOpen] = useState(false);
+  const [options, setOptions] = useState([]);
+  const [stateLoading, setStateLoading] = useState(false);
+  const [formData, setFormData] = useState({
+    name: "",
+    area: "",
+    stateId: {},
+    status: "",
+  });
   const [paginationModel, setPaginationModel] = useState({
     page: 0,
-    pageSize: 10,
+    pageSize: 5,
   });
 
-  // Fetch all locations once (and on refresh)
-  const fetchAll = async () => {
+  useEffect(() => {
+    fetchLocations();
+  }, []);
+
+  useEffect(() => {
+    applyFilters();
+  }, [searchTerm, rows]);
+
+  const fetchLocations = async () => {
     try {
       setLoading(true);
-      const locResult = await getAllLocations();
-      const apiLocations = locResult?.data ?? [];
-      setAllLocations(apiLocations);
+
+      const result = await getAllLocations();
+      const locationssWithIds = result.data.map((location, index) => ({
+        ...location,
+        id: location?._id ?? index,
+      }));
+
+      setRows(locationssWithIds);
+    } catch (error) {
+      setRows([]);
+      dispatch(
+        showNotificationWithTimeout({
+          show: true,
+          type: "error",
+          message: "Failed to fetch location",
+        })
+      );
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const applyFilters = () => {
+    let filtered = [...rows];
+
+    // Apply search filter
+    if (searchTerm.trim()) {
+      const searchLower = searchTerm.toLowerCase().trim();
+
+      filtered = filtered.filter((location) => {
+        const locationName = (location.name || "").toLowerCase();
+
+        return locationName.includes(searchLower);
+      });
+    }
+
+    setFilteredRows(filtered);
+  };
+
+  const handleOpen = () => {
+    setOpen(true);
+    (async () => {
+      try {
+        setStateLoading(true);
+        const res = await getAllStates();
+        const activeStates = (res?.data ?? []).filter(
+          (state) => state.status === true
+        );
+        setOptions(activeStates);
+      } catch (error) {
+        setOptions([]);
+        dispatch(
+          showNotificationWithTimeout({
+            show: true,
+            type: "error",
+            message: handleAxiosError(error),
+          })
+        );
+      } finally {
+        setStateLoading(false);
+      }
+    })();
+  };
+
+  const handleClose = () => {
+    setOpen(false);
+    setOptions([]);
+  };
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+
+    try {
+      setSubmitLoading(true);
+
+      if (editMode) {
+        let payload = { ...formData, state: formData.stateId?._id };
+        const result = await updateLocation(editLocationId, payload);
+
+        const data = result.data;
+        data.id = data._id;
+        setFilteredRows((prev) =>
+          prev.map((item) => (item.id === data.id ? data : item))
+        );
+
+        dispatch(
+          showNotificationWithTimeout({
+            show: true,
+            type: "success",
+            message: "Location updated successfully",
+          })
+        );
+      } else {
+        let payload = { ...formData, state: formData.stateId?._id };
+        const result = await addLocation(payload);
+
+        const data = result.data;
+        data.id = data._id;
+        setFilteredRows([data, ...filteredRows]);
+
+        dispatch(
+          showNotificationWithTimeout({
+            show: true,
+            type: "success",
+            message: "Location added successfully",
+          })
+        );
+      }
+
+      handleCloseModal();
+    } catch (error) {
+      dispatch(
+        showNotificationWithTimeout({
+          show: true,
+          type: "error",
+          message: editMode
+            ? "Failed to update location"
+            : "Failed to add location",
+        })
+      );
+    } finally {
+      setSubmitLoading(false);
+    }
+  };
+
+  const handleCreateClick = () => {
+    setShowDialog(true);
+    setEditMode(false);
+    setFormData((prev) => ({ ...prev, status: true }));
+  };
+
+  const handleEditClick = (location) => {
+    setEditMode(true);
+    setFormData(location);
+    setEditLocationId(location._id);
+    setShowDialog(true);
+  };
+
+  const handleDeleteClick = (location) => {
+    setLocationToDelete(location);
+    setDeleteDialogOpen(true);
+  };
+
+  const handleDelete = async () => {
+    if (!locationToDelete) return;
+
+    try {
+      setDeleteLoading(true);
+      const result = await deleteLocation(locationToDelete.id);
+
+      if (result.success) {
+        setRows((prev) =>
+          prev.filter((item) => item.id !== locationToDelete.id)
+        );
+
+        dispatch(
+          showNotificationWithTimeout({
+            show: true,
+            type: "success",
+            message: "Location deleted successfully",
+          })
+        );
+      }
     } catch (error) {
       dispatch(
         showNotificationWithTimeout({
@@ -74,166 +253,40 @@ const LocationMaster = () => {
         })
       );
     } finally {
-      setLoading(false);
+      setDeleteLoading(false);
+      setDeleteDialogOpen(false);
+      setLocationToDelete(null);
     }
   };
 
-  useEffect(() => {
-    fetchAll();
-  }, []);
-
-  // Apply client-side search filter
-  useEffect(() => {
-    const term = (searchTerm || "").toLowerCase();
-
-    const filtered = allLocations
-      .filter((loc) => {
-        const name = loc.name?.toLowerCase() || "";
-        const stateName = loc.stateId?.name?.toLowerCase() || "";
-        const areaVal = loc.area?.toLowerCase() || "";
-        return name.includes(term) || stateName.includes(term) || areaVal.includes(term);
-      })
-      .map((location, index) => ({
-        srNo: index + 1,
-        id: location._id || index,
-        name: location.name,
-        area: location.area,
-        stateId: location.stateId?._id,
-        stateName: location.stateId?.name,
-        status: location.status,
-      }));
-
-    // Reset to first page whenever search/filter changes
-    setPaginationModel((prev) => ({ ...prev, page: 0 }));
-    setRows(filtered);
-  }, [allLocations, searchTerm]);
-
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-
-    if (!locationName || !status) {
-      dispatch(
-        showNotificationWithTimeout({
-          show: true,
-          type: "error",
-          message: "Please fill in all fields.",
-        })
-      );
-      return;
-    }
-
-    try {
-      if (editMode) {
-        await updateLocation(editStateId, {
-          name: locationName,
-          state: selectedStates,
-          area,
-          status,
-        });
-        dispatch(
-          showNotificationWithTimeout({
-            show: true,
-            type: "success",
-            message: "State updated successfully",
-          })
-        );
-      } else {
-        await addLocation({
-          name: locationName,
-          state: selectedStates,
-          area,
-          status,
-        });
-        dispatch(
-          showNotificationWithTimeout({
-            show: true,
-            type: "success",
-            message: "State added successfully",
-          })
-        );
-      }
-
-      // Reset form + close
-      setLocationName("");
-      setSelectedStates("");
-      setArea("");
-      setStatus("");
-      setEditStateId(null);
-      setEditMode(false);
-      setShowModal(false);
-
-      // Refresh dataset (client-side)
-      fetchAll();
-    } catch (error) {
-      dispatch(
-        showNotificationWithTimeout({
-          show: true,
-          type: "error",
-          message: editMode ? "Failed to update state" : "Failed to add state",
-        })
-      );
-    }
-  };
-
-  const handleEdit = async (row) => {
-    try {
-      // Load states when editing
-      const stateResult = await getAllStates();
-      setStates(stateResult?.data ?? []);
-
-      setLocationName(row.name);
-      setSelectedStates(row.stateId); // preselect by _id
-      setArea(row.area);
-      setStatus(row.status ? "active" : "inactive");
-      setEditStateId(row.id);
-      setEditMode(true);
-      setShowModal(true);
-    } catch (error) {
-      dispatch(
-        showNotificationWithTimeout({
-          show: true,
-          type: "error",
-          message: handleAxiosError(error),
-        })
-      );
-    }
-  };
-
-  // Modal to create a new location
-  const handleCreateClick = async () => {
-    try {
-      const stateResult = await getAllStates();
-      setStates(stateResult?.data ?? []);
-
-      setShowModal(true);
-      setEditMode(false);
-      setLocationName("");
-      setSelectedStates("");
-      setArea("");
-      setStatus("");
-    } catch (error) {
-      dispatch(
-        showNotificationWithTimeout({
-          show: true,
-          type: "error",
-          message: handleAxiosError(error),
-        })
-      );
-    }
+  const handleCancelDelete = () => {
+    setDeleteDialogOpen(false);
+    setLocationToDelete(null);
   };
 
   const handleCloseModal = () => {
-    setShowModal(false);
+    setShowDialog(false);
     setEditMode(false);
-    setLocationName("");
-    setSelectedStates("");
-    setArea("");
-    setStatus("");
-    setEditStateId(null);
+    setEditLocationId(null);
+    setFormData({
+      name: "",
+      area: "",
+      stateId: null,
+      status: null,
+    });
   };
 
   const handleRefresh = () => {
-    fetchAll();
+    fetchLocations();
+  };
+
+  const clearSearch = () => {
+    setSearchTerm("");
+  };
+
+  const handleSearchChange = (e) => {
+    setSearchTerm("");
+    setSearchTerm(e.target.value);
   };
 
   // Columns (no change)
@@ -241,47 +294,77 @@ const LocationMaster = () => {
     {
       field: "srNo",
       headerName: "Sr. No",
-      width: 80,
+      width: 90,
       sortable: false,
       filterable: false,
       align: "center",
       headerAlign: "center",
+      renderCell: (params) => {
+        const visibleIndex =
+          params.api.getRowIndexRelativeToVisibleRows(params.id) ?? 0;
+        const serial =
+          paginationModel.page * paginationModel.pageSize + visibleIndex + 1;
+
+        return (
+          <Box
+            sx={{
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              height: "100%",
+            }}
+          >
+            <Typography variant="body2">{serial}</Typography>
+          </Box>
+        );
+      },
     },
     {
       field: "name",
       headerName: "Location Name",
-      width: 230,
-      sortable: false,
-      filterable: false,
+      flex: 1,
+      minWidth: 220,
       align: "center",
       headerAlign: "center",
+      sortable: false,
+      filterable: false,
     },
     {
-      field: "stateName",
+      field: "state",
       headerName: "State",
-      width: 230,
-      sortable: false,
-      filterable: false,
+      flex: 1,
+      minWidth: 140,
       align: "center",
       headerAlign: "center",
+      sortable: false,
+      filterable: false,
+      renderCell: (params) => (
+        <Chip
+          label={params.row.stateId?.name || "-"}
+          size="small"
+          variant="outlined"
+          color="primary"
+        />
+      ),
     },
     {
       field: "area",
       headerName: "Area",
-      width: 140,
-      sortable: false,
-      filterable: false,
+      flex: 1,
+      minWidth: 220,
       align: "center",
       headerAlign: "center",
+      sortable: false,
+      filterable: false,
     },
     {
       field: "status",
       headerName: "Status",
-      width: 120,
+      width: 140,
       align: "center",
+      headerAlign: "center",
       sortable: false,
       filterable: false,
-      headerAlign: "center",
       renderCell: (params) => (
         <Chip
           label={params.value ? "Active" : "Inactive"}
@@ -294,25 +377,44 @@ const LocationMaster = () => {
     {
       field: "actions",
       headerName: "Actions",
-      width: 160,
-      sortable: false,
-      filterable: false,
+      width: 150,
       align: "center",
       headerAlign: "center",
+      sortable: false,
+      filterable: false,
       renderCell: (params) => (
-        <Box display="flex" alignItems="center" justifyContent="center" gap={0.5}>
-          <Tooltip title="Edit Location">
-            <IconButton
-              size="small"
-              color="warning"
-              onClick={(e) => {
-                e.stopPropagation();
-                handleEdit(params.row);
-              }}
-            >
-              <EditIcon fontSize="small" />
-            </IconButton>
-          </Tooltip>
+        <Box
+          sx={{
+            display: "flex",
+            gap: 0.5,
+            justifyContent: "center",
+            alignItems: "center",
+            height: "100%",
+          }}
+        >
+          <IconButton
+            size="small"
+            color="primary"
+            onClick={(e) => {
+              e.stopPropagation();
+              handleEditClick(params.row);
+            }}
+            title="Edit Location"
+          >
+            <EditIcon fontSize="small" />
+          </IconButton>
+
+          <IconButton
+            size="small"
+            color="error"
+            onClick={(e) => {
+              e.stopPropagation();
+              handleDeleteClick(params.row);
+            }}
+            title="Delete Location"
+          >
+            <DeleteIcon fontSize="small" />
+          </IconButton>
         </Box>
       ),
     },
@@ -320,232 +422,284 @@ const LocationMaster = () => {
 
   return (
     <Container maxWidth="xl" sx={{ py: 3 }}>
-      {/* Modal with Animation (Tailwind for look; MUI for grid elsewhere) */}
-      <AnimatePresence>
-        {showModal && (
-          <motion.div
-            className="fixed inset-0 z-50 flex items-center justify-center backdrop-blur-sm bg-white/30 dark:bg-black/30"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-          >
-            <motion.div
-              className="relative bg-white dark:bg-[#1e1e1e] p-6 w-full max-w-2xl shadow-xl border border-gray-200 dark:border-gray-700 transition-colors duration-300"
-              initial={{ opacity: 0, scale: 0.9 }}
-              animate={{ opacity: 1, scale: 1 }}
-              exit={{ opacity: 0, scale: 0.9 }}
-              transition={{ duration: 0.3 }}
-            >
-              <button
-                onClick={handleCloseModal}
-                className="absolute top-3 right-3 text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-white text-xl font-bold"
-                aria-label="Close"
-              >
-                X
-              </button>
+      {/* Header card */}
+      <Grid container spacing={2} alignItems="center">
+        <Grid size={{ xs: 12, md: "auto" }}>
+          <Typography variant="h4" fontWeight={700} color="primary">
+            Location Master
+          </Typography>
+          <Typography variant="body2" color="text.secondary">
+            Manage and monitor all locations in the system
+          </Typography>
+        </Grid>
+      </Grid>
 
-              <h2 className="text-xl font-semibold mb-4 text-gray-800 dark:text-gray-100">
-                {editMode ? "Edit Location" : "Add New Location"}
-              </h2>
-
-              <form onSubmit={handleSubmit}>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
-                  {/* Name */}
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                      Name
-                    </label>
-                    <input
-                      type="text"
-                      value={locationName}
-                      onChange={(e) => setLocationName(e.target.value)}
-                      placeholder="Enter location name"
-                      className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 bg-white dark:bg-[#2a2a2a] text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500 rounded-md"
-                    />
-                  </div>
-
-                  {/* Select State */}
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                      Select State
-                    </label>
-                    <select
-                      value={selectedStates}
-                      onChange={(e) => setSelectedStates(e.target.value)}
-                      className="w-full px-4 py-2.5 border border-gray-300 dark:border-gray-600 bg-white dark:bg-[#2a2a2a] text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500 rounded-md"
+      {/* Search & Filter Card */}
+      <Grid container spacing={2} sx={{ mt: 4 }}>
+        <Grid size={{ xs: 12, md: 4 }}>
+          <TextField
+            fullWidth
+            placeholder="Search assets by name or location..."
+            value={searchTerm}
+            onChange={handleSearchChange}
+            variant="outlined"
+            size="small"
+            slotProps={{
+              input: {
+                startAdornment: (
+                  <InputAdornment position="start">
+                    <SearchIcon color="action" />
+                  </InputAdornment>
+                ),
+                endAdornment: searchTerm && (
+                  <InputAdornment position="end">
+                    <IconButton
+                      size="small"
+                      onClick={clearSearch}
+                      edge="end"
+                      aria-label="clear search"
                     >
-                      <option value="">Choose state</option>
-                      {states.map((state) => (
-                        <option key={state._id} value={state._id}>
-                          {state.name}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-
-                  {/* Area */}
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                      Area
-                    </label>
-                    <input
-                      type="text"
-                      value={area}
-                      onChange={(e) => setArea(e.target.value)}
-                      placeholder="Enter area"
-                      className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 bg-white dark:bg-[#2a2a2a] text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500 rounded-md"
-                    />
-                  </div>
-
-                  {/* Status */}
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                      Status
-                    </label>
-                    <select
-                      value={status}
-                      onChange={(e) => setStatus(e.target.value)}
-                      className="w-full px-4 py-2.5 border border-gray-300 dark:border-gray-600 bg-white dark:bg-[#2a2a2a] text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500 rounded-md"
-                    >
-                      <option value="">Select status</option>
-                      <option value="active">Active</option>
-                      <option value="inactive">Inactive</option>
-                    </select>
-                  </div>
-                </div>
-
-                <div className="flex justify-center gap-4">
-                  <button
-                    type="button"
-                    onClick={handleCloseModal}
-                    className="px-4 py-2 bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 rounded-lg text-gray-700 dark:text-white"
-                  >
-                    Cancel
-                  </button>
-                  <button
-                    type="submit"
-                    className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg"
-                  >
-                    {editMode ? "Update" : "Save"}
-                  </button>
-                </div>
-              </form>
-            </motion.div>
-          </motion.div>
-        )}
-      </AnimatePresence>
-
-      {/* Header Card */}
-      <Card elevation={2}>
-        <CardContent>
-          <Grid container alignItems="center" justifyContent="space-between" spacing={2}>
-            <Grid item>
-              <Typography variant="h4" fontWeight={700} color="primary">
-                Location Master
-              </Typography>
-              <Typography variant="body2" color="text.secondary">
-                Manage and monitor all locations in the system
-              </Typography>
-            </Grid>
-
-            <Grid item>
-              <Box display="flex" gap={1} flexWrap="wrap">
-                <Button
-                  variant="outlined"
-                  startIcon={<Refresh />}
-                  onClick={handleRefresh}
-                  disabled={loading}
-                >
-                  Refresh
-                </Button>
-                <Button variant="contained" startIcon={<AddIcon />} onClick={handleCreateClick}>
-                  Add New Location
-                </Button>
-              </Box>
-            </Grid>
-          </Grid>
-        </CardContent>
-      </Card>
-
-      {/* Search & total chips */}
-      <Card sx={{ mt: 3 }}>
-        <CardContent>
-          <Grid container spacing={2} alignItems="center">
-            <Grid item xs={12} md={6}>
-              <TextField
-                fullWidth
-                placeholder="Search location by name, state or area"
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                variant="outlined"
-                size="small"
-                slotProps={{
-                  startAdornment: (
-                    <InputAdornment position="start">
-                      <SearchIcon color="action" />
-                    </InputAdornment>
-                  ),
-                  endAdornment: searchTerm && (
-                    <InputAdornment position="end">
-                      <IconButton size="small" onClick={() => setSearchTerm("")} edge="end">
-                        <Cancel fontSize="small" />
-                      </IconButton>
-                    </InputAdornment>
-                  ),
-                }}
-              />
-            </Grid>
-
-            <Grid item xs={12} md={6}>
-              <Box display="flex" gap={1} justifyContent="flex-end">
-                <Chip label={`${rows.length} locations`} color="primary" variant="outlined" />
-                {loading && (
-                  <Chip
-                    icon={<CircularProgress size={14} color="inherit" />}
-                    label="Loading..."
-                    color="info"
-                    variant="outlined"
-                    sx={{
-                      px: 1.5,
-                      fontWeight: 500,
-                      backgroundColor: "rgba(0, 123, 255, 0.08)",
-                      borderRadius: "16px",
-                      ".MuiChip-icon": { marginLeft: "4px" },
-                    }}
-                  />
-                )}
-              </Box>
-            </Grid>
-          </Grid>
-        </CardContent>
-      </Card>
-
-      {/* CLIENT-SIDE DataGrid */}
-      <Card sx={{ mt: 3 }}>
-        <Box sx={{ height: 420, width: "100%" }}>
-          <DataGrid
-            rows={rows}
-            columns={columns}
-            pagination
-            paginationMode="client"
-            paginationModel={paginationModel}
-            onPaginationModelChange={setPaginationModel}
-            pageSizeOptions={[5, 10, 25, 50]}
-            loading={loading}
-            disableRowSelectionOnClick
-            rowHeight={60}
-            headerHeight={50}
-            sx={{
-              "& .MuiDataGrid-columnHeaders": {
-                backgroundColor: "rgba(99,102,241,0.06)",
+                      <Cancel fontSize="small" />
+                    </IconButton>
+                  </InputAdornment>
+                ),
               },
-              borderRadius: 2,
-              border: "1px solid",
-              borderColor: "divider",
             }}
           />
-        </Box>
-      </Card>
+        </Grid>
+
+        <Grid size={{ xs: 12, md: 8 }}>
+          <Stack direction="row" spacing={1} justifyContent={"flex-end"}>
+            <Button
+              variant="outlined"
+              startIcon={<Refresh />}
+              onClick={handleRefresh}
+              disabled={loading}
+            >
+              Refresh
+            </Button>
+            <Button
+              variant="contained"
+              startIcon={<AddIcon />}
+              onClick={handleCreateClick}
+            >
+              Add Location
+            </Button>
+          </Stack>
+        </Grid>
+      </Grid>
+
+      {/* CLIENT-SIDE DataGrid */}
+      <Box sx={{ height: 420, width: "100%", mt: 3 }}>
+        <DataGrid
+          rows={filteredRows}
+          columns={columns}
+          disableRowSelectionOnClick
+          loading={loading}
+          paginationModel={paginationModel}
+          onPaginationModelChange={setPaginationModel}
+          pageSizeOptions={[5, 10, 25, 50]}
+          rowHeight={60}
+          headerHeight={50}
+          sx={{
+            "& .MuiDataGrid-columnHeaders": {
+              backgroundColor: "rgba(99,102,241,0.06)",
+            },
+            borderRadius: 2,
+            border: "1px solid",
+            borderColor: "divider",
+          }}
+        />
+      </Box>
+
+      {/* Add/Edit Dialog */}
+      {showDialog && (
+        <Dialog
+          open={showDialog}
+          onClose={handleCloseModal}
+          maxWidth="sm"
+          fullWidth
+        >
+          <DialogTitle>
+            <Box
+              display="flex"
+              alignItems="center"
+              justifyContent="space-between"
+            >
+              <Typography variant="h6">
+                {editMode ? "Edit Location" : "Add New Location"}
+              </Typography>
+              <IconButton
+                onClick={handleCloseModal}
+                size="small"
+                disabled={submitLoading}
+              >
+                <CloseIcon />
+              </IconButton>
+            </Box>
+          </DialogTitle>
+
+          <form onSubmit={handleSubmit}>
+            <DialogContent>
+              <Box display="flex" flexDirection="column" gap={3} pt={1}>
+                <TextField
+                  fullWidth
+                  label="Location Name"
+                  value={formData.name}
+                  onChange={(e) =>
+                    setFormData((prev) => ({ ...prev, name: e.target.value }))
+                  }
+                  placeholder="Enter location name"
+                  variant="outlined"
+                  required
+                  disabled={submitLoading}
+                />
+
+                <TextField
+                  fullWidth
+                  label="Area"
+                  value={formData.area}
+                  onChange={(e) =>
+                    setFormData((prev) => ({ ...prev, area: e.target.value }))
+                  }
+                  placeholder="Enter area name"
+                  variant="outlined"
+                  required
+                  disabled={submitLoading}
+                />
+
+                <Autocomplete
+                  open={open}
+                  onOpen={handleOpen}
+                  onClose={handleClose}
+                  value={formData?.stateId}
+                  loading={stateLoading}
+                  options={options}
+                  getOptionLabel={(option) => option?.name || ""}
+                  onChange={(e, newValue) =>
+                    setFormData((prev) => ({
+                      ...prev,
+                      stateId: newValue || {}, // keep only _id in state
+                    }))
+                  }
+                  renderInput={(params) => (
+                    <TextField
+                      {...params}
+                      label="State"
+                      placeholder="search state.."
+                      required
+                      slotProps={{
+                        input: {
+                          ...params.InputProps,
+                          endAdornment: (
+                            <Fragment>
+                              {stateLoading ? (
+                                <CircularProgress color="inherit" size={20} />
+                              ) : null}
+                              {params.InputProps.endAdornment}
+                            </Fragment>
+                          ),
+                        },
+                      }}
+                    />
+                  )}
+                />
+
+                <FormControl fullWidth required disabled={submitLoading}>
+                  <InputLabel>Status</InputLabel>
+                  <Select
+                    value={formData.status}
+                    onChange={(e) =>
+                      setFormData((prev) => ({
+                        ...prev,
+                        status: e.target.value,
+                      }))
+                    }
+                    label="Status"
+                  >
+                    <MenuItem value="">Select status</MenuItem>
+                    <MenuItem value={true}>Active</MenuItem>
+                    <MenuItem value={false}>Inactive</MenuItem>
+                  </Select>
+                </FormControl>
+              </Box>
+            </DialogContent>
+
+            <DialogActions sx={{ px: 3, pb: 3 }}>
+              <Button
+                onClick={handleCloseModal}
+                variant="outlined"
+                disabled={submitLoading}
+              >
+                Cancel
+              </Button>
+              <Button
+                type="submit"
+                variant="contained"
+                disabled={submitLoading}
+                startIcon={
+                  submitLoading ? <CircularProgress size={16} /> : null
+                }
+              >
+                {submitLoading
+                  ? editMode
+                    ? "Updating..."
+                    : "Adding..."
+                  : editMode
+                    ? "Update"
+                    : "Add Location"}
+              </Button>
+            </DialogActions>
+          </form>
+        </Dialog>
+      )}
+
+      {/* Delete confirmation dialog */}
+      {deleteDialogOpen && (
+        <Dialog
+          open={deleteDialogOpen}
+          onClose={handleCancelDelete}
+          maxWidth="xs"
+          fullWidth
+        >
+          <DialogTitle color="error" sx={{ pb: 1 }}>
+            <Box display="flex" alignItems="center" gap={1}>
+              <DeleteIcon />
+              Delete Location
+            </Box>
+          </DialogTitle>
+          <DialogContent>
+            <Alert severity="warning" sx={{ mb: 2 }}>
+              This action cannot be undone. The location will be permanently
+              removed from the system.
+            </Alert>
+            <Typography>
+              Are you sure you want to delete location{" "}
+              <strong>"{locationToDelete?.name}"</strong>?
+            </Typography>
+          </DialogContent>
+          <DialogActions sx={{ px: 3, pb: 2 }}>
+            <Button
+              onClick={handleCancelDelete}
+              variant="outlined"
+              disabled={deleteLoading}
+            >
+              Cancel
+            </Button>
+            <Button
+              variant="contained"
+              color="error"
+              disabled={deleteLoading}
+              onClick={handleDelete}
+              startIcon={
+                deleteLoading ? <CircularProgress size={16} /> : <DeleteIcon />
+              }
+            >
+              {deleteLoading ? "Deleting..." : "Delete"}
+            </Button>
+          </DialogActions>
+        </Dialog>
+      )}
     </Container>
   );
 };

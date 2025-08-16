@@ -19,7 +19,7 @@ import StateMaster from "../pages/Masters/StateMaster.jsx";
 import ChangePassword from "../pages/commonPages/ChangePassword.jsx";
 import ForgotPassword from "../pages/commonPages/ForgotPassword.jsx";
 import EditUser from "../pages/Masters/EditUser.jsx";
-import EditRights from "../pages/Masters/EditRights.jsx"; 
+import EditRights from "../pages/Masters/EditRights.jsx";
 import EditAssetScreen from "../pages/Masters/EditAssetScreen.jsx";
 import LogHistoryScreen from "../pages/Masters/LogHistoryScreen.jsx";
 import CreateAsset from "../pages/Masters/CreateAsset.jsx";
@@ -51,7 +51,6 @@ const router = createBrowserRouter([
                 children: [
                   { path: "", element: <UserMaster /> },
                   { path: "add-user", element: <AddUser /> },
-                  { path: "edit-user", element: <EditUser /> },
                   { path: "edit-rights/:id", element: <EditRights /> },
                 ],
               },

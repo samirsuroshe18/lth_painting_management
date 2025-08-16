@@ -9,11 +9,11 @@ import {
   Stack,
   Box,
 } from "@mui/material";
-import ClearIcon from "@mui/icons-material/Clear"; 
 import SendIcon from "@mui/icons-material/Send";
 import { DataGrid } from "@mui/x-data-grid";
 import { DatePicker, LocalizationProvider } from "@mui/x-date-pickers";
 import { AdapterDayjs } from "@mui/x-date-pickers/AdapterDayjs";
+import dayjs from "dayjs";
 import DownloadIcon from "@mui/icons-material/Download";
 import CheckCircleRoundedIcon from "@mui/icons-material/CheckCircleRounded";
 import PendingRoundedIcon from "@mui/icons-material/PendingRounded";
@@ -35,7 +35,6 @@ export default function AuditReport() {
   const dispatch = useDispatch();
 
   // Steps
-  const [step, setStep] = useState(0);
   const userData = useSelector((state) => state.auth.userData?.user);
 
   // Locations
@@ -54,6 +53,10 @@ export default function AuditReport() {
   const [submitLoading, setSubmitLoading] = useState(false);
   const [canExport, setCanExport] = useState(false);
 
+  const [open, setOpen] = useState(false);
+  const [options, setOptions] = useState([]);
+  const [loading, setLoading] = useState(false);
+
   const handleClear = () => {
     setSelectedLocations([]);
     setSelectedAssets([]);
@@ -61,20 +64,9 @@ export default function AuditReport() {
     setEndDate(null);
     setAudits([]);
     setCanExport(false);
-    setPaginationModel({ page: 0, pageSize: 10 });
-    setOptions([]);
-    setOpen(false);
+    setOptions([]); // Clear the assets options
+    setOpen(false); // Close the assets dropdown
   };
-
-  // DataGrid pagination
-  const [paginationModel, setPaginationModel] = useState({
-    page: 0,
-    pageSize: 10,
-  });
-  const [open, setOpen] = useState(false);
-  console.log("open values : ", open);
-  const [options, setOptions] = useState([]);
-  const [loading, setLoading] = useState(false);
 
   const handleOpen = () => {
     setOpen(true);
@@ -83,7 +75,11 @@ export default function AuditReport() {
         setLoading(true);
         const locationIds = selectedLocations.map(optionId);
         const res = await getAssetsByLocations({ locationIds });
-        setOptions(res?.data?.assets ?? []);
+        const options = (res?.data?.assets ?? []).map((a, i) => ({
+          ...a,
+          id: a._id || `row-${i}`,
+        }));
+        setOptions(options ?? []);
       } catch (error) {
         setOptions([]);
         dispatch(
@@ -124,8 +120,6 @@ export default function AuditReport() {
       }));
 
       setAudits(rows);
-      setPaginationModel({ page: 0, pageSize: 10 });
-      console.log('can export : true 1')
       setCanExport(true);
     } catch (error) {
       dispatch(
@@ -141,7 +135,6 @@ export default function AuditReport() {
   };
 
   const handleExport = () => {
-    console.log("exporting...");
     if (!canAccess(userData?.permissions, "auditReport:edit")) {
       dispatch(
         showNotificationWithTimeout({
@@ -316,7 +309,7 @@ export default function AuditReport() {
     <div className="px-4 py-6">
       {/* Header */}
       <Grid container spacing={2} alignItems="center">
-        <Grid xs={12} md="auto">
+        <Grid size={{ xs: 12, md: "auto" }}>
           <Typography variant="h4" fontWeight={700} color="primary">
             Audit Report
           </Typography>
@@ -336,8 +329,9 @@ export default function AuditReport() {
             limitTags={1}
             id="multiple-limit-tags"
             options={locations}
+            value={selectedLocations} // CRITICAL: Add this line
             getOptionLabel={(option) => option.name}
-            onChange={(_, val) => setSelectedLocations(val)}
+            onChange={(_, val) => setSelectedLocations(val || [])} // Ensure val is never null
             renderInput={(params) => (
               <TextField
                 {...params}
@@ -352,15 +346,17 @@ export default function AuditReport() {
         <Grid size={{ xs: 12, md: 6 }}>
           <Autocomplete
             disableCloseOnSelect
-            disabled={selectedLocations.length <= 0 ? true : false}
+            disabled={selectedLocations.length <= 0}
             multiple
             limitTags={1}
             open={open}
             onOpen={handleOpen}
             onClose={handleClose}
-            isOptionEqualToValue={(option, value) => option.name === value.name}
+            value={selectedAssets} // CRITICAL: Add this line
+            isOptionEqualToValue={(option, value) => option._id === value._id}
+            getOptionKey={(option) => option._id}
             getOptionLabel={(option) => option.name}
-            onChange={(_, val) => setSelectedAssets(val)}
+            onChange={(_, val) => setSelectedAssets(val || [])} // Ensure val is never null
             options={options}
             loading={loading}
             renderInput={(params) => (
@@ -393,10 +389,13 @@ export default function AuditReport() {
               label="Start Date"
               value={startDate}
               onChange={setStartDate}
+              closeOnSelect={true}
               slotProps={{
                 textField: { fullWidth: true, size: "small" },
                 fullWidth: true,
               }}
+              minDate={dayjs("2025-01-01")}
+              maxDate={dayjs()}
             />
           </LocalizationProvider>
         </Grid>
@@ -406,12 +405,14 @@ export default function AuditReport() {
             <DatePicker
               label="End Date"
               value={endDate}
+              closeOnSelect={true}
               onChange={setEndDate}
               slotProps={{
                 textField: { fullWidth: true, size: "small" },
                 fullWidth: true,
               }}
-              minDate={startDate || undefined}
+              minDate={startDate || dayjs()}
+              maxDate={dayjs()}
             />
           </LocalizationProvider>
         </Grid>
@@ -447,23 +448,20 @@ export default function AuditReport() {
         </Grid>
       </Grid>
 
-      {/* Results */}
-      <Box sx={{ height: "auto", width: "100%", bgcolor: "primary", mt: 3 }}>
-        <Typography variant="h6" fontWeight={700} color="primary">
-          Results : {audits?.length ?? 0}
-        </Typography>
-      </Box>
-
-      <Box sx={{ height: 400, width: "100%" }}>
+      <Box sx={{ height: 400, width: "100%", mt: 3 }}>
         <DataGrid
           rows={audits}
           columns={columns}
-          pagination
-          paginationModel={paginationModel}
-          onPaginationModelChange={setPaginationModel}
-          pageSizeOptions={[5, 10, 25, 50]}
           disableRowSelectionOnClick
           loading={submitLoading}
+          pageSizeOptions={[5, 10, 25, 50]}
+          initialState={{
+            pagination: {
+              paginationModel: {
+                pageSize: 5,
+              },
+            },
+          }}
         />
       </Box>
     </div>

@@ -1,5 +1,5 @@
-import React, { useEffect, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useEffect, useState, useMemo } from "react";
+import { useLocation, useNavigate } from "react-router-dom";
 import { getAllUsers, removeUser } from "../../api/userApi";
 import { DataGrid } from "@mui/x-data-grid";
 import {
@@ -24,6 +24,7 @@ import {
   DialogContent,
   Alert,
   DialogActions,
+  Stack,
 } from "@mui/material";
 import {
   DriveFileRenameOutline as EditIcon,
@@ -41,24 +42,13 @@ import { handleAxiosError } from "../../utils/handleAxiosError";
 const UserMaster = () => {
   const dispatch = useDispatch();
   const navigate = useNavigate();
-  const theme = useTheme();
-  const isMobile = useMediaQuery(theme.breakpoints.down("md"));
-
-  // Full dataset (unfiltered)
-  const [allUsers, setAllUsers] = useState([]);
-  // Paged rows displayed
   const [rows, setRows] = useState([]);
-  // Total rows after filtering (for chip + DataGrid pagination)
-  const [rowCount, setRowCount] = useState(0);
-
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
-  const [assetToDelete, setAssetToDelete] = useState(null);
+  const [userToDelete, setUserToDelete] = useState(null);
   const [deleteLoading, setDeleteLoading] = useState(false);
- 
-
-  // Client-side pagination model
+  const [filteredRows, setFilteredRows] = useState([]);
   const [paginationModel, setPaginationModel] = useState({
     page: 0,
     pageSize: 5,
@@ -67,24 +57,27 @@ const UserMaster = () => {
   // Initial load (once)
   useEffect(() => {
     fetchAllUsers();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  useEffect(() => {
+    applyFilters();
+  }, [searchTerm, rows]);
 
   const fetchAllUsers = async () => {
     try {
       setLoading(true);
+
       const response = await getAllUsers();
       const apiUsers = response?.data || [];
       const usersWithIds = apiUsers.map((user, index) => ({
         ...user,
-        id: user._id,
-        srNo: paginationModel.page * paginationModel.pageSize + index + 1,
+        id: user?._id ?? index,
       }));
 
       // Provide rows to the grid
       setRows(usersWithIds);
-      setRowCount(apiUsers.length);
     } catch (error) {
+      setRows([]);
       dispatch(
         showNotificationWithTimeout({
           show: true,
@@ -97,101 +90,53 @@ const UserMaster = () => {
     }
   };
 
-  // Apply client-side search filter
-  useEffect(() => {
-    const term = (searchTerm || "").toLowerCase();
+  const applyFilters = () => {
+    let filtered = [...rows];
 
-    const filtered = allUsers
-      .filter((user) => {
-        const u = user?.userName?.toLowerCase() || "";
-        const e = user?.email?.toLowerCase() || "";
-        const r = user?.role?.toLowerCase() || "";
-        return u.includes(term) || e.includes(term) || r.includes(term);
-      })
-      .map((user, index) => ({
-        id: user._id,
-        srNo: index + 1,
-        userName: user.userName,
-        email: user.email,
-        role: user.role,
-        lastLogin: user.lastLogin
-          ? new Date(user.lastLogin).toLocaleString()
-          : "Never",
-      }));
+    // Apply search filter
+    if (searchTerm.trim()) {
+      const searchLower = searchTerm.toLowerCase().trim();
 
-    // Reset to first page whenever search/filter changes
-    setPaginationModel((prev) => ({ ...prev, page: 0 }));
-  }, [allUsers, searchTerm]);
+      filtered = filtered.filter((user) => {
+        const userName = user.userName?.toLowerCase() || "";
+        const email = user.email?.toLowerCase() || "";
+        const role = user.role?.toLowerCase() || "";
 
-  // Recompute filtered + paged rows whenever source, search, or pagination changes
-  // useEffect(() => {
-  //   const term = (searchTerm || "").toLowerCase();
+        return (
+          userName.includes(searchLower) ||
+          email.includes(searchLower) ||
+          role.includes(searchLower)
+        );
+      });
+    }
 
-  //   const filtered = allUsers.filter((user) => {
-  //     const u = user?.userName?.toLowerCase() || "";
-  //     const e = user?.email?.toLowerCase() || "";
-  //     const r = user?.role?.toLowerCase() || "";
-  //     return u.includes(term) || e.includes(term) || r.includes(term);
-  //   });
+    setFilteredRows(filtered);
+  };
 
-  //   const total = filtered.length;
-  //   setRowCount(total);
+  const handleDeleteClick = (user) => {
+    setUserToDelete(user);
+    setDeleteDialogOpen(true);
+  };
 
-  //   // Ensure current page is valid after filtering
-  //   const maxPage = Math.max(0, Math.ceil(total / paginationModel.pageSize) - 1);
-  //   const safePage = Math.min(paginationModel.page, maxPage);
-
-  //   if (safePage !== paginationModel.page) {
-  //     // fix invalid page silently
-  //     setPaginationModel((prev) => ({ ...prev, page: safePage }));
-  //     return; // will rerun effect with updated page
-  //   }
-
-  //   const startIndex = safePage * paginationModel.pageSize;
-  //   const slice = filtered.slice(startIndex, startIndex + paginationModel.pageSize);
-
-  //   const rowsMapped = slice.map((user, idx) => ({
-  //     id: user._id,
-  //     srNo: startIndex + idx + 1,
-  //     userName: user.userName,
-  //     email: user.email,
-  //     role: user.role,
-  //     lastLogin: user.lastLogin ? new Date(user.lastLogin).toLocaleString() : "Never",
-  //   }));
-
-  //   setRows(rowsMapped);
-  // }, [allUsers, searchTerm, paginationModel]);
-
-  // Reset to page 0 on search change (nice UX)
-  // useEffect(() => {
-  //   setPaginationModel((prev) => ({ ...prev, page: 0 }));
-  // }, [searchTerm]);
-
+  // Enhanced delete functionality
   const handleDelete = async () => {
-    if (!assetToDelete) return;
+    if (!userToDelete) return;
 
     try {
       setDeleteLoading(true);
-      const response = await removeUser(assetToDelete.id);
+      const response = await removeUser(userToDelete.id);
 
       if (response.success) {
-        // Optimistic removal from local copy
-        setRows((prev) => prev.filter((a) => a.id !== assetToDelete.id));
-
-        // If we removed the last item on this page (and not on page 0) → step back a page
-        const isLastItemOnPage = rows.length <= 1 && paginationModel.page > 0;
-        if (isLastItemOnPage) {
-          setPaginationModel((prev) => ({ ...prev, page: prev.page - 1 }));
-        } else {
-          // Otherwise just refetch the current page
-          await fetchAllUsers();
-        }
+        // Remove user from local state (optimistic update)
+        setRows((prevRows) =>
+          prevRows.filter((user) => user.id !== userToDelete.id)
+        );
 
         dispatch(
           showNotificationWithTimeout({
             show: true,
             type: "success",
-            message: "Asset deleted successfully",
+            message: "User deleted successfully",
           })
         );
       }
@@ -206,28 +151,50 @@ const UserMaster = () => {
     } finally {
       setDeleteLoading(false);
       setDeleteDialogOpen(false);
-      setAssetToDelete(null);
+      setUserToDelete(null);
     }
   };
 
-  const handleAddUser = () => navigate("add-user");
-  const handleEditUser = (user) => {
-    navigate("edit-user", { state: { user } });
+  const handleCancelDelete = () => {
+    setDeleteDialogOpen(false);
+    setUserToDelete(null);
   };
-  // const handleEditRights = (user) =>
-  //   navigate("edit-rights", { state: { user } });
+
+  const handleSearchChange = (event) => {
+    setSearchTerm(event.target.value);
+  };
+
+  const clearSearch = () => {
+    setSearchTerm("");
+  };
+
+  const handleAddUser = () => navigate("add-user");
+
+  const handleEditUser = (user) => {
+    navigate("add-user", { state: { user } });
+  };
+
   const handleEditRights = (user) => {
-  if (!user || !user._id) {
-    console.error('Invalid user:', user);
-    return;
-  }
-  navigate(`edit-rights/${user._id}`, { state: { user } });
-};
-  const handleRefresh = () => fetchAllUsers();
+    if (!user || !user._id) {
+      dispatch(
+        showNotificationWithTimeout({
+          show: true,
+          type: "error",
+          message: "User ID is missing",
+        })
+      );
+      return;
+    }
+    navigate(`edit-rights/${user._id}`, { state: { user } });
+  };
+
+  const handleRefresh = () => {
+    setSearchTerm(""); // Clear search on refresh
+    fetchAllUsers();
+  };
 
   const columns = [
     {
-      field: "srNo",
       headerName: "Sr. No",
       flex: 1,
       minWidth: 100,
@@ -235,6 +202,25 @@ const UserMaster = () => {
       filterable: false,
       align: "center",
       headerAlign: "center",
+      renderCell: (params) => {
+        const visibleIndex =
+          params.api.getRowIndexRelativeToVisibleRows(params.id) ?? 0;
+        const serial =
+          paginationModel.page * paginationModel.pageSize + visibleIndex + 1;
+
+        return (
+          <Box
+            sx={{
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              height: "100%",
+            }}
+          >
+            <Typography variant="body2">{serial}</Typography>
+          </Box>
+        );
+      },
     },
     {
       field: "userName",
@@ -285,7 +271,6 @@ const UserMaster = () => {
       headerAlign: "center",
       valueGetter: (value) => {
         const dt = value ? new Date(value) : null;
-        console.log(dt);
         return dt
           ? dt.toLocaleString("en-IN", {
               day: "2-digit",
@@ -349,15 +334,15 @@ const UserMaster = () => {
             </Tooltip>
           )}
 
-          <Tooltip title="Delete">
+          <Tooltip title="Delete User">
             <IconButton
               size="small"
               color="error"
               onClick={(e) => {
                 e.stopPropagation();
-                setAssetToDelete(params.row);
-                setDeleteDialogOpen(true);
+                handleDeleteClick(params.row);
               }}
+              sx={{ p: 0.5 }}
             >
               <DeleteIcon fontSize="small" />
             </IconButton>
@@ -370,168 +355,122 @@ const UserMaster = () => {
   return (
     <Container maxWidth="xl" sx={{ py: 3 }}>
       {/* Header card */}
-      <Card elevation={2}>
-        <CardContent>
-          <Grid
-            container
-            alignItems="center"
-            justifyContent="space-between"
-            spacing={2}
-          >
-            <Grid item>
-              <Typography variant="h4" fontWeight={700} color="primary">
-                User Management
-              </Typography>
-              <Typography variant="body2" color="text.secondary">
-                Manage and monitor all users in the system
-              </Typography>
-            </Grid>
+      <Grid container spacing={2} alignItems="center">
+        <Grid size={{ xs: 12, md: "auto" }}>
+          <Typography variant="h4" fontWeight={700} color="primary">
+            User Management
+          </Typography>
+          <Typography variant="body2" color="text.secondary">
+            Manage and monitor all users in the system
+          </Typography>
+        </Grid>
+      </Grid>
 
-            <Grid item>
-              <Box display="flex" gap={1} flexWrap="wrap">
-                <Button
-                  variant="outlined"
-                  startIcon={<Refresh />}
-                  onClick={handleRefresh}
-                  disabled={loading}
-                >
-                  Refresh
-                </Button>
-
-                <Button
-                  variant="contained"
-                  startIcon={<AddIcon />}
-                  onClick={handleAddUser}
-                  sx={{ textTransform: "none" }}
-                >
-                  Add New User
-                </Button>
-              </Box>
-            </Grid>
-          </Grid>
-        </CardContent>
-      </Card>
-
-      {/* Search & chips */}
-      <Card sx={{ mt: 3 }}>
-        <CardContent>
-          <Grid container spacing={2} alignItems="center">
-            <Grid item xs={12} md={6}>
-              <TextField
-                fullWidth
-                placeholder="Search users by username, email or role..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                variant="outlined"
-                size="small"
-                InputProps={{
-                  startAdornment: (
-                    <InputAdornment position="start">
-                      <SearchIcon color="action" />
-                    </InputAdornment>
-                  ),
-                  endAdornment: searchTerm && (
-                    <InputAdornment position="end">
-                      <IconButton
-                        size="small"
-                        onClick={() => setSearchTerm("")}
-                        edge="end"
-                      >
-                        <Cancel fontSize="small" />
-                      </IconButton>
-                    </InputAdornment>
-                  ),
-                }}
-              />
-            </Grid>
-
-            <Grid item xs={12} md={6}>
-              <Box display="flex" gap={1} justifyContent="flex-end">
-                <Chip
-                  label={`${rowCount} users`}
-                  color="primary"
-                  variant="outlined"
-                />
-                {loading && (
-                  <Chip
-                    icon={<CircularProgress size={14} color="inherit" />}
-                    label="Loading..."
-                    color="info"
-                    variant="outlined"
-                    sx={{
-                      px: 1.5,
-                      fontWeight: 500,
-                      backgroundColor: "rgba(0, 123, 255, 0.08)",
-                      borderRadius: "16px",
-                      ".MuiChip-icon": { marginLeft: "4px" },
-                    }}
-                  />
-                )}
-              </Box>
-            </Grid>
-          </Grid>
-        </CardContent>
-      </Card>
-
-      {/* CLIENT-SIDE DataGrid */}
-      <Card sx={{ mt: 3 }}>
-        <Box sx={{ height: 420, width: "100%" }}>
-          <DataGrid
-            rows={rows}
-            columns={columns}
-            pagination
-            paginationMode="client"
-            paginationModel={paginationModel}
-            onPaginationModelChange={setPaginationModel}
-            pageSizeOptions={[5, 10, 25, 50]}
-            loading={loading}
-            disableRowSelectionOnClick
-            rowHeight={60}
-            headerHeight={50}
-            sx={{
-              "& .MuiDataGrid-columnHeaders": {
-                backgroundColor: "rgba(99,102,241,0.06)",
+      {/* Search & Filter Card */}
+      <Grid container spacing={2} sx={{ mt: 4 }}>
+        <Grid size={{ xs: 12, md: 4 }}>
+          <TextField
+            fullWidth
+            placeholder="Search assets by name or location..."
+            value={searchTerm}
+            onChange={handleSearchChange}
+            variant="outlined"
+            size="small"
+            slotProps={{
+              input: {
+                startAdornment: (
+                  <InputAdornment position="start">
+                    <SearchIcon color="action" />
+                  </InputAdornment>
+                ),
+                endAdornment: searchTerm && (
+                  <InputAdornment position="end">
+                    <IconButton
+                      size="small"
+                      onClick={clearSearch}
+                      edge="end"
+                      aria-label="clear search"
+                    >
+                      <Cancel fontSize="small" />
+                    </IconButton>
+                  </InputAdornment>
+                ),
               },
-              borderRadius: 2,
-              border: "1px solid",
-              borderColor: "divider",
             }}
           />
-        </Box>
-      </Card>
+        </Grid>
 
-      {/* Mobile FAB */}
-      {isMobile && (
-        <Fab
-          color="primary"
-          aria-label="add"
-          onClick={handleAddUser}
-          sx={{ position: "fixed", bottom: 46, right: 36 }}
-        >
-          <AddIcon />
-        </Fab>
-      )}
+        <Grid size={{ xs: 12, md: 8 }}>
+          <Stack direction="row" spacing={1} justifyContent={"flex-end"}>
+            <Button
+              variant="outlined"
+              startIcon={<Refresh />}
+              onClick={handleRefresh}
+              disabled={loading}
+            >
+              Refresh
+            </Button>
+            <Button
+              variant="contained"
+              startIcon={<AddIcon />}
+              onClick={handleAddUser}
+            >
+              Add User
+            </Button>
+          </Stack>
+        </Grid>
+      </Grid>
 
-      {/* Delete confirmation dialog */}
+      {/* CLIENT-SIDE DataGrid */}
+      <Box sx={{ height: 420, width: "100%", mt: 3 }}>
+        <DataGrid
+          rows={filteredRows}
+          columns={columns}
+          loading={loading}
+          disableRowSelectionOnClick
+          paginationModel={paginationModel}
+          onPaginationModelChange={setPaginationModel}
+          pageSizeOptions={[5, 10, 25, 50]}
+          rowHeight={60}
+          headerHeight={50}
+          sx={{
+            "& .MuiDataGrid-columnHeaders": {
+              backgroundColor: "rgba(99,102,241,0.06)",
+            },
+            borderRadius: 2,
+            border: "1px solid",
+            borderColor: "divider",
+          }}
+        />
+      </Box>
+
+      {/* Enhanced Delete confirmation dialog */}
       <Dialog
         open={deleteDialogOpen}
-        onClose={() => setDeleteDialogOpen(false)}
+        onClose={handleCancelDelete}
         maxWidth="xs"
         fullWidth
       >
-        <DialogTitle color="error">Delete User</DialogTitle>
+        <DialogTitle color="error" sx={{ pb: 1 }}>
+          <Box display="flex" alignItems="center" gap={1}>
+            <DeleteIcon />
+            Delete User
+          </Box>
+        </DialogTitle>
         <DialogContent>
           <Alert severity="warning" sx={{ mb: 2 }}>
-            This action cannot be undone.
+            This action cannot be undone. The user will be permanently removed
+            from the system.
           </Alert>
           <Typography>
-            Are you sure you want to delete{" "}
-            <strong>{assetToDelete?.name}</strong>?
+            Are you sure you want to delete user{" "}
+            <strong>"{userToDelete?.userName}"</strong>
+            {userToDelete?.email && <> ({userToDelete.email})</>}?
           </Typography>
         </DialogContent>
-        <DialogActions>
+        <DialogActions sx={{ px: 3, pb: 2 }}>
           <Button
-            onClick={() => setDeleteDialogOpen(false)}
+            onClick={handleCancelDelete}
             variant="outlined"
             disabled={deleteLoading}
           >

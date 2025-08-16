@@ -36,4 +36,16 @@ const updateState = async (stateId, updatedData) => {
   }
 };
 
-export { getAllStates, addState, updateState };
+const deleteState = async (stateId) => {
+  try {
+    const response = await axiosInstance.delete(`/api/v1/statemaster/delete-state/${stateId}`);
+    return response.data;
+  } catch (error) {
+    if (import.meta.env.VITE_DEVELOPMENT === 'development') {
+      console.error('Error deleting state:', error);
+    }
+    throw error;
+  }
+};
+
+export { getAllStates, addState, updateState, deleteState };

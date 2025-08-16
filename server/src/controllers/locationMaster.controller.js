@@ -5,7 +5,7 @@ import { Location } from '../models/location.model.js'; // Assuming you have a L
 
 const addNewLocation = catchAsync(async (req, res) => {
     const { name, state, area, status } = req.body;
-    if (!name || !state || !area || !status) {
+    if (!name || !state || !area || status==null) {
         throw new ApiError(400, 'Name, state, area, and status are required fields');
     }
 
@@ -13,17 +13,19 @@ const addNewLocation = catchAsync(async (req, res) => {
         name,
         stateId : state,
         area,
-        status : status=== 'active' ? true : false,
+        status : status,
         createdBy: req.user.id,
         updatedBy: req.user.id,
     });
 
-    if (!newLocation) {
+    const isExist = await Location.findById(newLocation._id).populate('stateId', 'name');
+
+    if (!isExist) {
         throw new ApiError(500, 'Failed to create new location');
     }
 
     return res.status(201).json(
-        new ApiResponse(201, newLocation, 'New location created successfully')
+        new ApiResponse(201, isExist, 'New location created successfully')
     );
 
 });
@@ -42,7 +44,7 @@ const updateLocation = catchAsync(async (req, res) => {
             name,
             stateId: state,
             area,
-            status: status === 'active' ? true : false,
+            status,
             updatedBy: req.user.id,
         },
         { new: true }
@@ -58,14 +60,33 @@ const updateLocation = catchAsync(async (req, res) => {
 });
 
 const getLocations = catchAsync(async (req, res) => {
-    const locations = await Location.find().populate('stateId', 'name');
+    const locations = await Location.find({}).populate('stateId', 'name').sort({createdAt: -1});
     return res.status(200).json(
         new ApiResponse(200, locations, 'Locations retrieved successfully')
+    );
+});
+
+const deleteLocation = catchAsync(async (req, res) => {
+    const { id } = req.params;
+
+    if (!id) {
+        throw new ApiError(400, 'ID is required');
+    }
+
+    const deletedState = await Location.findByIdAndDelete(id);
+
+    if (!deletedState) {
+        throw new ApiError(404, "Location not found");
+    }
+
+    return res.status(200).json(
+        new ApiResponse(200, {}, 'Location deleted successfully')
     );
 });
 
 export {
     addNewLocation,
     updateLocation,
-    getLocations
+    getLocations,
+    deleteLocation
 };
