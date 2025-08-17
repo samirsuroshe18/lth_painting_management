@@ -18,13 +18,13 @@ import StateMaster from "../pages/Masters/StateMaster.jsx";
 
 import ChangePassword from "../pages/commonPages/ChangePassword.jsx";
 import ForgotPassword from "../pages/commonPages/ForgotPassword.jsx";
-import EditUser from "../pages/Masters/EditUser.jsx";
 import EditRights from "../pages/Masters/EditRights.jsx";
 import EditAssetScreen from "../pages/Masters/EditAssetScreen.jsx";
 import LogHistoryScreen from "../pages/Masters/LogHistoryScreen.jsx";
 import CreateAsset from "../pages/Masters/CreateAsset.jsx";
 import CreateNewAssset from "../pages/commonPages/CreateNewAssset.jsx";
 import SuperAdminDashboard from "../pages/Dashboards/SuperAdminDashboard.jsx";
+import ViewAsset from "../pages/Masters/ViewAsset.jsx";
 
 const router = createBrowserRouter([
   {
@@ -60,6 +60,7 @@ const router = createBrowserRouter([
                   { path: "", element: <AssetMaster /> },
                   { path: "edit-asset", element: <EditAssetScreen /> },
                   { path: "log-history", element: <LogHistoryScreen /> },
+                  { path: "view-asset", element: <ViewAsset /> },
                   { path: "new", element: <CreateAsset /> },
                 ],
               },

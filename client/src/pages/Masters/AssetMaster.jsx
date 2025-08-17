@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import { useDispatch } from "react-redux";
 import {
   IconButton,
@@ -13,15 +13,11 @@ import {
   CircularProgress,
   Container,
   Grid,
-  Card,
-  CardContent,
   Chip,
-  Fab,
   TextField,
   InputAdornment,
   Alert,
-  useMediaQuery,
-  useTheme,
+  Stack,
 } from "@mui/material";
 import {
   CheckCircle,
@@ -36,7 +32,11 @@ import {
   Visibility,
 } from "@mui/icons-material";
 import { DataGrid } from "@mui/x-data-grid";
-import { getAssets, removeAsset, reviewAssetStatus } from "../../api/assetMasterApi";
+import {
+  getAllAssets,
+  removeAsset,
+  reviewAssetStatus,
+} from "../../api/assetMasterApi";
 import { showNotificationWithTimeout } from "../../redux/slices/notificationSlice";
 import { handleAxiosError } from "../../utils/handleAxiosError";
 import { useNavigate } from "react-router-dom";
@@ -44,25 +44,15 @@ import { useNavigate } from "react-router-dom";
 export default function AssetMaster() {
   const dispatch = useDispatch();
   const navigate = useNavigate();
-  const theme = useTheme();
-  const isMobile = useMediaQuery(theme.breakpoints.down("md"));
-
-  // ---------------------------
-  // Local UI state
-  // ---------------------------
-  const [assets, setAssets] = useState([]); // local copy of current page assets (convenience)
-  const [rows, setRows] = useState([]); // DataGrid rows (server-paginated)
-  const [rowCount, setRowCount] = useState(0); // total items available on server
-  const [loading, setLoading] = useState(true); // loading flag for grid + UI
-  const [deleteLoading, setDeleteLoading] = useState(false); // loading flag for delete button
-  const [searchTerm, setSearchTerm] = useState(""); // search input value
-
-  // Dialog & selection state
+  const [rows, setRows] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [deleteLoading, setDeleteLoading] = useState(false);
+  const [searchTerm, setSearchTerm] = useState("");
+  const [filteredRows, setFilteredRows] = useState([]);
   const [qrDialogOpen, setQrDialogOpen] = useState(false);
   const [selectedQr, setSelectedQr] = useState(null);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [assetToDelete, setAssetToDelete] = useState(null);
-  // NEW: approve/reject dialogs + state
   const [approveDialogOpen, setApproveDialogOpen] = useState(false);
   const [rejectDialogOpen, setRejectDialogOpen] = useState(false);
   const [assetToApprove, setAssetToApprove] = useState(null);
@@ -70,74 +60,34 @@ export default function AssetMaster() {
   const [approveLoading, setApproveLoading] = useState(false);
   const [rejectLoading, setRejectLoading] = useState(false);
   const [rejectRemark, setRejectRemark] = useState("");
-
-  // ---------------------------
-  // Server-side pagination model
-  // page is 0-based; we pass +1 to the API
-  // ---------------------------
   const [paginationModel, setPaginationModel] = useState({
     page: 0,
     pageSize: 5,
   });
 
-  // ---------------------------
-  // Data fetching
-  // ---------------------------
-
-  // Initial load
   useEffect(() => {
     fetchAssets();
   }, []);
 
-  // Re-fetch when user changes page or pageSize
   useEffect(() => {
-    fetchAssets();
-  }, [paginationModel]);
+    applyFilters();
+  }, [searchTerm, rows]);
 
-  // When search changes:
-  // - If already on page 0, fetch with new filter
-  // - Else, reset to page 0 (which triggers fetch via the effect above)
-  useEffect(() => {
-    if (paginationModel.page === 0) {
-      fetchAssets();
-    } else {
-      setPaginationModel((prev) => ({ ...prev, page: 0 }));
-    }
-  }, [searchTerm]);
-
-  // Fetch assets for current page/pageSize/search
   const fetchAssets = async () => {
     try {
       setLoading(true);
 
-      const response = await getAssets({
-        page: paginationModel.page + 1,
-        limit: paginationModel.pageSize,
-        search: searchTerm,
-      });
+      const response = await getAllAssets();
 
-      // Api response
-      const apiAssets = response?.data?.assets ?? [];
-
-      // Normalize rows for DataGrid:
-      // - Ensure each row has an 'id'
-      // - Add a serial number based on current page
-      const assetsWithIds = apiAssets.map((asset, index) => ({
+      const assets = response?.data || [];
+      const assetWithIds = assets.map((asset, index) => ({
         ...asset,
-        id: asset._id,
-        srNo: paginationModel.page * paginationModel.pageSize + index + 1,
+        id: asset?._id ?? index,
       }));
 
-      // Provide rows to the grid
-      setRows(assetsWithIds);
-
-      // Provide total count to the grid's pager
-      setRowCount(response?.data?.pagination?.totalEntries ?? 0);
-
-      // Keep a local copy (handy for optimistic updates)
-      setAssets(assetsWithIds);
+      setRows(assetWithIds);
     } catch (error) {
-      // Centralized error toast
+      setRows([]);
       dispatch(
         showNotificationWithTimeout({
           show: true,
@@ -150,39 +100,55 @@ export default function AssetMaster() {
     }
   };
 
-  // ---------------------------
-  // Action handlers
-  // ---------------------------
+  const applyFilters = () => {
+    let filtered = [...rows];
 
-  // Navigate to create screen
-  const handleCreateClick = () => navigate("new");
+    // Apply search filter
+    if (searchTerm.trim()) {
+      const searchLower = searchTerm.toLowerCase().trim();
 
-  // OPEN dialogs instead of acting immediately
+      filtered = filtered.filter((asset) => {
+        const name = asset.name?.toLowerCase() || "";
+        const location = asset.locationId.name?.toLowerCase() || "";
+
+        return name.includes(searchLower) || location.includes(searchLower);
+      });
+    }
+
+    setFilteredRows(filtered);
+  };
+
   const handleApprove = (assetIdOrRow) => {
-    const row = typeof assetIdOrRow === "object" ? assetIdOrRow : rows.find((r) => r.id === assetIdOrRow);
+    const row =
+      typeof assetIdOrRow === "object"
+        ? assetIdOrRow
+        : rows.find((r) => r.id === assetIdOrRow);
     setAssetToApprove(row);
     setApproveDialogOpen(true);
   };
 
   const handleReject = (assetIdOrRow) => {
-    const row = typeof assetIdOrRow === "object" ? assetIdOrRow : rows.find((r) => r.id === assetIdOrRow);
+    const row =
+      typeof assetIdOrRow === "object"
+        ? assetIdOrRow
+        : rows.find((r) => r.id === assetIdOrRow);
     setAssetToReject(row);
     setRejectRemark("");
     setRejectDialogOpen(true);
   };
 
-  // NEW: confirm approve
   const handleConfirmApprove = async () => {
     if (!assetToApprove) return;
     try {
       setApproveLoading(true);
-      await reviewAssetStatus(assetToApprove.id, {reviewStatus: "approved"}); // implement this API
-      const isLastItemOnPage = rows.length <= 1 && paginationModel.page > 0;
-      if (isLastItemOnPage) {
-        setPaginationModel((prev) => ({ ...prev, page: prev.page - 1 }));
-      } else {
-        await fetchAssets();
-      }
+      const result = await reviewAssetStatus(assetToApprove.id, { reviewStatus: "approved" });
+
+      const data = result.data;
+        data.id = data._id;
+      setFilteredRows((prev) =>
+        prev.map((item) => (item.id === data.id ? data : item))
+      );
+
       dispatch(
         showNotificationWithTimeout({
           show: true,
@@ -210,13 +176,17 @@ export default function AssetMaster() {
     if (!assetToReject || !rejectRemark.trim()) return;
     try {
       setRejectLoading(true);
-      await reviewAssetStatus(assetToReject.id, { reviewStatus: "rejected", rejectRemark }); // implement this API
-      const isLastItemOnPage = rows.length <= 1 && paginationModel.page > 0;
-      if (isLastItemOnPage) {
-        setPaginationModel((prev) => ({ ...prev, page: prev.page - 1 }));
-      } else {
-        await fetchAssets();
-      }
+      const result = await reviewAssetStatus(assetToReject.id, {
+        reviewStatus: "rejected",
+        rejectRemark,
+      }); // implement this API
+      
+      const data = result.data;
+        data.id = data._id;
+      setFilteredRows((prev) =>
+        prev.map((item) => (item.id === data.id ? data : item))
+      );
+
       dispatch(
         showNotificationWithTimeout({
           show: true,
@@ -244,8 +214,7 @@ export default function AssetMaster() {
   const handleEdit = (row) => navigate("edit-asset", { state: { asset: row } });
 
   // Navigate to read-only edit screen (view details)
-  const handleView = (row) =>
-    navigate("edit-asset", { state: { asset: row, read: true } });
+  const handleView = (row) => navigate("view-asset", { state: { asset: row } });
 
   // Delete handler:
   // - Optimistically update
@@ -260,16 +229,7 @@ export default function AssetMaster() {
 
       if (response.success) {
         // Optimistic removal from local copy
-        setAssets((prev) => prev.filter((a) => a.id !== assetToDelete.id));
-
-        // If we removed the last item on this page (and not on page 0) → step back a page
-        const isLastItemOnPage = rows.length <= 1 && paginationModel.page > 0;
-        if (isLastItemOnPage) {
-          setPaginationModel((prev) => ({ ...prev, page: prev.page - 1 }));
-        } else {
-          // Otherwise just refetch the current page
-          await fetchAssets();
-        }
+        setRows((prev) => prev.filter((a) => a.id !== assetToDelete.id));
 
         dispatch(
           showNotificationWithTimeout({
@@ -294,6 +254,17 @@ export default function AssetMaster() {
     }
   };
 
+  const handleSearchChange = (event) => {
+    setSearchTerm(event.target.value);
+  };
+
+  const clearSearch = () => {
+    setSearchTerm("");
+  };
+
+  // Navigate to create screen
+  const handleCreateClick = () => navigate("new");
+
   // Navigate to audit log screen
   const handleHistory = (assetId) =>
     navigate("log-history", { state: { assetId } });
@@ -313,6 +284,25 @@ export default function AssetMaster() {
       filterable: false,
       align: "center",
       headerAlign: "center",
+      renderCell: (params) => {
+        const visibleIndex =
+          params.api.getRowIndexRelativeToVisibleRows(params.id) ?? 0;
+        const serial =
+          paginationModel.page * paginationModel.pageSize + visibleIndex + 1;
+
+        return (
+          <Box
+            sx={{
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              height: "100%",
+            }}
+          >
+            <Typography variant="body2">{serial}</Typography>
+          </Box>
+        );
+      },
     },
     {
       field: "name",
@@ -512,147 +502,95 @@ export default function AssetMaster() {
 
   return (
     <Container maxWidth="xl" sx={{ py: 3 }}>
-      {/* Header card with title + actions */}
-      <Card elevation={2}>
-        <CardContent>
-          <Grid
-            container
-            alignItems="center"
-            justifyContent="space-between"
-            spacing={2}
-          >
-            <Grid item>
-              <Typography variant="h4" fontWeight={700} color="primary">
-                Asset Management
-              </Typography>
-              <Typography variant="body2" color="text.secondary">
-                Manage and monitor all painting assets in the system
-              </Typography>
-            </Grid>
+      {/* Header card */}
+      <Grid container spacing={2} alignItems="center">
+        <Grid size={{ xs: 12, md: "auto" }}>
+          <Typography variant="h4" fontWeight={700} color="primary">
+            Asset Management
+          </Typography>
+          <Typography variant="body2" color="text.secondary">
+            Manage and monitor all painting assets in the system
+          </Typography>
+        </Grid>
+      </Grid>
 
-            <Grid item>
-              <Box display="flex" gap={1} flexWrap="wrap">
-                <Button
-                  variant="outlined"
-                  startIcon={<Refresh />}
-                  onClick={handleRefresh}
-                  disabled={loading}
-                >
-                  Refresh
-                </Button>
-
-                <Button
-                  variant="contained"
-                  startIcon={<AddIcon />}
-                  onClick={handleCreateClick}
-                >
-                  Add Asset
-                </Button>
-              </Box>
-            </Grid>
-          </Grid>
-        </CardContent>
-      </Card>
-
-      {/* Search & total chips */}
-      <Card sx={{ mt: 3 }}>
-        <CardContent>
-          <Grid container spacing={2} alignItems="center">
-            <Grid item xs={12} md={6}>
-              <TextField
-                fullWidth
-                placeholder="Search assets by name, artist, place, or location..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                variant="outlined"
-                size="small"
-                slotProps={{
-                  startAdornment: (
-                    <InputAdornment position="start">
-                      <SearchIcon color="action" />
-                    </InputAdornment>
-                  ),
-                  endAdornment: searchTerm && (
-                    <InputAdornment position="end">
-                      <IconButton
-                        size="small"
-                        onClick={() => setSearchTerm("")}
-                        edge="end"
-                      >
-                        <Cancel fontSize="small" />
-                      </IconButton>
-                    </InputAdornment>
-                  ),
-                }}
-              />
-            </Grid>
-
-            <Grid item xs={12} md={6}>
-              <Box display="flex" gap={1} justifyContent="flex-end">
-                <Chip
-                  label={`${rowCount} assets`}
-                  color="primary"
-                  variant="outlined"
-                />
-                {loading && (
-                  <Chip
-                    icon={<CircularProgress size={14} color="inherit" />}
-                    label="Loading..."
-                    color="info"
-                    variant="outlined"
-                    sx={{
-                      px: 1.5,
-                      fontWeight: 500,
-                      backgroundColor: "rgba(0, 123, 255, 0.08)", // light info color background
-                      borderRadius: "16px",
-                      ".MuiChip-icon": { marginLeft: "4px" },
-                    }}
-                  />
-                )}
-              </Box>
-            </Grid>
-          </Grid>
-        </CardContent>
-      </Card>
-
-      {/* Server-side paginated DataGrid */}
-      <Card sx={{ mt: 3 }}>
-        <Box sx={{ height: 380, width: "100%" }}>
-          <DataGrid
-            rows={rows}
-            columns={columns}
-            paginationModel={paginationModel}
-            onPaginationModelChange={setPaginationModel}
-            pageSizeOptions={[5, 10, 25, 50]}
-            pagination
-            paginationMode="server"
-            rowCount={rowCount}
-            loading={loading}
-            disableRowSelectionOnClick
-            rowHeight={60}
-            headerHeight={50}
-            componentsProps={{
-              toolbar: {
-                showQuickFilter: false,
-                printOptions: { disableToolbarButton: true },
-                csvOptions: { disableToolbarButton: true },
+      {/* Search & Filter Card */}
+      <Grid container spacing={2} sx={{ mt: 4 }}>
+        <Grid size={{ xs: 12, md: 4 }}>
+          <TextField
+            fullWidth
+            placeholder="Search assets by name or location..."
+            value={searchTerm}
+            onChange={handleSearchChange}
+            variant="outlined"
+            size="small"
+            slotProps={{
+              input: {
+                startAdornment: (
+                  <InputAdornment position="start">
+                    <SearchIcon color="action" />
+                  </InputAdornment>
+                ),
+                endAdornment: searchTerm && (
+                  <InputAdornment position="end">
+                    <IconButton
+                      size="small"
+                      onClick={clearSearch}
+                      edge="end"
+                      aria-label="clear search"
+                    >
+                      <Cancel fontSize="small" />
+                    </IconButton>
+                  </InputAdornment>
+                ),
               },
             }}
           />
-        </Box>
-      </Card>
+        </Grid>
 
-      {/* Mobile FAB for quick add */}
-      {isMobile && (
-        <Fab
-          color="primary"
-          aria-label="add"
-          onClick={handleCreateClick}
-          sx={{ position: "fixed", bottom: 46, right: 36 }}
-        >
-          <AddIcon />
-        </Fab>
-      )}
+        <Grid size={{ xs: 12, md: 8 }}>
+          <Stack direction="row" spacing={1} justifyContent={"flex-end"}>
+            <Button
+              variant="outlined"
+              startIcon={<Refresh />}
+              onClick={handleRefresh}
+              disabled={loading}
+            >
+              Refresh
+            </Button>
+            <Button
+              variant="contained"
+              startIcon={<AddIcon />}
+              onClick={handleCreateClick}
+            >
+              Add Asset
+            </Button>
+          </Stack>
+        </Grid>
+      </Grid>
+
+      {/* CLIENT-SIDE DataGrid */}
+      <Box sx={{ height: 420, width: "100%", mt: 3 }}>
+        <DataGrid
+          rows={filteredRows}
+          columns={columns}
+          loading={loading}
+          disableRowSelectionOnClick
+          paginationModel={paginationModel}
+          onPaginationModelChange={setPaginationModel}
+          pageSizeOptions={[5, 10, 25, 50]}
+          rowHeight={60}
+          headerHeight={50}
+          sx={{
+            "& .MuiDataGrid-columnHeaders": {
+              backgroundColor: "rgba(99,102,241,0.06)",
+            },
+            borderRadius: 2,
+            border: "1px solid",
+            borderColor: "divider",
+          }}
+        />
+      </Box>
 
       {/* QR Code dialog */}
       <Dialog
@@ -732,15 +670,25 @@ export default function AssetMaster() {
       </Dialog>
 
       {/* Approve */}
-      <Dialog open={approveDialogOpen} onClose={() => setApproveDialogOpen(false)} maxWidth="xs" fullWidth>
+      <Dialog
+        open={approveDialogOpen}
+        onClose={() => setApproveDialogOpen(false)}
+        maxWidth="xs"
+        fullWidth
+      >
         <DialogTitle>Approve Asset</DialogTitle>
         <DialogContent>
           <Typography>
-            Are you sure you want to approve <strong>{assetToApprove?.name}</strong>?
+            Are you sure you want to approve{" "}
+            <strong>{assetToApprove?.name}</strong>?
           </Typography>
         </DialogContent>
         <DialogActions>
-          <Button onClick={() => setApproveDialogOpen(false)} variant="outlined" disabled={approveLoading}>
+          <Button
+            onClick={() => setApproveDialogOpen(false)}
+            variant="outlined"
+            disabled={approveLoading}
+          >
             Cancel
           </Button>
           <Button
@@ -748,7 +696,9 @@ export default function AssetMaster() {
             color="success"
             disabled={approveLoading}
             onClick={handleConfirmApprove}
-            startIcon={approveLoading ? <CircularProgress size={16} /> : <CheckCircle />}
+            startIcon={
+              approveLoading ? <CircularProgress size={16} /> : <CheckCircle />
+            }
           >
             {approveLoading ? "Approving..." : "Approve"}
           </Button>
@@ -756,7 +706,12 @@ export default function AssetMaster() {
       </Dialog>
 
       {/* Reject */}
-      <Dialog open={rejectDialogOpen} onClose={() => setRejectDialogOpen(false)} maxWidth="sm" fullWidth>
+      <Dialog
+        open={rejectDialogOpen}
+        onClose={() => setRejectDialogOpen(false)}
+        maxWidth="sm"
+        fullWidth
+      >
         <DialogTitle>Reject Asset</DialogTitle>
         <DialogContent>
           <Alert severity="warning" sx={{ mb: 2 }}>
@@ -773,7 +728,11 @@ export default function AssetMaster() {
           />
         </DialogContent>
         <DialogActions>
-          <Button onClick={() => setRejectDialogOpen(false)} variant="outlined" disabled={rejectLoading}>
+          <Button
+            onClick={() => setRejectDialogOpen(false)}
+            variant="outlined"
+            disabled={rejectLoading}
+          >
             Cancel
           </Button>
           <Button
@@ -781,7 +740,9 @@ export default function AssetMaster() {
             color="error"
             disabled={rejectLoading || !rejectRemark.trim()}
             onClick={handleConfirmReject}
-            startIcon={rejectLoading ? <CircularProgress size={16} /> : <Cancel />}
+            startIcon={
+              rejectLoading ? <CircularProgress size={16} /> : <Cancel />
+            }
           >
             {rejectLoading ? "Rejecting..." : "Reject"}
           </Button>

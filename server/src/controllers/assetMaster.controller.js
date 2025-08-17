@@ -170,16 +170,33 @@ const updateAsset = catchAsync(async (req, res) => {
 const reviewAssetStatus = catchAsync(async (req, res) => {
     const { assetId } = req.params;
     const { reviewStatus, rejectedRemark } = req.body;
-    const asset = await Asset.findById(assetId);
+
+    if (!['approved', 'rejected'].includes(reviewStatus)) {
+        throw new ApiError(400, 'Invalid status');
+    }
+
+    const asset = await Asset.findById(assetId)
+        .populate({
+            path: 'locationId',
+            populate: [
+                {
+                    path: 'stateId',
+                    select: 'name',
+                },
+            ]
+        },)
+        .populate('createdBy', 'userName');
+
     if (!asset) {
         throw new ApiError(404, 'Asset not found');
     }
+
     const hasAccessToLocation = req.user.location.some(
-        (loc) => loc._id.toString() === asset.locationId.toString()
+        (loc) => loc._id.toString() === asset.locationId._id.toString()
     );
 
     if (!hasAccessToLocation) {
-        return res.status(403).json({ message: 'You do not have access to this location.' });
+        return res.status(403).json({ message: 'Access Denied.' });
     }
 
     if (!['approved', 'rejected'].includes(reviewStatus)) {
@@ -191,8 +208,9 @@ const reviewAssetStatus = catchAsync(async (req, res) => {
     asset.reviewedBy = req.user._id;
     asset.rejectedRemark = rejectedRemark || undefined
     await asset.save();
+
     return res.status(200).json(
-        new ApiResponse(200, {}, 'Asset status updated successfully')
+        new ApiResponse(200, asset, 'Asset status updated successfully')
     );
 });
 
@@ -289,6 +307,33 @@ const getAssets = catchAsync(async (req, res) => {
     );
 });
 
+const getAllAssets = catchAsync(async (req, res) => {
+    const assetMatch = {
+        isDeleted: false,
+        locationId: { $in: req.user.location.map(loc => loc._id) },
+    };
+    const response = await Asset.find(assetMatch)
+        .sort({ createdAt: -1 })
+        .populate({
+            path: 'locationId',
+            populate: [
+                {
+                    path: 'stateId',
+                    select: 'name',
+                },
+            ]
+        },)
+        .populate('createdBy', 'userName');
+
+    if (response.length <= 0) {
+        throw new ApiError(404, "No assets found for the given criteria");
+    }
+
+    return res.status(200).json(
+        new ApiResponse(200, response, "Audit logs retrieved successfully")
+    );
+});
+
 const getQrCodes = catchAsync(async (req, res) => {
     const response = await Asset.find({
         isDeleted: false,
@@ -358,5 +403,6 @@ export {
     getAssets,
     removeAsset,
     getAssetsByLocation,
-    getQrCodes
+    getQrCodes,
+    getAllAssets
 };
