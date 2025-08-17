@@ -63,7 +63,7 @@ const SuperAdminDashboard = () => {
 
   useEffect(() => {
     applyFilters();
-  }, [searchTerm, rows]);
+  }, [searchTerm, rows, activeFilter]);
 
   const fetchAssets = async () => {
     try {
@@ -117,6 +117,12 @@ const SuperAdminDashboard = () => {
 
         return auditName.includes(searchLower);
       });
+    }
+
+    if (activeFilter && activeFilter !== "all") {
+      filtered = filtered.filter(
+        (audit) => audit?.reviewStatus === activeFilter
+      );
     }
 
     setFilteredRows(filtered);

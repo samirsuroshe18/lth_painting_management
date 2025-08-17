@@ -5,15 +5,15 @@ import { Location } from '../models/location.model.js'; // Assuming you have a L
 
 const addNewLocation = catchAsync(async (req, res) => {
     const { name, state, area, status } = req.body;
-    if (!name || !state || !area || status==null) {
+    if (!name || !state || !area || status == null) {
         throw new ApiError(400, 'Name, state, area, and status are required fields');
     }
 
     const newLocation = await Location.create({
         name,
-        stateId : state,
+        stateId: state,
         area,
-        status : status,
+        status: status,
         createdBy: req.user.id,
         updatedBy: req.user.id,
     });
@@ -23,6 +23,11 @@ const addNewLocation = catchAsync(async (req, res) => {
     if (!isExist) {
         throw new ApiError(500, 'Failed to create new location');
     }
+
+    await User.updateMany(
+        { role: "superadmin" },
+        { $push: { locations: newLocation._id } }
+    );
 
     return res.status(201).json(
         new ApiResponse(201, isExist, 'New location created successfully')
@@ -60,7 +65,7 @@ const updateLocation = catchAsync(async (req, res) => {
 });
 
 const getLocations = catchAsync(async (req, res) => {
-    const locations = await Location.find({}).populate('stateId', 'name').sort({createdAt: -1});
+    const locations = await Location.find({}).populate('stateId', 'name').sort({ createdAt: -1 });
     return res.status(200).json(
         new ApiResponse(200, locations, 'Locations retrieved successfully')
     );
@@ -78,6 +83,11 @@ const deleteLocation = catchAsync(async (req, res) => {
     if (!deletedState) {
         throw new ApiError(404, "Location not found");
     }
+
+    await User.updateMany(
+        { role: "superadmin" },
+        { $pull: { locations: id } }
+    );
 
     return res.status(200).json(
         new ApiResponse(200, {}, 'Location deleted successfully')
