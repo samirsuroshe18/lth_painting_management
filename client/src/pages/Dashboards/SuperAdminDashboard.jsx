@@ -10,12 +10,11 @@ import {
   Grid,
   IconButton,
   Typography,
-  useMediaQuery,
-  useTheme,
   Button,
   CircularProgress,
   TextField,
   InputAdornment,
+  Stack,
 } from "@mui/material";
 import {
   CheckCircle,
@@ -42,11 +41,9 @@ const statusFilters = [
 const SuperAdminDashboard = () => {
   const dispatch = useDispatch();
   const navigate = useNavigate();
-  const [audits, setAudits] = useState([]);
+  const [filteredRows, setFilteredRows] = useState([]);
   const [rows, setRows] = useState([]);
-  const [rowCount, setRowCount] = useState(0);
   const [loading, setLoading] = useState(true);
-  const [countsLoading, setCountsLoading] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
   const [activeFilter, setActiveFilter] = useState("all");
   const [counts, setCounts] = useState({
@@ -60,123 +57,42 @@ const SuperAdminDashboard = () => {
     pageSize: 5,
   });
 
-  // Fixed function to handle status parameter correctly
-  const getStatusParam = (filterValue) => {
-    if (!filterValue || filterValue === "all") {
-      return undefined; // Don't filter by status for "all"
-    }
-    return filterValue; // Return the exact value for other filters
-  };
-
-  useEffect(() => {
-    fetchCounts();
-  }, []);
-
-  // Re-fetch when user changes page or pageSize
   useEffect(() => {
     fetchAssets();
-  }, [paginationModel]);
+  }, []);
 
-  // When search changes:
-  // - If already on page 0, fetch with new filter
-  // - Else, reset to page 0 (which triggers fetch via the effect above)
   useEffect(() => {
-    if (paginationModel.page === 0) {
-      fetchAssets();
-    } else {
-      setPaginationModel((prev) => ({ ...prev, page: 0 }));
-    }
-  }, [searchTerm]);
-
-  // when filter changes, reset to first page and refetch
-  useEffect(() => {
-    setPaginationModel((prev) => ({ ...prev, page: 0 }));
-  }, [activeFilter]);
-
-  const fetchCounts = async () => {
-    try {
-      setCountsLoading(true);
-      const statuses = ["all", "pending", "approved", "rejected"]; // Fixed casing
-
-      const results = await Promise.allSettled(
-        statuses.map(async (s) => {
-          try {
-            const res = await getAllAudits({
-              page: 1,
-              limit: 1, // only need total
-              status: getStatusParam(s), // Use the fixed function
-            });
-            return {
-              key: s,
-              total: res?.data?.pagination?.totalEntries ?? 0,
-            };
-          } catch (error) {
-            console.error(`Error fetching count for ${s}:`, error);
-            dispatch(
-              showNotificationWithTimeout({
-                show: true,
-                type: "error",
-                message: handleAxiosError(error),
-              })
-            );
-            return { key: s, total: 0 };
-          }
-        })
-      );
-
-      const next = { all: 0, pending: 0, approved: 0, rejected: 0 };
-      results.forEach((result) => {
-        if (result.status === "fulfilled" && result.value) {
-          next[result.value.key] = result.value.total || 0;
-        } else if (result.status === "rejected") {
-          // In case the mapping throw directly (rare), still set 0
-          const index = results.indexOf(result);
-          next[statuses[index]] = 0;
-        }
-      });
-
-      setCounts(next);
-    } finally {
-      setCountsLoading(false);
-    }
-  };
+    applyFilters();
+  }, [searchTerm, rows]);
 
   const fetchAssets = async () => {
     try {
       setLoading(true);
+      const result = await getAllAudits();
 
-      console.log('Fetching assets with:', {
-        page: paginationModel.page + 1,
-        limit: paginationModel.pageSize,
-        status: getStatusParam(activeFilter),
-        search: searchTerm,
-        activeFilter
-      });
-
-      const res = await getAllAudits({
-        page: paginationModel.page + 1,
-        limit: paginationModel.pageSize,
-        status: getStatusParam(activeFilter), // Use the fixed function
-        search: searchTerm,
-      });
-
-      const apiItems = res?.data?.auditLogs ?? [];
-      const normalized = apiItems.map((asset) => ({
-        ...asset,
-        id: asset._id,
+      const auditsWithIds = result.data.map((audit, index) => ({
+        ...audit,
+        id: audit?._id ?? index,
       }));
 
-      setAudits(normalized);
-      setRows(normalized);
-      setRowCount(
-        res?.data?.pagination?.totalEntries ??
-          res?.data?.total ??
-          res?.data?.totalCount ??
-          res?.data?.count ??
-          0
-      );
+      if (auditsWithIds && auditsWithIds.length > 0) {
+        const newCounts = auditsWithIds.reduce(
+          (acc, { reviewStatus }) => {
+            acc.all++;
+            if (reviewStatus === "approved") acc.approved++;
+            else if (reviewStatus === "rejected") acc.rejected++;
+            else if (reviewStatus === "pending") acc.pending++;
+            return acc;
+          },
+          { all: 0, pending: 0, approved: 0, rejected: 0 }
+        );
+
+        setCounts(newCounts);
+      }
+
+      setRows(auditsWithIds);
     } catch (error) {
-      console.error('Fetch assets error:', error);
+      setRows([]);
       dispatch(
         showNotificationWithTimeout({
           show: true,
@@ -184,11 +100,39 @@ const SuperAdminDashboard = () => {
           message: handleAxiosError(error),
         })
       );
-      setRows([]);
-      setRowCount(0);
     } finally {
       setLoading(false);
     }
+  };
+
+  const applyFilters = () => {
+    let filtered = [...rows];
+
+    // Apply search filter
+    if (searchTerm.trim()) {
+      const searchLower = searchTerm.toLowerCase().trim();
+
+      filtered = filtered.filter((audit) => {
+        const auditName = (audit.assetId.name || "").toLowerCase();
+
+        return auditName.includes(searchLower);
+      });
+    }
+
+    setFilteredRows(filtered);
+  };
+
+  const handleRefresh = () => {
+    setSearchTerm("");
+    fetchAssets();
+  };
+
+  const clearSearch = () => {
+    setSearchTerm("");
+  };
+
+  const handleSearchChange = (e) => {
+    setSearchTerm(e.target.value);
   };
 
   const handleViewAsset = (auditLog) => {
@@ -218,7 +162,6 @@ const SuperAdminDashboard = () => {
                 alignItems: "center",
                 justifyContent: "center",
                 height: "100%",
-                width: "100%",
               }}
             >
               <Typography variant="body2">{serial}</Typography>
@@ -325,8 +268,9 @@ const SuperAdminDashboard = () => {
 
   return (
     <Container maxWidth="xl" sx={{ py: 3 }}>
+      {/* Header card */}
       <Grid container spacing={2} alignItems="center">
-        <Grid item xs={12} md="auto">
+        <Grid size={{ xs: 12, md: "auto" }}>
           <Typography variant="h4" fontWeight={700} color="primary">
             Dashboard
           </Typography>
@@ -390,10 +334,10 @@ const SuperAdminDashboard = () => {
                       lineHeight={1.2}
                       sx={{ my: 3 }}
                     >
-                      {countsLoading ? (
+                      {loading ? (
                         <CircularProgress size={20} />
                       ) : (
-                        counts[filter.value] ?? 0
+                        (counts[filter.value] ?? 0)
                       )}
                     </Typography>
                     <Typography variant="subtitle2" color="text.secondary">
@@ -407,20 +351,14 @@ const SuperAdminDashboard = () => {
         })}
       </div>
 
-      {/* Search & total chips */}
-      <Grid
-        container
-        spacing={2}
-        alignItems="center"
-        justifyContent="space-between"
-        sx={{ mt: 4 }}
-      >
-        <Grid item xs={12} md={6}>
+      {/* Search & Filter Card */}
+      <Grid container spacing={2} sx={{ mt: 4 }}>
+        <Grid size={{ xs: 12, md: 4 }}>
           <TextField
             fullWidth
-            placeholder="Search assets by name, artist, place, or location..."
+            placeholder="Search assets by name..."
             value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
+            onChange={handleSearchChange}
             variant="outlined"
             size="small"
             slotProps={{
@@ -430,12 +368,13 @@ const SuperAdminDashboard = () => {
                     <SearchIcon color="action" />
                   </InputAdornment>
                 ),
-                endAdornment: !!searchTerm && (
+                endAdornment: searchTerm && (
                   <InputAdornment position="end">
                     <IconButton
                       size="small"
-                      onClick={() => setSearchTerm("")}
+                      onClick={clearSearch}
                       edge="end"
+                      aria-label="clear search"
                     >
                       <Cancel fontSize="small" />
                     </IconButton>
@@ -446,44 +385,42 @@ const SuperAdminDashboard = () => {
           />
         </Grid>
 
-        <Button
-          variant="outlined"
-          startIcon={loading ? <CircularProgress size={15} /> : <Refresh />}
-          onClick={() => {
-            fetchCounts();
-            fetchAssets();
-          }}
-          disabled={loading || countsLoading}
-        >
-          {loading ? "Loading.." : "Refresh"}
-        </Button>
+        <Grid size={{ xs: 12, md: 8 }}>
+          <Stack direction="row" spacing={1} justifyContent={"flex-end"}>
+            <Button
+              variant="outlined"
+              startIcon={<Refresh />}
+              onClick={handleRefresh}
+              disabled={loading}
+            >
+              Refresh
+            </Button>
+          </Stack>
+        </Grid>
       </Grid>
 
-      <Card sx={{ mt: 1 }}>
-        <Box sx={{ height: 480, width: "100%" }}>
-          <DataGrid
-            rows={rows}
-            columns={columns}
-            paginationModel={paginationModel}
-            onPaginationModelChange={setPaginationModel}
-            pageSizeOptions={[5, 10, 25, 50]}
-            pagination
-            paginationMode="server"
-            rowCount={rowCount}
-            loading={loading}
-            disableRowSelectionOnClick
-            rowHeight={60}
-            headerHeight={50}
-            componentsProps={{
-              toolbar: {
-                showQuickFilter: false,
-                printOptions: { disableToolbarButton: true },
-                csvOptions: { disableToolbarButton: true },
-              },
-            }}
-          />
-        </Box>
-      </Card>
+      {/* CLIENT-SIDE DataGrid */}
+      <Box sx={{ height: 420, width: "100%", mt: 3 }}>
+        <DataGrid
+          rows={filteredRows}
+          columns={columns}
+          disableRowSelectionOnClick
+          loading={loading}
+          paginationModel={paginationModel}
+          onPaginationModelChange={setPaginationModel}
+          pageSizeOptions={[5, 10, 25, 50]}
+          rowHeight={60}
+          headerHeight={50}
+          sx={{
+            "& .MuiDataGrid-columnHeaders": {
+              backgroundColor: "rgba(99,102,241,0.06)",
+            },
+            borderRadius: 2,
+            border: "1px solid",
+            borderColor: "divider",
+          }}
+        />
+      </Box>
     </Container>
   );
 };

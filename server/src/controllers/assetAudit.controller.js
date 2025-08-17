@@ -255,68 +255,12 @@ const getAuditLogs = catchAsync(async (req, res) => {
     );
 });
 
-// To view all audit logs for a specific asset
-const getAssetAuditLogs = catchAsync(async (req, res) => {
-    const { assetId } = req.params;
-    // Pagination parameters
-    const page = parseInt(req.query.page) || 1;
-    const limit = parseInt(req.query.limit) || 10;
-    const skip = (page - 1) * limit;
-
-    // Filter parameters
-    const filters = {};
-
-    // Status filter
-    if (req.query.status) {
-        filters.reviewStatus = req.query.status;
-    }
-
-    // Date range filter
-    if (req.query.startDate && req.query.endDate) {
-        const startDate = new Date(req.query.startDate);
-        const endDate = new Date(req.query.endDate);
-        endDate.setHours(23, 59, 59, 999); // Set to end of day
-
-        filters.createdAt = {
-            $gte: startDate,
-            $lte: endDate
-        };
-    }
-
-    if (req.query.startDate) {
-        const startDate = new Date(req.query.startDate);
-
-        filters.createdAt = {
-            $gte: startDate
-        };
-    }
-
-    if (req.query.endDate) {
-        const endDate = new Date(req.query.endDate);
-        endDate.setHours(23, 59, 59, 999);
-
-        filters.createdAt = {
-            $lte: endDate
-        };
-    }
-
-    // Name/keyword search
-    if (req.query.search) {
-        filters.$or = [
-            { auditorRemark: { $regex: req.query.search, $options: 'i' } },
-        ];
-    }
-
-    // Base match conditions for DeliveryEntry
+// To get all audit logs with pagination and filtering
+const fetchAllAuditLogs = catchAsync(async (req, res) => {
     const assetAuditMatch = {
-        assetId,
         locationId: { $in: req.user.location.map(loc => loc._id) },
-        ...filters
     };
 
-    // Count total documents for pagination
-    const totalCount = await AssetAuditLog.countDocuments(assetAuditMatch);
-    const totalPages = Math.ceil(totalCount / limit);
     const updatedAssetAudit = await AssetAuditLog.find(assetAuditMatch)
         .populate({
             path: 'proposedChanges.locationId',
@@ -362,24 +306,76 @@ const getAssetAuditLogs = catchAsync(async (req, res) => {
         })
         .sort({ createdAt: -1 });
 
-    // Apply pagination on combined results
-    const response = updatedAssetAudit.slice(skip, skip + limit);
-
-    if (response.length <= 0) {
+    if (updatedAssetAudit.length <= 0) {
         throw new ApiError(404, "No entries found matching your criteria");
     }
 
     return res.status(200).json(
-        new ApiResponse(200, {
-            auditLogs: response,
-            pagination: {
-                totalEntries: totalCount,
-                entriesPerPage: limit,
-                currentPage: page,
-                totalPages: totalPages,
-                hasMore: page < totalPages
-            }
-        }, "Audit logs retrieved successfully")
+        new ApiResponse(200, updatedAssetAudit, "Audit logs retrieved successfully")
+    );
+});
+
+// To view all audit logs for a specific asset
+const getAssetAuditLogs = catchAsync(async (req, res) => {
+    const { assetId } = req.params;
+
+    // Base match conditions for DeliveryEntry
+    const assetAuditMatch = {
+        assetId,
+        locationId: { $in: req.user.location.map(loc => loc._id) }
+    };
+
+    const updatedAssetAudit = await AssetAuditLog.find(assetAuditMatch)
+        .populate({
+            path: 'proposedChanges.locationId',
+            model: 'Location',
+            select: 'name',
+            strictPopulate: false
+        })
+        .populate({
+            path: 'assetId',
+            populate: [
+                {
+                    path: 'locationId',
+                    populate: [
+                        {
+                            path: 'stateId',
+                            select: 'name',
+                        },
+                    ]
+                },
+                {
+                    path: 'createdBy',
+                    model: 'User',
+                    select: 'userName'
+                },
+                {
+                    path: 'updatedBy',
+                    model: 'User',
+                    select: 'userName'
+                }
+            ]
+        })
+        .populate({
+            path: 'locationId',
+            select: 'name',
+        })
+        .populate({
+            path: 'proposedChanges.location',
+            select: 'name',
+        })
+        .populate({
+            path: 'createdBy',
+            select: 'userName',
+        })
+        .sort({ createdAt: -1 });
+
+    if (updatedAssetAudit.length <= 0) {
+        throw new ApiError(404, "No entries found matching your criteria");
+    }
+
+    return res.status(200).json(
+        new ApiResponse(200, updatedAssetAudit, "Audit logs retrieved successfully")
     );
 });
 
@@ -505,6 +501,7 @@ export {
     addNewAssetAudit,
     reviewAuditStatus,
     getAuditLogs,
+    fetchAllAuditLogs,
     getAssetAuditLogs,
     viewAuditLog,
     fetchAudits,

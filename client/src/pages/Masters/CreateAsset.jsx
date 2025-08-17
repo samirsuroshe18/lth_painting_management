@@ -56,7 +56,6 @@ const CreateNewAsset = () => {
           const response = await getAllLocations();
           setLocations(response.data || []);
         } catch (error) {
-          console.error("Error fetching locations:", error);
           dispatch(
             showNotificationWithTimeout({
               show: true,

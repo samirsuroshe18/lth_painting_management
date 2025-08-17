@@ -2,26 +2,18 @@ import { useEffect, useMemo, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import {
   Box,
-  Card,
-  CardActionArea,
-  CardContent,
   Chip,
   Container,
   Grid,
   IconButton,
   Typography,
-  useMediaQuery,
-  useTheme,
   Button,
-  CircularProgress,
   TextField,
   InputAdornment,
+  Stack,
 } from "@mui/material";
 import {
-  CheckCircle,
   Cancel,
-  Schedule,
-  ListAlt,
   Visibility,
   Search as SearchIcon,
   Refresh,
@@ -32,138 +24,42 @@ import { useDispatch } from "react-redux";
 import { showNotificationWithTimeout } from "../../redux/slices/notificationSlice";
 import { handleAxiosError } from "../../utils/handleAxiosError";
 
-const statusFilters = [
-  { label: "All Audits", value: "all", icon: <ListAlt /> },
-  { label: "Review Pending", value: "Pending", icon: <Schedule /> },
-  { label: "Approved", value: "Approved", icon: <CheckCircle /> },
-  { label: "Rejected", value: "Rejected", icon: <Cancel /> },
-];
-
 const LogHistoryScreen = () => {
   const { state } = useLocation();
-  const assetId = state?.assetId || '';
+  const assetId = state?.assetId || "";
   const dispatch = useDispatch();
   const navigate = useNavigate();
-  const [audits, setAudits] = useState([]);
   const [rows, setRows] = useState([]);
-  const [rowCount, setRowCount] = useState(0);
   const [loading, setLoading] = useState(true);
-  const [countsLoading, setCountsLoading] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
-  const [activeFilter, setActiveFilter] = useState("all");
-  const [counts, setCounts] = useState({
-    all: 0,
-    Pending: 0,
-    Approved: 0,
-    Rejected: 0,
-  });
+  const [filteredRows, setFilteredRows] = useState([]);
   const [paginationModel, setPaginationModel] = useState({
     page: 0,
     pageSize: 5,
   });
 
-  const lowerStatusParam = (v) =>
-    v && v !== "all" ? v.toLowerCase() : undefined;
-
   useEffect(() => {
-    fetchCounts();
+    fetchAudits();
   }, []);
 
-  // Re-fetch when user changes page or pageSize
   useEffect(() => {
-    fetchAssets();
-  }, [paginationModel]);
+    applyFilters();
+  }, [searchTerm, rows]);
 
-  // When search changes:
-  // - If already on page 0, fetch with new filter
-  // - Else, reset to page 0 (which triggers fetch via the effect above)
-  useEffect(() => {
-    if (paginationModel.page === 0) {
-      fetchAssets();
-    } else {
-      setPaginationModel((prev) => ({ ...prev, page: 0 }));
-    }
-  }, [searchTerm]);
-
-  // when filter changes, reset to first page and refetch
-  useEffect(() => {
-    setPaginationModel((prev) => ({ ...prev, page: 0 }));
-  }, [activeFilter]);
-
-  const fetchCounts = async () => {
-    try {
-      setCountsLoading(true);
-      const statuses = ["all", "Pending", "Approved", "Rejected"];
-
-      const results = await Promise.allSettled(
-        statuses.map(async (s) => {
-          try {
-            const res = await getAssetAudits(assetId, {
-              page: 1,
-              limit: 1, // only need total
-              status: lowerStatusParam(s),
-            });
-            return {
-              key: s,
-              total: res?.data?.pagination?.totalEntries ?? 0,
-            };
-          } catch (error) {
-            dispatch(
-              showNotificationWithTimeout({
-                show: true,
-                type: "error",
-                message: handleAxiosError(error),
-              })
-            );
-            return { key: s, total: 0 };
-          }
-        })
-      );
-
-      const next = { all: 0, Pending: 0, Approved: 0, Rejected: 0 };
-      results.forEach((result) => {
-        if (result.status === "fulfilled" && result.value) {
-          next[result.value.key] = result.value.total || 0;
-        } else if (result.status === "rejected") {
-          // In case the mapping throw directly (rare), still set 0
-          const index = results.indexOf(result);
-          next[statuses[index]] = 0;
-        }
-      });
-
-      setCounts(next);
-    } finally {
-      setCountsLoading(false);
-    }
-  };
-
-  const fetchAssets = async () => {
+  const fetchAudits = async () => {
     try {
       setLoading(true);
 
-      const res = await getAssetAudits(assetId, {
-        page: paginationModel.page + 1,
-        limit: paginationModel.pageSize,
-        status: lowerStatusParam(activeFilter),
-        search: searchTerm,
-      });
+      const result = await getAssetAudits(assetId);
 
-      const apiItems = res?.data?.auditLogs ?? [];
-      const normalized = apiItems.map((asset) => ({
-        ...asset,
-        id: asset._id,
+      const auditsWithIds = result.data.map((audit, index) => ({
+        ...audit,
+        id: audit?._id ?? index,
       }));
 
-      setAudits(normalized);
-      setRows(normalized);
-      setRowCount(
-        res?.data?.pagination?.totalEntries ??
-          res?.data?.total ??
-          res?.data?.totalCount ??
-          res?.data?.count ??
-          0
-      );
+      setRows(auditsWithIds);
     } catch (error) {
+      setRows([]);
       dispatch(
         showNotificationWithTimeout({
           show: true,
@@ -171,15 +67,43 @@ const LogHistoryScreen = () => {
           message: handleAxiosError(error),
         })
       );
-      setRows([]);
-      setRowCount(0);
     } finally {
       setLoading(false);
     }
   };
 
+  const applyFilters = () => {
+    let filtered = [...rows];
+    
+    // Apply search filter
+    if (searchTerm.trim()) {
+      const searchLower = searchTerm.toLowerCase().trim();
+
+      filtered = filtered.filter((audit) => {
+        const auditName = (audit.assetId.name || "").toLowerCase();
+
+        return auditName.includes(searchLower);
+      });
+    }
+
+    setFilteredRows(filtered);
+  };
+
   const handleViewAsset = (auditLog) => {
-    navigate("view-audit", { state: { auditLog } });
+    navigate("/view-audit", { state: { auditLog } });
+  };
+
+  const handleRefresh = () => {
+    fetchAudits();
+  };
+
+  const clearSearch = () => {
+    setSearchTerm("");
+  };
+
+  const handleSearchChange = (e) => {
+    setSearchTerm("");
+    setSearchTerm(e.target.value);
   };
 
   const columns = useMemo(
@@ -205,7 +129,6 @@ const LogHistoryScreen = () => {
                 alignItems: "center",
                 justifyContent: "center",
                 height: "100%",
-                width: "100%",
               }}
             >
               <Typography variant="body2">{serial}</Typography>
@@ -312,8 +235,9 @@ const LogHistoryScreen = () => {
 
   return (
     <Container maxWidth="xl" sx={{ py: 3 }}>
+      {/* Header card */}
       <Grid container spacing={2} alignItems="center">
-        <Grid item xs={12} md="auto">
+        <Grid size={{ xs: 12, md: "auto" }}>
           <Typography variant="h4" fontWeight={700} color="primary">
             Asset Audit History
           </Typography>
@@ -323,86 +247,14 @@ const LogHistoryScreen = () => {
         </Grid>
       </Grid>
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mt-4">
-        {statusFilters.map((filter) => {
-          const isActive = activeFilter === filter.value;
-          return (
-            <Card
-              elevation={isActive ? 4 : 1}
-              sx={{
-                borderRadius: 2,
-                transition:
-                  "transform 120ms ease, box-shadow 120ms ease, border-color 120ms ease",
-                ...(isActive && { border: 2, borderColor: "primary.main" }),
-                "&:hover": {
-                  transform: "translateY(-2px)",
-                  boxShadow: (theme) => theme.shadows[4],
-                },
-              }}
-            >
-              <CardActionArea
-                onClick={() => setActiveFilter(filter.value)}
-                sx={{ height: "100%" }} // ensure full height clickable
-              >
-                <CardContent
-                  sx={{
-                    height: "100%",
-                  }}
-                >
-                  <Chip
-                    icon={filter.icon}
-                    label={filter.value}
-                    variant="outlined"
-                    color={
-                      filter.value === "Approved"
-                        ? "success"
-                        : filter.value === "Rejected"
-                          ? "error"
-                          : filter.value === "Pending"
-                            ? "warning"
-                            : "default"
-                    }
-                    sx={{
-                      px: 1,
-                      fontWeight: 600,
-                      textTransform: "none",
-                    }}
-                  />
-
-                  <Box>
-                    <Typography
-                      variant="h5"
-                      fontWeight={700}
-                      lineHeight={1.2}
-                      sx={{ my: 3 }}
-                    >
-                      {counts[filter.value] ?? 0}
-                    </Typography>
-                    <Typography variant="subtitle2" color="text.secondary">
-                      {filter.label}
-                    </Typography>
-                  </Box>
-                </CardContent>
-              </CardActionArea>
-            </Card>
-          );
-        })}
-      </div>
-
-      {/* Search & total chips */}
-      <Grid
-        container
-        spacing={2}
-        alignItems="center"
-        justifyContent="space-between"
-        sx={{ mt: 4 }}
-      >
-        <Grid item xs={12} md={6}>
+      {/* Search & Filter Card */}
+      <Grid container spacing={2} sx={{ mt: 4 }}>
+        <Grid size={{ xs: 12, md: 4 }}>
           <TextField
             fullWidth
-            placeholder="Search assets by name, artist, place, or location..."
+            placeholder="Search assets by name..."
             value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
+            onChange={handleSearchChange}
             variant="outlined"
             size="small"
             slotProps={{
@@ -412,12 +264,13 @@ const LogHistoryScreen = () => {
                     <SearchIcon color="action" />
                   </InputAdornment>
                 ),
-                endAdornment: !!searchTerm && (
+                endAdornment: searchTerm && (
                   <InputAdornment position="end">
                     <IconButton
                       size="small"
-                      onClick={() => setSearchTerm("")}
+                      onClick={clearSearch}
                       edge="end"
+                      aria-label="clear search"
                     >
                       <Cancel fontSize="small" />
                     </IconButton>
@@ -428,44 +281,42 @@ const LogHistoryScreen = () => {
           />
         </Grid>
 
-        <Button
-          variant="outlined"
-          startIcon={loading ? <CircularProgress size={15} /> : <Refresh />}
-          onClick={() => {
-            fetchCounts();
-            fetchAssets();
-          }}
-          disabled={loading || countsLoading}
-        >
-          {loading ? "Loading.." : "Refresh"}
-        </Button>
+        <Grid size={{ xs: 12, md: 8 }}>
+          <Stack direction="row" spacing={1} justifyContent={"flex-end"}>
+            <Button
+              variant="outlined"
+              startIcon={<Refresh />}
+              onClick={handleRefresh}
+              disabled={loading}
+            >
+              Refresh
+            </Button>
+          </Stack>
+        </Grid>
       </Grid>
 
-      <Card sx={{ mt: 1 }}>
-        <Box sx={{ height: 480, width: "100%" }}>
-          <DataGrid
-            rows={rows}
-            columns={columns}
-            paginationModel={paginationModel}
-            onPaginationModelChange={setPaginationModel}
-            pageSizeOptions={[5, 10, 25, 50]}
-            pagination
-            paginationMode="server"
-            rowCount={rowCount}
-            loading={loading}
-            disableRowSelectionOnClick
-            rowHeight={60}
-            headerHeight={50}
-            componentsProps={{
-              toolbar: {
-                showQuickFilter: false,
-                printOptions: { disableToolbarButton: true },
-                csvOptions: { disableToolbarButton: true },
-              },
-            }}
-          />
-        </Box>
-      </Card>
+      {/* CLIENT-SIDE DataGrid */}
+      <Box sx={{ height: 420, width: "100%", mt: 3 }}>
+        <DataGrid
+          rows={filteredRows}
+          columns={columns}
+          disableRowSelectionOnClick
+          loading={loading}
+          paginationModel={paginationModel}
+          onPaginationModelChange={setPaginationModel}
+          pageSizeOptions={[5, 10, 25, 50]}
+          rowHeight={60}
+          headerHeight={50}
+          sx={{
+            "& .MuiDataGrid-columnHeaders": {
+              backgroundColor: "rgba(99,102,241,0.06)",
+            },
+            borderRadius: 2,
+            border: "1px solid",
+            borderColor: "divider",
+          }}
+        />
+      </Box>
     </Container>
   );
 };

@@ -74,7 +74,6 @@ export default function ScannedAsset() {
   });
 
   const handleChange = (e) => {
-    console.log({ e });
     const { name, value, files } = e.target;
     if (files && files.length > 0) {
       setFormData((prev) => ({ ...prev, [name]: files[0] }));

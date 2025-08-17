@@ -1,10 +1,9 @@
 import axiosInstance from './config.js';
 
-const getAllAudits = async (queryParams) => {
+const getAllAudits = async () => {
     try {
         const response = await axiosInstance.get(
-            "/api/v1/assetaudit/get-audit-logs",
-            { params: queryParams }
+            "/api/v1/assetaudit/get-all-audit-logs"
         );
         return response.data;
     } catch (error) {
@@ -15,11 +14,10 @@ const getAllAudits = async (queryParams) => {
     }
 };
 
-const getAssetAudits = async (id, queryParams) => {
+const getAssetAudits = async (id) => {
     try {
         const response = await axiosInstance.get(
-            `/api/v1/assetaudit/get-asset-audit-logs/${id}`,
-            { params: queryParams }
+            `/api/v1/assetaudit/get-asset-audit-logs/${id}`
         );
         return response.data;
     } catch (error) {
