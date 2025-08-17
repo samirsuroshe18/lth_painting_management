@@ -116,7 +116,7 @@ const updateAsset = async (assetData) => {
         form.append("artist", assetData.artist || "");
         form.append("place", assetData.place || "");
         form.append("size", assetData.size || "");
-        form.append("status", assetData.status == 'Active' ? true : false);
+        form.append("status", assetData.status == 'active' ? true : false);
 
         if (assetData.image) {
             form.append("file", assetData.image);

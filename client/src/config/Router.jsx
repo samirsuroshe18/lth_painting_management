@@ -19,7 +19,6 @@ import StateMaster from "../pages/Masters/StateMaster.jsx";
 import ChangePassword from "../pages/commonPages/ChangePassword.jsx";
 import ForgotPassword from "../pages/commonPages/ForgotPassword.jsx";
 import EditRights from "../pages/Masters/EditRights.jsx";
-import EditAssetScreen from "../pages/Masters/EditAssetScreen.jsx";
 import LogHistoryScreen from "../pages/Masters/LogHistoryScreen.jsx";
 import CreateAsset from "../pages/Masters/CreateAsset.jsx";
 import CreateNewAssset from "../pages/commonPages/CreateNewAssset.jsx";
@@ -58,7 +57,6 @@ const router = createBrowserRouter([
                 path: "asset-master",
                 children: [
                   { path: "", element: <AssetMaster /> },
-                  { path: "edit-asset", element: <EditAssetScreen /> },
                   { path: "log-history", element: <LogHistoryScreen /> },
                   { path: "view-asset", element: <ViewAsset /> },
                   { path: "new", element: <CreateAsset /> },

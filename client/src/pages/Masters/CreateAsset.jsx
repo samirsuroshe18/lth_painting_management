@@ -7,19 +7,12 @@ import {
   Button,
   Grid,
   Stack,
-  Avatar,
   CircularProgress,
-  Paper,
   useTheme,
-  useMediaQuery,
   Container,
   Card,
-  CardContent,
   IconButton,
   FormControl,
-  Checkbox,
-  InputLabel,
-  Divider,
 } from "@mui/material";
 import {
   Dialog,
@@ -27,21 +20,13 @@ import {
   DialogContent,
   DialogActions,
   Select,
-  OutlinedInput,
-  ListItemText,
 } from "@mui/material";
 import { AdapterDayjs } from "@mui/x-date-pickers/AdapterDayjs";
 import dayjs from "dayjs";
 import { LocalizationProvider } from "@mui/x-date-pickers/LocalizationProvider";
 import { DatePicker } from "@mui/x-date-pickers/DatePicker";
-import {
-  CloudUpload,
-  DeleteOutline,
-  ArrowBack,
-  CheckCircle,
-  PhotoCamera,
-} from "@mui/icons-material";
-import { createNewAsset } from "../../api/assetMasterApi";
+import { CloudUpload, DeleteOutline, CheckCircle } from "@mui/icons-material";
+import { createNewAsset, updateAsset } from "../../api/assetMasterApi";
 import { getAllLocations } from "../../api/locationApi"; // Add this import
 import { useDispatch, useSelector } from "react-redux"; // Add useSelector
 import { showNotificationWithTimeout } from "../../redux/slices/notificationSlice";
@@ -49,10 +34,11 @@ import { handleAxiosError } from "../../utils/handleAxiosError";
 import { useLocation, useNavigate } from "react-router-dom";
 
 const CreateNewAsset = () => {
+  const { state } = useLocation();
+  const asset = state?.asset;
+  const [imageUrl, setImageUrl] = useState(asset?.image);
   const navigate = useNavigate();
   const dispatch = useDispatch();
-  
-  // Get locations from Redux store like in AddUser component
   const userData = useSelector((state) => state.auth.userData?.user);
   const [locations, setLocations] = useState(userData?.location || []);
   const [loading, setLoading] = useState(false);
@@ -61,8 +47,6 @@ const CreateNewAsset = () => {
   const [yearError, setYearError] = useState("");
   const [successDialogOpen, setSuccessDialogOpen] = useState(false);
   const theme = useTheme();
-  const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
-  const isTablet = useMediaQuery(theme.breakpoints.down('md'));
 
   // Fetch locations if not available in Redux store
   useEffect(() => {
@@ -72,7 +56,7 @@ const CreateNewAsset = () => {
           const response = await getAllLocations();
           setLocations(response.data || []);
         } catch (error) {
-          console.error('Error fetching locations:', error);
+          console.error("Error fetching locations:", error);
           dispatch(
             showNotificationWithTimeout({
               show: true,
@@ -87,36 +71,22 @@ const CreateNewAsset = () => {
     fetchLocations();
   }, [dispatch]);
 
-  const [asset, setAsset] = useState({
-    name: "",
+  const [formData, setFormData] = useState({
+    id: asset?._id ?? undefined,
     image: null,
-    location: [], // Changed to array to match the select component
-    place: "",
-    currentValue: "",
-    year: null,
-    description: "",
-    artist: "",
-    size: "",
-    status: "",
+    name: asset?.name ?? "",
+    artist: asset?.artist ?? "",
+    place: asset?.place ?? "",
+    location: asset?.locationId?._id ?? "",
+    currentValue: asset?.purchaseValue ?? "",
+    year: asset?.year ? dayjs().year(asset?.year) : null,
+    description: asset?.description ?? "",
+    size: asset?.size ?? "",
+    status: asset?.status === true ? "active" : "inactive",
   });
 
   const handleChange = (e) => {
     const { name, value } = e.target;
-
-    if (name === "location") {
-      // Special handling for "Select all" pseudo-option
-      const ALL_VALUE = "__all__";
-      const optionValues = locations.map((l) => l._id);
-
-      if (value.includes(ALL_VALUE)) {
-        const isAllSelected = asset.location.length === optionValues.length;
-        const next = isAllSelected ? [] : optionValues;
-        setAsset((prev) => ({ ...prev, location: next }));
-      } else {
-        setAsset((prev) => ({ ...prev, location: value }));
-      }
-      return;
-    }
 
     // Handle image upload
     if (name === "image") {
@@ -128,22 +98,12 @@ const CreateNewAsset = () => {
     }
 
     // Handle other fields
-    setAsset((prev) => ({ ...prev, [name]: value }));
-  };
-
-  const getLocationName = (id) =>
-    locations.find((l) => l._id === id)?.name || id;
-
-  const renderSelectedLocations = (selectedIds) => {
-    if (!selectedIds?.length) return "";
-    // If many, show a compact count
-    if (selectedIds.length > 3) return `${selectedIds.length} selected`;
-    return selectedIds.map(getLocationName).join(", ");
+    setFormData((prev) => ({ ...prev, [name]: value }));
   };
 
   const handleImageUpload = (file) => {
-    if (file && file.type.startsWith('image/')) {
-      setAsset((prev) => ({ ...prev, image: file }));
+    if (file && file.type.startsWith("image/")) {
+      setFormData((prev) => ({ ...prev, image: file }));
       setFileImage(URL.createObjectURL(file));
     }
   };
@@ -168,14 +128,15 @@ const CreateNewAsset = () => {
   };
 
   const removeImage = () => {
-    setAsset((prev) => ({ ...prev, image: null }));
+    setFormData((prev) => ({ ...prev, image: null }));
     setFileImage(null);
+    setImageUrl(""); // ✅ clear backend image too
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
 
-    if (!asset.image) {
+    if (!formData.image && !asset) {
       dispatch(
         showNotificationWithTimeout({
           show: true,
@@ -186,18 +147,20 @@ const CreateNewAsset = () => {
       return;
     }
 
-    if (!asset.year) {
+    if (!formData.year) {
       setYearError("Year is required.");
       return;
     }
 
     try {
       setLoading(true);
-      
+
       // Add 1 second delay for loading state visibility
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      
-      const response = await createNewAsset(asset);
+      await new Promise((resolve) => setTimeout(resolve, 1000));
+
+      const response = asset
+        ? await updateAsset(formData)
+        : await createNewAsset(formData);
       dispatch(
         showNotificationWithTimeout({
           show: true,
@@ -205,10 +168,10 @@ const CreateNewAsset = () => {
           message: response.message,
         })
       );
-      setSuccessDialogOpen(true);
+      asset ? setSuccessDialogOpen(false) : setSuccessDialogOpen(true);
     } catch (error) {
       // Add delay even for errors to maintain consistent UX
-      await new Promise(resolve => setTimeout(resolve, 1000));
+      await new Promise((resolve) => setTimeout(resolve, 1000));
       dispatch(
         showNotificationWithTimeout({
           show: true,
@@ -227,362 +190,365 @@ const CreateNewAsset = () => {
 
   return (
     <Container maxWidth="lg" sx={{ py: 3 }}>
-      {/* Header Card */}
-      <Card elevation={2} sx={{ mb: 3 }}>
-        <CardContent>
-          <Box display="flex" alignItems="center" gap={2}>
-            <IconButton onClick={handleCancel} color="primary" sx={{ p: 1 }}>
-              <ArrowBack />
-            </IconButton>
-            <Box>
-              <Typography variant="h4" fontWeight={700} color="primary">
-                Create New Asset
-              </Typography>
-              <Typography variant="body2" color="text.secondary">
-                Add a new asset to your collection with complete details
-              </Typography>
-            </Box>
-          </Box>
-        </CardContent>
-      </Card>
+      {/* Header card */}
+      <Grid container spacing={2} alignItems="center">
+        <Grid size={{ xs: 12, md: "auto" }}>
+          <Typography variant="h4" fontWeight={700} color="primary">
+            {asset ? "Edit Asset Details" : "Create New Asset"}
+          </Typography>
+          <Typography variant="body2" color="text.secondary">
+            {asset
+              ? "Edit asset to your collection with complete details"
+              : "Add a new asset to your collection with complete details"}
+          </Typography>
+        </Grid>
+      </Grid>
 
       {/* Form Card */}
-      <Card elevation={2}>
-        <CardContent sx={{ p: 4 }}>
-          <form onSubmit={loading ? null : handleSubmit}>
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-              {/* Image Upload Section - Left Column */}
-              <div className="lg:col-span-1">
-                <label className="block text-sm font-medium text-gray-700 dark:text-white mb-2">
-                  Asset Image *
-                </label>
-                <Box
-                  onDrop={handleDrop}
-                  onDragOver={handleDragOver}
-                  onDragLeave={handleDragLeave}
-                  sx={{
-                    border: `2px dashed ${dragOver ? theme.palette.primary.main : theme.palette.grey[300]}`,
-                    borderRadius: 2,
-                    p: 2,
-                    textAlign: "center",
-                    transition: "all 0.3s ease",
-                    backgroundColor: dragOver ? theme.palette.primary.light + "10" : "transparent",
-                    cursor: "pointer",
-                    minHeight: 280,
-                    display: "flex",
-                    flexDirection: "column",
-                    justifyContent: "center",
-                    alignItems: "center",
-                  }}
-                  className="focus:ring focus:ring-blue-500"
+      <Box
+        component="form"
+        onSubmit={loading ? null : handleSubmit}
+        sx={{ mt: 3 }}
+      >
+        <Grid container spacing={3}>
+          {/* Image */}
+          <Grid size={{ xs: 12, md: 12 }}>
+            <Stack spacing={1}>
+              <Typography variant="subtitle2">Asset Image *</Typography>
+              <Box
+                onDrop={handleDrop}
+                onDragOver={handleDragOver}
+                onDragLeave={handleDragLeave}
+                sx={{
+                  border: `2px dashed ${dragOver ? theme.palette.primary.main : theme.palette.grey[300]}`,
+                  borderRadius: 2,
+                  textAlign: "center",
+                  transition: "all 0.3s ease",
+                  backgroundColor: dragOver
+                    ? theme.palette.primary.light + "10"
+                    : "transparent",
+                  cursor: "pointer",
+                  minHeight: 280,
+                  display: "flex",
+                  flexDirection: "column",
+                  justifyContent: "center",
+                  alignItems: "center",
+                }}
+                className="focus:ring focus:ring-blue-500"
+              >
+                {fileImage || imageUrl ? (
+                  <Box sx={{ position: "relative", width: "100%" }}>
+                    <img
+                      src={fileImage || imageUrl} // ✅ use file preview if available, else url
+                      alt="Asset preview"
+                      style={{
+                        width: "100%",
+                        height: "200px",
+                        objectFit: "cover",
+                        borderRadius: theme.spacing(1),
+                      }}
+                    />
+                    <IconButton
+                      onClick={removeImage}
+                      sx={{
+                        position: "absolute",
+                        top: 8,
+                        right: 8,
+                        bgcolor: "rgba(255, 255, 255, 0.9)",
+                        "&:hover": { bgcolor: "rgba(255, 255, 255, 1)" },
+                      }}
+                      disabled={loading}
+                    >
+                      <DeleteOutline color="error" />
+                    </IconButton>
+                  </Box>
+                ) : (
+                  <>
+                    <CloudUpload
+                      sx={{
+                        fontSize: 48,
+                        color: dragOver ? "primary.main" : "grey.400",
+                        mb: 2,
+                      }}
+                    />
+                    <Typography
+                      variant="subtitle1"
+                      fontWeight={600}
+                      color="text.primary"
+                      gutterBottom
+                    >
+                      {dragOver ? "Drop image here" : "Upload Asset Image"}
+                    </Typography>
+                    <Typography variant="body2" color="text.secondary" mb={2}>
+                      Drag & drop or click to select
+                    </Typography>
+                    <label htmlFor="image-upload">
+                      <Button
+                        variant="contained"
+                        component="span"
+                        size="small"
+                        disabled={loading}
+                        sx={{ textTransform: "none" }}
+                      >
+                        Choose Image
+                      </Button>
+                    </label>
+                  </>
+                )}
+                <input
+                  type="file"
+                  accept="image/*"
+                  name="image"
+                  id="image-upload"
+                  hidden
+                  onChange={handleChange}
+                  disabled={loading}
+                />
+              </Box>
+            </Stack>
+          </Grid>
+
+          {/* Name */}
+          <Grid size={{ xs: 12, md: 6 }}>
+            <Stack spacing={1}>
+              <Typography variant="subtitle2">Name *</Typography>
+              <TextField
+                name="name"
+                value={formData.name}
+                onChange={handleChange}
+                fullWidth
+                size="small"
+                placeholder="Enter name"
+                required
+                sx={{
+                  "& .MuiOutlinedInput-root": {
+                    backgroundColor: "inherit",
+                  },
+                }}
+                type="text"
+              />
+            </Stack>
+          </Grid>
+
+          {/* Name */}
+          <Grid size={{ xs: 12, md: 6 }}>
+            <Stack spacing={1}>
+              <Typography variant="subtitle2">Artist *</Typography>
+              <TextField
+                name="artist"
+                value={formData.artist}
+                onChange={handleChange}
+                fullWidth
+                size="small"
+                placeholder="Enter artist name"
+                required
+                sx={{
+                  "& .MuiOutlinedInput-root": {
+                    backgroundColor: "inherit",
+                  },
+                }}
+                type="text"
+              />
+            </Stack>
+          </Grid>
+
+          {/* Place */}
+          <Grid size={{ xs: 12, md: 6 }}>
+            <Stack spacing={1}>
+              <Typography variant="subtitle2">Place *</Typography>
+              <TextField
+                name="place"
+                value={formData.place}
+                onChange={handleChange}
+                fullWidth
+                size="small"
+                placeholder="Enter place"
+                required
+                type="text"
+              />
+            </Stack>
+          </Grid>
+
+          {/* Location */}
+          <Grid size={{ xs: 12, md: 6 }}>
+            <Stack spacing={1}>
+              <Typography variant="subtitle2">Location *</Typography>
+              <FormControl fullWidth required disabled={loading}>
+                <Select
+                  value={formData.location}
+                  onChange={(e) =>
+                    setFormData((prev) => ({
+                      ...prev,
+                      location: e.target.value,
+                    }))
+                  }
+                  required
+                  displayEmpty
+                  size="small"
                 >
-                  {fileImage ? (
-                    <Box sx={{ position: "relative", width: "100%" }}>
-                      <img
-                        src={fileImage}
-                        alt="Asset preview"
-                        style={{
-                          width: "100%",
-                          height: "200px",
-                          objectFit: "cover",
-                          borderRadius: theme.spacing(1),
-                        }}
-                      />
-                      <IconButton
-                        onClick={removeImage}
-                        sx={{
-                          position: "absolute",
-                          top: 8,
-                          right: 8,
-                          bgcolor: "rgba(255, 255, 255, 0.9)",
-                          "&:hover": { bgcolor: "rgba(255, 255, 255, 1)" },
-                        }}
-                        disabled={loading}
-                      >
-                        <DeleteOutline color="error" />
-                      </IconButton>
-                    </Box>
+                  <MenuItem value="" disabled>
+                    Select Location
+                  </MenuItem>
+                  {Array.isArray(locations) && locations.length > 0 ? (
+                    locations.map((loc) => (
+                      <MenuItem key={loc._id} value={loc._id}>
+                        {loc.name}
+                      </MenuItem>
+                    ))
                   ) : (
-                    <>
-                      <CloudUpload 
-                        sx={{ 
-                          fontSize: 48, 
-                          color: dragOver ? "primary.main" : "grey.400",
-                          mb: 2 
-                        }} 
-                      />
-                      <Typography variant="subtitle1" fontWeight={600} color="text.primary" gutterBottom>
-                        {dragOver ? "Drop image here" : "Upload Asset Image"}
-                      </Typography>
-                      <Typography variant="body2" color="text.secondary" mb={2}>
-                        Drag & drop or click to select
-                      </Typography>
-                      <label htmlFor="image-upload">
-                        <Button 
-                          variant="contained" 
-                          component="span"
-                          size="small"
-                          disabled={loading}
-                          sx={{ textTransform: "none" }}
-                        >
-                          Choose Image
-                        </Button>
-                      </label>
-                    </>
+                    <MenuItem disabled>No locations available</MenuItem>
                   )}
-                  <input
-                    type="file"
-                    accept="image/*"
-                    name="image"
-                    id="image-upload"
-                    hidden
-                    onChange={handleChange}
-                    disabled={loading}
-                  />
-                </Box>
-              </div>
+                </Select>
+              </FormControl>
+            </Stack>
+          </Grid>
 
-              {/* Form Fields - Right Columns */}
-              <div className="lg:col-span-2">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  {/* Asset Name */}
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 dark:text-white mb-2">
-                      Asset Name *
-                    </label>
-                    <input
-                      type="text"
-                      name="name"
-                      value={asset.name}
-                      onChange={handleChange}
-                      className="w-full px-4 py-2 border border-gray-300 rounded shadow-sm focus:ring focus:ring-blue-500 dark:bg-gray dark:border-gray-400 dark:text-white"
-                      required
-                      disabled={loading}
-                    />
-                  </div>
+          {/* currentValue */}
+          <Grid size={{ xs: 12, md: 6 }}>
+            <Stack spacing={1}>
+              <Typography variant="subtitle2">Purchase Value *</Typography>
+              <TextField
+                name="currentValue"
+                value={formData.currentValue}
+                onChange={handleChange}
+                fullWidth
+                size="small"
+                placeholder="Enter current value"
+                required
+                disabled={loading}
+                type="number"
+                sx={{
+                  "& .MuiOutlinedInput-root": {
+                    backgroundColor: "inherit",
+                  },
+                }}
+              />
+            </Stack>
+          </Grid>
 
-                  {/* Artist */}
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 dark:text-white mb-2">
-                      Artist *
-                    </label>
-                    <input
-                      type="text"
-                      name="artist"
-                      value={asset.artist}
-                      onChange={handleChange}
-                      className="w-full px-4 py-2 border border-gray-300 rounded shadow-sm focus:ring focus:ring-blue-500 dark:bg-gray dark:border-gray-400 dark:text-white"
-                      required
-                      disabled={loading}
-                    />
-                  </div>
+          {/* Size */}
+          <Grid size={{ xs: 12, md: 6 }}>
+            <Stack spacing={1}>
+              <Typography variant="subtitle2">Size *</Typography>
+              <TextField
+                name="size"
+                value={formData.size}
+                onChange={handleChange}
+                fullWidth
+                size="small"
+                placeholder="e.g. 10x20"
+                required
+                disabled={loading}
+                type="text"
+                sx={{
+                  "& .MuiOutlinedInput-root": {
+                    backgroundColor: "inherit",
+                  },
+                }}
+              />
+            </Stack>
+          </Grid>
 
-                  {/* Location: MUI Select with Checkbox dropdown */}
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 dark:text-white mb-2">
-                      Location
-                    </label>
-                    <FormControl fullWidth size="small">
-                      <InputLabel id="location-label">Location</InputLabel>
-                      <Select
-                        labelId="location-label"
-                        multiple
-                        name="location"
-                        value={asset.location} // Fixed: was formData.location
-                        onChange={handleChange}
-                        input={<OutlinedInput label="Location" />}
-                        renderValue={(selected) =>
-                          renderSelectedLocations(selected)
-                        }
-                        MenuProps={{
-                          PaperProps: { style: { maxHeight: 360, width: 320 } },
-                        }}
-                        disabled={loading}
-                      >
-                        {/* Select all toggle */}
-                        <MenuItem value="__all__">
-                          <Checkbox
-                            checked={
-                              locations.length > 0 &&
-                              asset.location.length === locations.length // Fixed: was formData.location
-                            }
-                            indeterminate={
-                              asset.location.length > 0 && // Fixed: was formData.location
-                              asset.location.length < locations.length // Fixed: was formData.location
-                            }
-                          />
-                          <ListItemText
-                            primary={
-                              asset.location.length === locations.length // Fixed: was formData.location
-                                ? "Clear all"
-                                : "Select all"
-                            }
-                          />
-                        </MenuItem>
+          {/* Year */}
+          <Grid size={{ xs: 12, md: 6 }}>
+            <Stack spacing={1}>
+              <Typography variant="subtitle2">Year *</Typography>
+              <LocalizationProvider dateAdapter={AdapterDayjs}>
+                <DatePicker
+                  views={["year"]}
+                  value={formData.year}
+                  minDate={dayjs("1500-01-01")}
+                  maxDate={dayjs()}
+                  onChange={(value) => {
+                    setFormData({ ...formData, year: value });
+                    setYearError("");
+                  }}
+                  disabled={loading}
+                  slotProps={{
+                    textField: {
+                      error: Boolean(yearError),
+                      helperText: yearError,
+                      required: true,
+                      fullWidth: true,
+                      size: "small",
+                      placeholder: "Enter date",
+                    },
+                  }}
+                />
+              </LocalizationProvider>
+            </Stack>
+          </Grid>
 
-                        {Array.isArray(locations) && locations.length > 0 ? (
-                          locations.map((loc) => (
-                            <MenuItem key={loc._id} value={loc._id}>
-                              <Checkbox
-                                checked={asset.location.indexOf(loc._id) > -1} // Fixed: was formData.location
-                              />
-                              <ListItemText primary={loc.name} />
-                            </MenuItem>
-                          ))
-                        ) : (
-                          <MenuItem disabled>No locations available</MenuItem>
-                        )}
-                      </Select>
-                    </FormControl>
-                  </div>
-                                 
-                  {/* Place */}
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 dark:text-white mb-2">
-                      Place *
-                    </label>
-                    <input
-                      type="text"
-                      name="place"
-                      value={asset.place}
-                      onChange={handleChange}
-                      className="w-full px-4 py-2 border border-gray-300 rounded shadow-sm focus:ring focus:ring-blue-500 dark:bg-gray dark:border-gray-400 dark:text-white"
-                      required
-                      disabled={loading}
-                    />
-                  </div>
+          {/* status */}
+          <Grid size={{ xs: 12, md: 6 }}>
+            <Stack spacing={1}>
+              <Typography variant="subtitle2">Status *</Typography>
+              <FormControl fullWidth required disabled={loading}>
+                <Select
+                  value={formData?.status ?? ""}
+                  onChange={(e) =>
+                    setFormData((prev) => ({
+                      ...prev,
+                      status: e.target.value,
+                    }))
+                  }
+                  size="small"
+                  required
+                  displayEmpty
+                >
+                  <MenuItem value="" disabled>
+                    Select status
+                  </MenuItem>
+                  <MenuItem value="active">Active</MenuItem>
+                  <MenuItem value="inactive">Inactive</MenuItem>
+                </Select>
+              </FormControl>
+            </Stack>
+          </Grid>
 
-                  {/* Size */}
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 dark:text-white mb-2">
-                      Size *
-                    </label>
-                    <input
-                      type="text"
-                      name="size"
-                      value={asset.size}
-                      onChange={handleChange}
-                      placeholder="e.g. 10x20 inches"
-                      className="w-full px-4 py-2 border border-gray-300 rounded shadow-sm focus:ring focus:ring-blue-500 dark:bg-gray dark:border-gray-400 dark:text-white"
-                      required
-                      disabled={loading}
-                    />
-                  </div>
+          {/* Description */}
+          <Grid size={{ xs: 12, md: 6 }}>
+            <Stack spacing={1}>
+              <Typography variant="subtitle2">Description *</Typography>
+              <TextField
+                name="description"
+                value={formData.description}
+                onChange={handleChange}
+                fullWidth
+                size="small"
+                placeholder="Enter description"
+                required
+                multiline
+                minRows={3}
+                sx={{
+                  "& .MuiOutlinedInput-root": {
+                    backgroundColor: "inherit",
+                  },
+                }}
+                type="text"
+              />
+            </Stack>
+          </Grid>
+        </Grid>
 
-                  {/* Current Value */}
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 dark:text-white mb-2">
-                      Current Value *
-                    </label>
-                    <input
-                      type="number"
-                      name="currentValue"
-                      value={asset.currentValue}
-                      onChange={handleChange}
-                      className="w-full px-4 py-2 border border-gray-300 rounded shadow-sm focus:ring focus:ring-blue-500 dark:bg-gray dark:border-gray-400 dark:text-white"
-                      required
-                      disabled={loading}
-                    />
-                  </div>
-
-                  {/* Year - Full Width */}
-                  <div className="md:col-span-2">
-                    <label className="block text-sm font-medium text-gray-700 dark:text-white mb-2">
-                      Year Created *
-                    </label>
-                    <LocalizationProvider dateAdapter={AdapterDayjs}>
-                      <DatePicker
-                        label="Year"
-                        views={["year"]}
-                        value={asset.year}
-                        minDate={dayjs("1500-01-01")}
-                        maxDate={dayjs()}
-                        onChange={(value) => {
-                          setAsset({ ...asset, year: value });
-                          setYearError("");
-                        }}
-                        disabled={loading}
-                        slotProps={{
-                          textField: {
-                            error: Boolean(yearError),
-                            helperText: yearError,
-                            required: true,
-                            fullWidth: true,
-                            size: "medium",
-                            sx: {
-                              "& .MuiOutlinedInput-root": {
-                                "& fieldset": {
-                                  borderColor: "rgba(0, 0, 0, 0.23)",
-                                },
-                                "&:hover fieldset": {
-                                  borderColor: "rgba(0, 0, 0, 0.23)",
-                                },
-                                "&.Mui-focused fieldset": {
-                                  borderColor: theme.palette.primary.main,
-                                },
-                              },
-                            },
-                          },
-                        }}
-                      />
-                    </LocalizationProvider>
-                  </div>
-
-                  {/* Description - Full Width */}
-                  <div className="md:col-span-2">
-                    <label className="block text-sm font-medium text-gray-700 dark:text-white mb-2">
-                      Description *
-                    </label>
-                    <textarea
-                      name="description"
-                      value={asset.description}
-                      onChange={handleChange}
-                      rows={4}
-                      placeholder="Describe the asset, its history, significance, or any other relevant details..."
-                      className="w-full px-4 py-2 border border-gray-300 rounded shadow-sm focus:ring focus:ring-blue-500 dark:bg-gray dark:border-gray-400 dark:text-white resize-none"
-                      required
-                      disabled={loading}
-                    />
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            {/* Action Buttons */}
-            <Box
-              sx={{
-                display: "flex",
-                justifyContent: "flex-end",
-                gap: 2,
-                mt: 4,
-                pt: 3,
-                borderTop: "1px solid",
-                borderColor: "divider",
-              }}
+        {/* Submit Button */}
+        <Box sx={{ display: "flex", justifyContent: "flex-end", mt: 4 }}>
+          <Stack direction="row" spacing={2}>
+            <Button type="submit" variant="contained" disabled={loading}>
+              {asset ? "Edit Asset" : "Create Asset"}
+            </Button>
+            <Button
+              variant="outlined"
+              onClick={handleCancel}
+              size="large"
+              sx={{ minWidth: 120 }}
+              disabled={loading}
             >
-              <Button
-                variant="outlined"
-                onClick={handleCancel}
-                size="large"
-                sx={{ minWidth: 120 }}
-                disabled={loading}
-              >
-                Cancel
-              </Button>
-              <Button
-                type="submit"
-                variant="contained"
-                size="large"
-                sx={{ minWidth: 120 }}
-                disabled={loading}
-                startIcon={loading ? <CircularProgress size={16} color="inherit" /> : null}
-              >
-                {loading ? "Creating..." : "Create Asset"}
-              </Button>
-            </Box>
-          </form>
-        </CardContent>
-      </Card>
+              Cancel
+            </Button>
+          </Stack>
+        </Box>
+      </Box>
 
       {/* Loading Overlay */}
       {loading && (
@@ -603,7 +569,7 @@ const CreateNewAsset = () => {
           <Card sx={{ p: 3, minWidth: 200, textAlign: "center" }}>
             <CircularProgress sx={{ mb: 2 }} />
             <Typography variant="h6" fontWeight={500}>
-              Creating Asset...
+              {asset ? "Updating Asset..." : "Creating Asset..."}
             </Typography>
             <Typography variant="body2" color="text.secondary">
               Please wait while we process your request
@@ -613,21 +579,21 @@ const CreateNewAsset = () => {
       )}
 
       {/* Success Dialog */}
-      <Dialog 
-        open={successDialogOpen} 
+      <Dialog
+        open={successDialogOpen}
         onClose={() => setSuccessDialogOpen(false)}
         fullWidth
         maxWidth="sm"
       >
         <DialogTitle sx={{ textAlign: "center", pt: 4 }}>
-          <CheckCircle 
-            sx={{ 
-              fontSize: 60, 
-              color: "success.main", 
+          <CheckCircle
+            sx={{
+              fontSize: 60,
+              color: "success.main",
               mb: 2,
               display: "block",
-              mx: "auto"
-            }} 
+              mx: "auto",
+            }}
           />
           <Typography variant="h5" fontWeight={700}>
             Asset Created Successfully!
@@ -635,7 +601,8 @@ const CreateNewAsset = () => {
         </DialogTitle>
         <DialogContent sx={{ textAlign: "center", pb: 2 }}>
           <Typography variant="body1" color="text.secondary">
-            Your new asset has been added to the collection and is now available in the system.
+            Your new asset has been added to the collection and is now available
+            in the system.
           </Typography>
         </DialogContent>
         <DialogActions sx={{ p: 3, gap: 2, justifyContent: "center" }}>
@@ -651,10 +618,10 @@ const CreateNewAsset = () => {
           </Button>
           <Button
             onClick={() => {
-              setAsset({
+              setFormData({
                 name: "",
                 image: null,
-                location: [], // Fixed: was empty string, now array
+                location: "", // Fixed: was empty string, now array
                 place: "",
                 currentValue: "",
                 year: null,

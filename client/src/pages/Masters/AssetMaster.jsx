@@ -211,7 +211,7 @@ export default function AssetMaster() {
   };
 
   // Navigate to edit screen
-  const handleEdit = (row) => navigate("edit-asset", { state: { asset: row } });
+  const handleEdit = (row) => navigate("new", { state: { asset: row } });
 
   // Navigate to read-only edit screen (view details)
   const handleView = (row) => navigate("view-asset", { state: { asset: row } });
