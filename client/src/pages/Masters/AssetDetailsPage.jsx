@@ -45,11 +45,11 @@ const AssetDetailsPage = () => {
       value: auditLog?.createdBy?.userName || "N/A",
       icon: <FaUser />,
     },
-    auditLog?.updatedBy?.userName && {
+    ...(auditLog?.updatedBy?.userName ? [{
       label: "Audit Approved By",
       value: auditLog?.updatedBy?.userName || "N/A",
       icon: <FaUser />,
-    },
+    }] : []),
     {
       label: "Audit Date",
       value: auditLog?.assetId?.createdAt
@@ -64,15 +64,12 @@ const AssetDetailsPage = () => {
         : "-",
       icon: <FaCalendarAlt />,
     },
-    ...(auditLog?.reviewStatus === "rejected"
-      ? [
-          {
-            label: "Rejected Remark",
-            value: auditLog?.rejectedRemark || "N/A",
-            icon: <FaTimesCircle />,
-          },
-        ]
-      : []),
+    // Conditionally add rejected remark items
+    ...(auditLog?.reviewStatus === "rejected" ? [{
+      label: "Rejected Remark",
+      value: auditLog?.rejectedRemark || "N/A",
+      icon: <FaTimesCircle />,
+    }] : []),
     {
       label: "Audit File Attachment 1",
       value: auditLog?.attachmentOne || null,
