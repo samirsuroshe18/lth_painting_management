@@ -420,24 +420,32 @@ const UserMaster = () => {
       {/* CLIENT-SIDE DataGrid */}
       <Box sx={{ height: 410, width: "100%", mt: 3 }}>
         <DataGrid
-          rows={filteredRows}
-          columns={columns}
-          loading={loading}
-          disableRowSelectionOnClick
-          paginationModel={paginationModel}
-          onPaginationModelChange={setPaginationModel}
-          pageSizeOptions={[5, 10, 25, 50]}
-          headerHeight={50}
-          rowHeight={60}
-          sx={{
-            "& .MuiDataGrid-columnHeaders": {
-              backgroundColor: "rgba(99,102,241,0.06)",
-            },
-            borderRadius: 2,
-            border: "1px solid",
-            borderColor: "divider",
-          }}
-        />
+        rows={filteredRows}
+        columns={columns}
+        disableRowSelectionOnClick
+        loading={loading}
+        paginationModel={paginationModel}
+        onPaginationModelChange={(newModel) => {
+        //added this to reset page to 0 when pageSize changes
+          if (newModel.pageSize !== paginationModel.pageSize) {
+            setPaginationModel({ page: 0, pageSize: newModel.pageSize });
+          } else {
+            setPaginationModel(newModel);
+          }
+        }}
+        pageSizeOptions={[5, 10, 25, 50]}
+        rowHeight={60}
+        headerHeight={50}
+        sx={{
+          "& .MuiDataGrid-columnHeaders": {
+            backgroundColor: "rgba(99,102,241,0.06)",
+          },
+          borderRadius: 2,
+          border: "1px solid",
+          borderColor: "divider",
+        }}
+      />
+
       </Box>
 
       {/* Enhanced Delete confirmation dialog */}
