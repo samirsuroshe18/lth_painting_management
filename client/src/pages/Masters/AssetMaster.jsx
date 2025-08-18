@@ -40,6 +40,9 @@ import {
 import { showNotificationWithTimeout } from "../../redux/slices/notificationSlice";
 import { handleAxiosError } from "../../utils/handleAxiosError";
 import { useNavigate } from "react-router-dom";
+import CheckCircleRoundedIcon from "@mui/icons-material/CheckCircleRounded";
+import PendingRoundedIcon from "@mui/icons-material/PendingRounded";
+import CloseRoundedIcon from "@mui/icons-material/CloseRounded";
 
 export default function AssetMaster() {
   const dispatch = useDispatch();
@@ -279,7 +282,7 @@ export default function AssetMaster() {
     {
       field: "srNo",
       headerName: "Sr. No",
-      width: 80,
+      width: 90,
       sortable: false,
       filterable: false,
       align: "center",
@@ -307,7 +310,8 @@ export default function AssetMaster() {
     {
       field: "name",
       headerName: "Asset Name",
-      width: 230,
+      minWidth: 200,
+      flex: 1,
       sortable: false,
       filterable: false,
       align: "center",
@@ -316,7 +320,8 @@ export default function AssetMaster() {
     {
       field: "locationId",
       headerName: "Location",
-      width: 150,
+      flex: 1,
+      minWidth: 150,
       sortable: false,
       filterable: false,
       align: "center",
@@ -333,7 +338,8 @@ export default function AssetMaster() {
     {
       field: "place",
       headerName: "Place",
-      width: 140,
+      flex: 1,
+      minWidth: 140,
       sortable: false,
       filterable: false,
       align: "center",
@@ -342,7 +348,7 @@ export default function AssetMaster() {
     {
       field: "status",
       headerName: "Status",
-      width: 120,
+      width: 110,
       align: "center",
       sortable: false,
       filterable: false,
@@ -359,22 +365,37 @@ export default function AssetMaster() {
     {
       field: "reviewStatus",
       headerName: "Review Status",
-      width: 150,
+      width: 140,
       align: "center",
       headerAlign: "center",
       renderCell: (params) => {
-        const status = params.value;
         const map = {
-          pending: { color: "warning", label: "Pending" },
-          approved: { color: "success", label: "Approved" },
-          rejected: { color: "error", label: "Rejected" },
+          pending: {
+            icon: <PendingRoundedIcon fontSize="small" />,
+            color: "warning",
+            label: "Pending",
+          },
+          approved: {
+            icon: <CheckCircleRoundedIcon fontSize="small" />,
+            color: "success",
+            label: "Approved",
+          },
+          rejected: {
+            icon: <CloseRoundedIcon fontSize="small" />,
+            color: "error",
+            label: "Rejected",
+          },
         };
-        const cfg = map[status] || { color: "default", label: status };
+        const cfg = map[params.value] || {
+          color: "default",
+          label: params.value || "-",
+        };
         return (
           <Chip
+            icon={cfg.icon}
             label={cfg.label}
-            size="small"
             color={cfg.color}
+            size="small"
             variant="outlined"
           />
         );
@@ -383,7 +404,7 @@ export default function AssetMaster() {
     {
       field: "actions",
       headerName: "Actions",
-      width: 280,
+      width: 200,
       sortable: false,
       filterable: false,
       align: "center",
@@ -570,7 +591,7 @@ export default function AssetMaster() {
       </Grid>
 
       {/* CLIENT-SIDE DataGrid */}
-      <Box sx={{ height: 420, width: "100%", mt: 3 }}>
+      <Box sx={{ height: 410, width: "100%", mt: 3 }}>
         <DataGrid
           rows={filteredRows}
           columns={columns}

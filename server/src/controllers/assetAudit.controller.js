@@ -304,6 +304,10 @@ const fetchAllAuditLogs = catchAsync(async (req, res) => {
             path: 'createdBy',
             select: 'userName',
         })
+        .populate({
+            path: 'updatedBy',
+            select: 'userName',
+        })
         .sort({ createdAt: -1 });
 
     if (updatedAssetAudit.length <= 0) {

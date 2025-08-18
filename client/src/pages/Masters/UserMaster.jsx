@@ -196,8 +196,7 @@ const UserMaster = () => {
   const columns = [
     {
       headerName: "Sr. No",
-      flex: 1,
-      minWidth: 100,
+      minWidth: 90,
       sortable: false,
       filterable: false,
       align: "center",
@@ -226,7 +225,7 @@ const UserMaster = () => {
       field: "userName",
       headerName: "Username",
       flex: 1,
-      minWidth: 140,
+      minWidth: 180,
       sortable: false,
       filterable: false,
       align: "center",
@@ -236,7 +235,7 @@ const UserMaster = () => {
       field: "email",
       headerName: "Email",
       flex: 1,
-      minWidth: 180,
+      minWidth: 200,
       sortable: false,
       filterable: false,
       align: "center",
@@ -245,8 +244,7 @@ const UserMaster = () => {
     {
       field: "role",
       headerName: "Role",
-      flex: 1,
-      minWidth: 120,
+      width: 120,
       align: "center",
       sortable: false,
       filterable: false,
@@ -263,8 +261,7 @@ const UserMaster = () => {
     {
       field: "lastLogin",
       headerName: "Last Login",
-      flex: 1,
-      minWidth: 160,
+      width: 220,
       sortable: false,
       filterable: false,
       align: "center",
@@ -286,8 +283,7 @@ const UserMaster = () => {
     {
       field: "actions",
       headerName: "Actions",
-      flex: 1,
-      minWidth: 150,
+      width: 150,
       sortable: false,
       filterable: false,
       align: "center",
@@ -422,7 +418,7 @@ const UserMaster = () => {
       </Grid>
 
       {/* CLIENT-SIDE DataGrid */}
-      <Box sx={{ height: 420, width: "100%", mt: 3 }}>
+      <Box sx={{ height: 410, width: "100%", mt: 3 }}>
         <DataGrid
           rows={filteredRows}
           columns={columns}
@@ -431,8 +427,8 @@ const UserMaster = () => {
           paginationModel={paginationModel}
           onPaginationModelChange={setPaginationModel}
           pageSizeOptions={[5, 10, 25, 50]}
-          rowHeight={60}
           headerHeight={50}
+          rowHeight={60}
           sx={{
             "& .MuiDataGrid-columnHeaders": {
               backgroundColor: "rgba(99,102,241,0.06)",

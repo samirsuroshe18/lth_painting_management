@@ -7,6 +7,7 @@ import { login } from "../../redux/slices/authSlice";
 import { handleAxiosError } from "../../utils/handleAxiosError";
 import { showNotificationWithTimeout } from "../../redux/slices/notificationSlice";
 import { setAdmin } from "../../redux/slices/isAdminSlice";
+import SnackBar from "../../components/commonComponents/SnackBar";
 
 const Login = () => {
   const dispatch = useDispatch();
@@ -242,6 +243,7 @@ const Login = () => {
           </form>
         </div>
       </div>
+      <SnackBar />
     </div>
   );
 };

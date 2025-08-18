@@ -205,7 +205,7 @@ export default function AuditReport() {
     {
       field: "srNo",
       headerName: "Sr. No",
-      width: 84,
+      width: 90,
       align: "center",
       headerAlign: "center",
     },
@@ -448,7 +448,7 @@ export default function AuditReport() {
         </Grid>
       </Grid>
 
-      <Box sx={{ height: 400, width: "100%", mt: 3 }}>
+      <Box sx={{ height: 410, width: "100%", mt: 3 }}>
         <DataGrid
           rows={audits}
           columns={columns}
@@ -461,6 +461,16 @@ export default function AuditReport() {
                 pageSize: 5,
               },
             },
+          }}
+          headerHeight={50}
+          rowHeight={60}
+          sx={{
+            "& .MuiDataGrid-columnHeaders": {
+              backgroundColor: "rgba(99,102,241,0.06)",
+            },
+            borderRadius: 2,
+            border: "1px solid",
+            borderColor: "divider",
           }}
         />
       </Box>

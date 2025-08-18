@@ -490,7 +490,7 @@ const LocationMaster = () => {
       </Grid>
 
       {/* CLIENT-SIDE DataGrid */}
-      <Box sx={{ height: 420, width: "100%", mt: 3 }}>
+      <Box sx={{ height: 410, width: "100%", mt: 3 }}>
         <DataGrid
           rows={filteredRows}
           columns={columns}

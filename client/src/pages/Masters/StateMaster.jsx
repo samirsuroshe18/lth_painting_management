@@ -272,8 +272,7 @@ const StateMaster = () => {
     {
       field: "srNo",
       headerName: "Sr. No",
-      flex: 1, // equal width
-      minWidth: 100,
+      width: 110,
       sortable: false,
       filterable: false,
       align: "center",
@@ -301,8 +300,8 @@ const StateMaster = () => {
     {
       field: "name",
       headerName: "State Name",
-      flex: 1, // equal width
-      minWidth: 100,
+      flex: 3,
+      minWidth: 150,
       sortable: false,
       filterable: false,
       align: "center",
@@ -312,7 +311,7 @@ const StateMaster = () => {
       field: "status",
       headerName: "Status",
       flex: 1, // equal width
-      minWidth: 100,
+      minWidth: 130,
       align: "center",
       sortable: false,
       filterable: false,
@@ -329,8 +328,8 @@ const StateMaster = () => {
     {
       field: "actions",
       headerName: "Actions",
-      flex: 1, // equal width
-      minWidth: 100,
+      flex: 2, // equal width
+      minWidth: 140,
       sortable: false,
       filterable: false,
       align: "center",
@@ -343,7 +342,7 @@ const StateMaster = () => {
             display: "flex",
             alignItems: "center",
             justifyContent: "center",
-            gap: 1,
+            gap: 3,
           }}
         >
           <IconButton
@@ -445,7 +444,7 @@ const StateMaster = () => {
       </Grid>
 
       {/* DataGrid */}
-      <Box sx={{ height: 400, width: "100%", mt: 3 }}>
+      <Box sx={{ height: 410, width: "100%", mt: 3 }}>
         <DataGrid
           rows={filteredRows}
           columns={columns}
@@ -454,6 +453,16 @@ const StateMaster = () => {
           paginationModel={paginationModel}
           onPaginationModelChange={setPaginationModel}
           pageSizeOptions={[5, 10, 25, 50]}
+          headerHeight={50}
+          rowHeight={60}
+          sx={{
+            "& .MuiDataGrid-columnHeaders": {
+              backgroundColor: "rgba(99,102,241,0.06)",
+            },
+            borderRadius: 2,
+            border: "1px solid",
+            borderColor: "divider",
+          }}
         />
       </Box>
 

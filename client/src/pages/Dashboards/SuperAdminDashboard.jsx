@@ -30,6 +30,9 @@ import { getAllAudits } from "../../api/auditLogApi";
 import { useDispatch } from "react-redux";
 import { showNotificationWithTimeout } from "../../redux/slices/notificationSlice";
 import { handleAxiosError } from "../../utils/handleAxiosError";
+import CheckCircleRoundedIcon from "@mui/icons-material/CheckCircleRounded";
+import PendingRoundedIcon from "@mui/icons-material/PendingRounded";
+import CloseRoundedIcon from "@mui/icons-material/CloseRounded";
 
 const statusFilters = [
   { label: "All Audits", value: "all", icon: <ListAlt /> }, // Changed from "All" to "all"
@@ -148,7 +151,7 @@ const SuperAdminDashboard = () => {
   const columns = useMemo(
     () => [
       {
-        field: "srNo",
+        field: "Sr. No",
         headerName: "Sr. No",
         width: 90,
         align: "center",
@@ -195,15 +198,30 @@ const SuperAdminDashboard = () => {
         sortable: false,
         filterable: false,
         renderCell: (params) => {
-          const value = params.value || "-";
           const map = {
-            pending: { color: "warning", label: "Pending" },
-            approved: { color: "success", label: "Approved" },
-            rejected: { color: "error", label: "Rejected" },
+            pending: {
+              icon: <PendingRoundedIcon fontSize="small" />,
+              color: "warning",
+              label: "Pending",
+            },
+            approved: {
+              icon: <CheckCircleRoundedIcon fontSize="small" />,
+              color: "success",
+              label: "Approved",
+            },
+            rejected: {
+              icon: <CloseRoundedIcon fontSize="small" />,
+              color: "error",
+              label: "Rejected",
+            },
           };
-          const cfg = map[value] || { color: "default", label: value };
+          const cfg = map[params.value] || {
+            color: "default",
+            label: params.value || "-",
+          };
           return (
             <Chip
+              icon={cfg.icon}
               label={cfg.label}
               color={cfg.color}
               size="small"
@@ -286,76 +304,77 @@ const SuperAdminDashboard = () => {
         </Grid>
       </Grid>
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mt-4">
+      <Grid container spacing={2} sx={{ mt: 3 }}>
         {statusFilters.map((filter) => {
           const isActive = activeFilter === filter.value;
           return (
-            <Card
-              key={filter.value}
-              elevation={isActive ? 4 : 1}
-              sx={{
-                borderRadius: 2,
-                transition:
-                  "transform 120ms ease, box-shadow 120ms ease, border-color 120ms ease",
-                ...(isActive && { border: 2, borderColor: "primary.main" }),
-                "&:hover": {
-                  transform: "translateY(-2px)",
-                  boxShadow: (theme) => theme.shadows[4],
-                },
-              }}
-            >
-              <CardActionArea
-                onClick={() => setActiveFilter(filter.value)}
-                sx={{ height: "100%" }} // ensure full height clickable
+            <Grid key={filter.value} size={{ xs: 6, md: 3 }}>
+              <Card
+                elevation={isActive ? 4 : 1}
+                sx={{
+                  borderRadius: 2,
+                  transition:
+                    "transform 120ms ease, box-shadow 120ms ease, border-color 120ms ease",
+                  ...(isActive && { border: 2, borderColor: "primary.main" }),
+                  "&:hover": {
+                    transform: "translateY(-2px)",
+                    boxShadow: (theme) => theme.shadows[4],
+                  },
+                }}
               >
-                <CardContent
-                  sx={{
-                    height: "100%",
-                  }}
+                <CardActionArea
+                  onClick={() => setActiveFilter(filter.value)}
+                  sx={{ height: "100%" }} // ensure full height clickable
                 >
-                  <Chip
-                    icon={filter.icon}
-                    label={filter.value}
-                    variant="outlined"
-                    color={
-                      filter.value === "approved"
-                        ? "success"
-                        : filter.value === "rejected"
-                          ? "error"
-                          : filter.value === "pending"
-                            ? "warning"
-                            : "default"
-                    }
+                  <CardContent
                     sx={{
-                      px: 1,
-                      fontWeight: 600,
-                      textTransform: "capitalize", // This will capitalize the first letter
+                      height: "100%",
                     }}
-                  />
+                  >
+                    <Chip
+                      icon={filter.icon}
+                      label={filter.value}
+                      variant="outlined"
+                      color={
+                        filter.value === "approved"
+                          ? "success"
+                          : filter.value === "rejected"
+                            ? "error"
+                            : filter.value === "pending"
+                              ? "warning"
+                              : "default"
+                      }
+                      sx={{
+                        px: 1,
+                        fontWeight: 600,
+                        textTransform: "capitalize", // This will capitalize the first letter
+                      }}
+                    />
 
-                  <Box>
-                    <Typography
-                      variant="h5"
-                      fontWeight={700}
-                      lineHeight={1.2}
-                      sx={{ my: 3 }}
-                    >
-                      {loading ? (
-                        <CircularProgress size={20} />
-                      ) : (
-                        (counts[filter.value] ?? 0)
-                      )}
-                    </Typography>
-                    <Typography variant="subtitle2" color="text.secondary">
-                      {filter.label}
-                    </Typography>
-                  </Box>
-                </CardContent>
-              </CardActionArea>
-            </Card>
+                    <Box>
+                      <Typography
+                        variant="h5"
+                        fontWeight={700}
+                        lineHeight={1.2}
+                        sx={{ my: 3 }}
+                      >
+                        {loading ? (
+                          <CircularProgress size={20} />
+                        ) : (
+                          (counts[filter.value] ?? 0)
+                        )}
+                      </Typography>
+                      <Typography variant="subtitle2" color="text.secondary">
+                        {filter.label}
+                      </Typography>
+                    </Box>
+                  </CardContent>
+                </CardActionArea>
+              </Card>
+            </Grid>
           );
         })}
-      </div>
+      </Grid>
 
       {/* Search & Filter Card */}
       <Grid container spacing={2} sx={{ mt: 4 }}>
@@ -406,7 +425,7 @@ const SuperAdminDashboard = () => {
       </Grid>
 
       {/* CLIENT-SIDE DataGrid */}
-      <Box sx={{ height: 420, width: "100%", mt: 3 }}>
+      <Box sx={{ height: 410, width: "100%", mt: 3 }}>
         <DataGrid
           rows={filteredRows}
           columns={columns}
