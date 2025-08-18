@@ -32,7 +32,12 @@ const AssetDetailsPage = () => {
   const [loadingAction, setLoadingAction] = useState(false);
   const [rejectOpen, setRejectOpen] = useState(false);
   const [rejectRemark, setRejectRemark] = useState("");
-  const isProposedChangesEmpty = !auditLog?.proposedChanges || Object.keys(auditLog.proposedChanges).length === 0;
+  const isProposedChangesEmpty =
+    !auditLog?.proposedChanges ||
+    Object.keys(auditLog.proposedChanges).every(
+      (key) => key === "_id" || key === "__v"
+    );
+  console.log(isProposedChangesEmpty);
 
   const auditItems = [
     {
@@ -45,11 +50,15 @@ const AssetDetailsPage = () => {
       value: auditLog?.createdBy?.userName || "N/A",
       icon: <FaUser />,
     },
-    ...(auditLog?.updatedBy?.userName ? [{
-      label: "Audit Approved By",
-      value: auditLog?.updatedBy?.userName || "N/A",
-      icon: <FaUser />,
-    }] : []),
+    ...(auditLog?.updatedBy?.userName
+      ? [
+          {
+            label: "Audit Approved By",
+            value: auditLog?.updatedBy?.userName || "N/A",
+            icon: <FaUser />,
+          },
+        ]
+      : []),
     {
       label: "Audit Date",
       value: auditLog?.assetId?.createdAt
@@ -65,11 +74,15 @@ const AssetDetailsPage = () => {
       icon: <FaCalendarAlt />,
     },
     // Conditionally add rejected remark items
-    ...(auditLog?.reviewStatus === "rejected" ? [{
-      label: "Rejected Remark",
-      value: auditLog?.rejectedRemark || "N/A",
-      icon: <FaTimesCircle />,
-    }] : []),
+    ...(auditLog?.reviewStatus === "rejected"
+      ? [
+          {
+            label: "Rejected Remark",
+            value: auditLog?.rejectedRemark || "N/A",
+            icon: <FaTimesCircle />,
+          },
+        ]
+      : []),
     {
       label: "Audit File Attachment 1",
       value: auditLog?.attachmentOne || null,
@@ -301,7 +314,7 @@ const AssetDetailsPage = () => {
       </div>
 
       {/* Edited Asset Details */}
-      {isProposedChangesEmpty && (
+      {!isProposedChangesEmpty && (
         <div className="bg-white dark:bg-[#1E1E1E] shadow-md rounded-lg overflow-hidden mb-6">
           <div className="bg-gray-300 dark:bg-gray-800 px-6 py-4">
             <h3 className="text-lg font-semibold text-gray-700 dark:text-white flex items-center">

@@ -55,19 +55,21 @@ const addNewAssetAudit = catchAsync(async (req, res) => {
         auditImage3 = uploadResult.secure_url;
     }
 
-    const newAssetAudit = await AssetAuditLog.create({
+    const auditData = {
         assetId,
         locationId: asset.locationId,
         auditorRemark,
-        proposedChanges: proposedChangesData || undefined,
         attachmentOne: auditImage1,
-        attachmentTwo: auditImage2 || undefined,
-        attachmentThree: auditImage3 || undefined,
         auditStatus: true,
         reviewStatus: 'pending',
         createdBy: req.user._id,
         updatedBy: req.user._id,
-    });
+        ...(proposedChangesData && { proposedChanges: proposedChangesData }),
+        ...(auditImage2 && { attachmentTwo: auditImage2 }),
+        ...(auditImage3 && { attachmentThree: auditImage3 }),
+    };
+
+    const newAssetAudit = await AssetAuditLog.create(auditData);
 
     if (!newAssetAudit) {
         throw new ApiError(500, 'Failed to create asset audit');
