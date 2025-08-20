@@ -95,7 +95,7 @@ const LocationMaster = () => {
         showNotificationWithTimeout({
           show: true,
           type: "error",
-          message: "Failed to fetch location",
+          message: handleAxiosError(error),
         })
       );
     } finally {
@@ -196,9 +196,7 @@ const LocationMaster = () => {
         showNotificationWithTimeout({
           show: true,
           type: "error",
-          message: editMode
-            ? "Failed to update location"
-            : "Failed to add location",
+          message: handleAxiosError(error),
         })
       );
     } finally {

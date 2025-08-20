@@ -60,7 +60,7 @@ const CreateNewAsset = () => {
             showNotificationWithTimeout({
               show: true,
               type: "error",
-              message: "Failed to fetch locations",
+              message: handleAxiosError(error),
             })
           );
         }

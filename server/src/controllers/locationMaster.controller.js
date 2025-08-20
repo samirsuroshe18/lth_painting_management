@@ -1,7 +1,8 @@
 import ApiResponse from '../utils/ApiResponse.js';
 import ApiError from '../utils/ApiError.js';
 import catchAsync from '../utils/catchAsync.js';
-import { Location } from '../models/location.model.js'; // Assuming you have a Location model
+import { Location } from '../models/location.model.js';
+import { User } from '../models/user.model.js';
 
 const addNewLocation = catchAsync(async (req, res) => {
     const { name, state, area, status } = req.body;
@@ -21,7 +22,7 @@ const addNewLocation = catchAsync(async (req, res) => {
     const isExist = await Location.findById(newLocation._id).populate('stateId', 'name');
 
     if (!isExist) {
-        throw new ApiError(500, 'Failed to create new location');
+        throw new ApiError(500, 'Failed to create location');
     }
 
     await User.updateMany(
@@ -30,7 +31,7 @@ const addNewLocation = catchAsync(async (req, res) => {
     );
 
     return res.status(201).json(
-        new ApiResponse(201, isExist, 'New location created successfully')
+        new ApiResponse(201, isExist, 'Location created successfully')
     );
 
 });

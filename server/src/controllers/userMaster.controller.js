@@ -83,9 +83,9 @@ const getAllUsers = catchAsync(async (req, res) => {
             select: '-password -refreshToken -__v'
         });
     if (!users || users.length === 0) {
-        throw new ApiError(404, "No users found");
+        throw new ApiError(404, "No users available.");
     }
-    return res.status(200).json(new ApiResponse(200, users, "Users fetched successfully"));
+    return res.status(200).json(new ApiResponse(200, users, "Users retrieved successfully"));
 });
 
 const updateUser = catchAsync(async (req, res) => {
@@ -231,7 +231,7 @@ const fetchUser = catchAsync(async (req, res) => {
         throw new ApiError(404, "User not found");
     }
 
-    return res.status(200).json(new ApiResponse(200, user, "User fetched successfully"));
+    return res.status(200).json(new ApiResponse(200, user, "User retrieved successfully"));
 });
 
 const updatePermissions = catchAsync(async (req, res) => {

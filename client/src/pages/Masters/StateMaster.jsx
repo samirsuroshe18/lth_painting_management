@@ -40,6 +40,7 @@ import {
   Delete as DeleteIcon,
 } from "@mui/icons-material";
 import { DataGrid } from "@mui/x-data-grid";
+import { handleAxiosError } from "../../utils/handleAxiosError";
 
 const StateMaster = () => {
   const dispatch = useDispatch();
@@ -85,7 +86,7 @@ const StateMaster = () => {
         showNotificationWithTimeout({
           show: true,
           type: "error",
-          message: "Failed to fetch states",
+          message: handleAxiosError(error),
         })
       );
     } finally {
@@ -174,7 +175,7 @@ const StateMaster = () => {
         showNotificationWithTimeout({
           show: true,
           type: "error",
-          message: editMode ? "Failed to update state" : "Failed to add state",
+          message: handleAxiosError(error),
         })
       );
     } finally {
@@ -226,7 +227,7 @@ const StateMaster = () => {
         showNotificationWithTimeout({
           show: true,
           type: "error",
-          message: "Something went wrong while deleting",
+          message: handleAxiosError(error),
         })
       );
     } finally {

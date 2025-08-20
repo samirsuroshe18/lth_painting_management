@@ -240,7 +240,7 @@ const getAuditLogs = catchAsync(async (req, res) => {
     const response = updatedAssetAudit.slice(skip, skip + limit);
 
     if (response.length <= 0) {
-        throw new ApiError(404, "No entries found matching your criteria");
+        throw new ApiError(404, "No audit logs available.");
     }
 
     return res.status(200).json(
@@ -313,7 +313,7 @@ const fetchAllAuditLogs = catchAsync(async (req, res) => {
         .sort({ createdAt: -1 });
 
     if (updatedAssetAudit.length <= 0) {
-        throw new ApiError(404, "No entries found matching your criteria");
+        throw new ApiError(404, "No audit logs available.");
     }
 
     return res.status(200).json(
@@ -377,11 +377,11 @@ const getAssetAuditLogs = catchAsync(async (req, res) => {
         .sort({ createdAt: -1 });
 
     if (updatedAssetAudit.length <= 0) {
-        throw new ApiError(404, "No entries found matching your criteria");
+        throw new ApiError(404, "No asset audit logs available.");
     }
 
     return res.status(200).json(
-        new ApiResponse(200, updatedAssetAudit, "Audit logs retrieved successfully")
+        new ApiResponse(200, updatedAssetAudit, "Asset audit logs retrieved successfully")
     );
 });
 
@@ -497,8 +497,12 @@ const fetchAudits = catchAsync(async (req, res) => {
         })
         .sort({ createdAt: -1 });
 
+    if (audits.length <= 0) {
+        throw new ApiError(404, 'No audit logs available.');
+    }
+
     return res.status(200).json(
-        new ApiResponse(200, { audits }, 'Success')
+        new ApiResponse(200, { audits }, 'Audit logs retrieved successfully')
     );
 });
 

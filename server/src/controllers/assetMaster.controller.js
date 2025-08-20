@@ -101,7 +101,7 @@ const viewAssetPublic = catchAsync(async (req, res) => {
         new ApiResponse(200, {
             asset,
             locations
-        }, "Asset and locations retrieved successfully")
+        }, "Asset retrieved successfully")
     );
 });
 
@@ -196,7 +196,7 @@ const reviewAssetStatus = catchAsync(async (req, res) => {
     );
 
     if (!hasAccessToLocation) {
-        return res.status(403).json({ message: 'Access Denied.' });
+        throw new ApiError(403, 'Access denied.')
     }
 
     if (!['approved', 'rejected'].includes(reviewStatus)) {
@@ -290,7 +290,7 @@ const getAssets = catchAsync(async (req, res) => {
     const response = updatedAsset.slice(skip, skip + limit);
 
     if (response.length <= 0) {
-        throw new ApiError(404, "No assets found for the given criteria");
+        throw new ApiError(404, "No assets available.");
     }
 
     return res.status(200).json(
@@ -303,7 +303,7 @@ const getAssets = catchAsync(async (req, res) => {
                 totalPages: totalPages,
                 hasMore: page < totalPages
             }
-        }, "Audit logs retrieved successfully")
+        }, "Assets retrieved successfully")
     );
 });
 
@@ -326,11 +326,11 @@ const getAllAssets = catchAsync(async (req, res) => {
         .populate('createdBy', 'userName');
 
     if (response.length <= 0) {
-        throw new ApiError(404, "No assets found for the given criteria");
+        throw new ApiError(404, "No assets available.");
     }
 
     return res.status(200).json(
-        new ApiResponse(200, response, "Audit logs retrieved successfully")
+        new ApiResponse(200, response, "Assets retrieved successfully")
     );
 });
 

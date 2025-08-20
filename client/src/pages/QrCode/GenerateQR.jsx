@@ -25,6 +25,7 @@ import {
 } from "@mui/icons-material";
 import { getQrCodes } from "../../api/assetMasterApi";
 import { useSelector } from "react-redux";
+import { handleAxiosError } from "../../utils/handleAxiosError";
 
 const GenerateQR = () => {
   const userData = useSelector((state) => state.auth.userData?.user);
@@ -55,7 +56,7 @@ const GenerateQR = () => {
       setAssets(assetsWithQR);
       setError(null);
     } catch (err) {
-      setError("Failed to load QR codes. Please try again.");
+      setError(handleAxiosError(err));
     } finally {
       setLoading(false);
     }

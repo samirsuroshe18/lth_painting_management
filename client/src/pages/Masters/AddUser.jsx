@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { createUser, updateUser } from "../../api/userApi";
 import {
@@ -21,65 +21,132 @@ import { showNotificationWithTimeout } from "../../redux/slices/notificationSlic
 import { handleAxiosError } from "../../utils/handleAxiosError";
 import { Visibility, VisibilityOff } from "@mui/icons-material";
 
-const AddUser = () => {
+export default function AddUser() {
   const { state } = useLocation();
   const user = state?.user;
   const navigate = useNavigate();
   const dispatch = useDispatch();
+
   const [loading, setLoading] = useState(false);
-  const [formData, setFormData] = useState({
-    userName: user?.userName ?? "",
-    email: user?.email ?? "",
-    mobileNo: user?.mobileNo ?? "",
-    password: "",
-    confirmPassword: "",
-    role: user?.role ?? "user",
-    status: user?.isActive ? "active" : "inactive",
-    location: user?.location ?? [],
-  });
+
+  // memoize locations to avoid re-renders in Autocomplete
+  const userData = useSelector((s) => s.auth?.userData?.user);
+  const locations = useMemo(
+    () => (Array.isArray(userData?.location) ? userData.location : []),
+    [userData?.location]
+  );
+
+  // memoize initial form, derive from `user`
+  const initialForm = useMemo(
+    () => ({
+      userName: user?.userName ?? "",
+      email: user?.email ?? "",
+      mobileNo: user?.mobileNo ?? "",
+      password: "",
+      confirmPassword: "",
+      role: user?.role ?? "user",
+      status: user?.isActive ? "active" : "inactive",
+      location: Array.isArray(user?.location) ? user.location : [],
+    }),
+    [user]
+  );
+
+  const [formData, setFormData] = useState(initialForm);
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
-  const userData = useSelector((state) => state.auth.userData?.user);
-  const [locations, setLocations] = useState(userData.location);
 
-  const handleChange = (e) => {
+  // stable callbacks
+  const handleChange = useCallback((e) => {
     const { name, value } = e.target;
-    setFormData((prev) => ({ ...prev, [name]: value }));
-  };
+    setFormData((prev) => (prev[name] === value ? prev : { ...prev, [name]: value }));
+  }, []);
 
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    try {
-      setLoading(true);
-      const payload = formData;
-      payload.location = formData.location.map((item) => item._id);
-      user ? await updateUser(user._id, payload) : await createUser(payload);
-      navigate(-1);
-      dispatch(
-        showNotificationWithTimeout({
-          show: true,
-          type: "success",
-          message: user
-            ? "User updated successfully"
-            : "User created successfully",
-        })
-      );
-    } catch (error) {
-      dispatch(
-        showNotificationWithTimeout({
-          show: true,
-          type: "error",
-          message: handleAxiosError(error),
-        })
-      );
-    } finally {
-      setLoading(false);
-    }
-  };
+  const handleRoleChange = useCallback((e) => {
+    const value = e.target.value;
+    setFormData((prev) => (prev.role === value ? prev : { ...prev, role: value }));
+  }, []);
+
+  const handleStatusChange = useCallback((e) => {
+    const value = e.target.value;
+    setFormData((prev) => (prev.status === value ? prev : { ...prev, status: value }));
+  }, []);
+
+  const handleLocationChange = useCallback((_, val) => {
+    setFormData((prev) => {
+      // shallow compare by ids to avoid unnecessary updates
+      const prevIds = (prev.location || []).map((x) => x._id).join(",");
+      const newIds = (val || []).map((x) => x._id).join(",");
+      return prevIds === newIds ? prev : { ...prev, location: val || [] };
+    });
+  }, []);
+
+  const toggleShowPassword = useCallback(() => {
+    setShowPassword((p) => !p);
+  }, []);
+  const toggleShowConfirmPassword = useCallback(() => {
+    setShowConfirmPassword((p) => !p);
+  }, []);
+
+  const handleSubmit = useCallback(
+    async (e) => {
+      e.preventDefault();
+
+      // fast client-side check on create
+      if (!user && formData.password !== formData.confirmPassword) {
+        dispatch(
+          showNotificationWithTimeout({
+            show: true,
+            type: "error",
+            message: "Passwords do not match",
+          })
+        );
+        return;
+      }
+
+      try {
+        setLoading(true);
+
+        const payload = {
+          ...formData,
+          location: (formData.location || []).map((l) => l._id),
+        };
+
+        if (user?._id) {
+          await updateUser(user._id, payload);
+        } else {
+          await createUser(payload);
+        }
+
+        dispatch(
+          showNotificationWithTimeout({
+            show: true,
+            type: "success",
+            message: user ? "User updated successfully" : "User created successfully",
+          })
+        );
+        navigate(-1);
+      } catch (error) {
+        dispatch(
+          showNotificationWithTimeout({
+            show: true,
+            type: "error",
+            message: handleAxiosError(error),
+          })
+        );
+      } finally {
+        setLoading(false);
+      }
+    },
+    [dispatch, formData, navigate, user]
+  );
+
+  // stable helper for Autocomplete equality
+  const isOptionEqualToValue = useCallback((opt, val) => opt._id === val._id, []);
+  const getOptionLabel = useCallback((opt) => opt?.name ?? "", []);
 
   return (
     <Container maxWidth="lg" sx={{ py: 3 }}>
-      {/* Header card */}
+      {/* Header */}
       <Grid container spacing={2} alignItems="center">
         <Grid size={{ xs: 12, md: "auto" }}>
           <Typography variant="h4" fontWeight={700} color="primary">
@@ -93,7 +160,7 @@ const AddUser = () => {
         </Grid>
       </Grid>
 
-      {/* Form Card */}
+      {/* Form */}
       <Box component="form" onSubmit={handleSubmit} sx={{ mt: 3 }}>
         <Grid container spacing={3}>
           {/* Name */}
@@ -108,12 +175,9 @@ const AddUser = () => {
                 size="small"
                 placeholder="Enter name"
                 required
-                sx={{
-                  "& .MuiOutlinedInput-root": {
-                    backgroundColor: "inherit",
-                  },
-                }}
+                autoComplete="name"
                 type="text"
+                sx={{ "& .MuiOutlinedInput-root": { backgroundColor: "inherit" } }}
               />
             </Stack>
           </Grid>
@@ -121,7 +185,7 @@ const AddUser = () => {
           {/* Email */}
           <Grid size={{ xs: 12, md: 6 }}>
             <Stack spacing={1}>
-              <Typography variant="subtitle2">Email</Typography>
+              <Typography variant="subtitle2">Email *</Typography>
               <TextField
                 name="email"
                 value={formData.email}
@@ -131,83 +195,77 @@ const AddUser = () => {
                 placeholder="Enter email"
                 required
                 type="email"
+                autoComplete="email"
               />
             </Stack>
           </Grid>
 
-          {/* Password */}
+          {/* Passwords: only on create */}
           {!user && (
-            <Grid size={{ xs: 12, md: 6 }}>
-              <Stack spacing={1}>
-                <Typography variant="subtitle2">Password *</Typography>
-                <TextField
-                  name="password"
-                  value={formData.password}
-                  onChange={handleChange}
-                  fullWidth
-                  size="small"
-                  placeholder="Enter password"
-                  required
-                  type={showPassword ? "text" : "password"} // toggle
-                  slotProps={{
-                    input: {
-                      endAdornment: (
-                        <InputAdornment position="end">
-                          <IconButton
-                            onClick={() => setShowPassword((prev) => !prev)}
-                            edge="end"
-                          >
-                            {showPassword ? <VisibilityOff /> : <Visibility />}
-                          </IconButton>
-                        </InputAdornment>
-                      ),
-                    },
-                  }}
-                />
-              </Stack>
-            </Grid>
+            <>
+              <Grid size={{ xs: 12, md: 6 }}>
+                <Stack spacing={1}>
+                  <Typography variant="subtitle2">Password *</Typography>
+                  <TextField
+                    name="password"
+                    value={formData.password}
+                    onChange={handleChange}
+                    fullWidth
+                    size="small"
+                    placeholder="Enter password"
+                    required
+                    type={showPassword ? "text" : "password"}
+                    autoComplete="new-password"
+                    slotProps={{
+                      input: {
+                        endAdornment: (
+                          <InputAdornment position="end">
+                            <IconButton onClick={toggleShowPassword} edge="end" aria-label="toggle password visibility">
+                              {showPassword ? <VisibilityOff /> : <Visibility />}
+                            </IconButton>
+                          </InputAdornment>
+                        ),
+                      },
+                    }}
+                  />
+                </Stack>
+              </Grid>
+
+              <Grid size={{ xs: 12, md: 6 }}>
+                <Stack spacing={1}>
+                  <Typography variant="subtitle2">Confirm Password *</Typography>
+                  <TextField
+                    name="confirmPassword"
+                    value={formData.confirmPassword}
+                    onChange={handleChange}
+                    fullWidth
+                    size="small"
+                    placeholder="Enter confirm password"
+                    required
+                    type={showConfirmPassword ? "text" : "password"}
+                    autoComplete="new-password"
+                    slotProps={{
+                      input: {
+                        endAdornment: (
+                          <InputAdornment position="end">
+                            <IconButton
+                              onClick={toggleShowConfirmPassword}
+                              edge="end"
+                              aria-label="toggle confirm password visibility"
+                            >
+                              {showConfirmPassword ? <VisibilityOff /> : <Visibility />}
+                            </IconButton>
+                          </InputAdornment>
+                        ),
+                      },
+                    }}
+                  />
+                </Stack>
+              </Grid>
+            </>
           )}
 
-          {/* Confirm Password */}
-          {!user && (
-            <Grid size={{ xs: 12, md: 6 }}>
-              <Stack spacing={1}>
-                <Typography variant="subtitle2">Confirm Password *</Typography>
-                <TextField
-                  name="confirmPassword"
-                  value={formData.confirmPassword}
-                  onChange={handleChange}
-                  fullWidth
-                  size="small"
-                  placeholder="Enter confirm password"
-                  required
-                  type={showConfirmPassword ? "text" : "password"} // toggle
-                  slotProps={{
-                    input: {
-                      endAdornment: (
-                        <InputAdornment position="end">
-                          <IconButton
-                            onClick={() =>
-                              setShowConfirmPassword((prev) => !prev)
-                            }
-                            edge="end"
-                          >
-                            {showConfirmPassword ? (
-                              <VisibilityOff />
-                            ) : (
-                              <Visibility />
-                            )}
-                          </IconButton>
-                        </InputAdornment>
-                      ),
-                    },
-                  }}
-                />
-              </Stack>
-            </Grid>
-          )}
-
-          {/* Mobile No */}
+          {/* Mobile */}
           <Grid size={{ xs: 12, md: 6 }}>
             <Stack spacing={1}>
               <Typography variant="subtitle2">Mobile No *</Typography>
@@ -220,11 +278,11 @@ const AddUser = () => {
                 placeholder="Enter mobile number"
                 required
                 type="tel"
-                slotProps={{
-                  input: {
-                    maxLength: 10,
-                    inputMode: "numeric",
-                  },
+                autoComplete="tel"
+                inputProps={{
+                  maxLength: 10,
+                  inputMode: "numeric",
+                  pattern: "[0-9]*",
                 }}
               />
             </Stack>
@@ -234,19 +292,12 @@ const AddUser = () => {
           <Grid size={{ xs: 12, md: 6 }}>
             <Stack spacing={1}>
               <Typography variant="subtitle2">Role *</Typography>
-              <FormControl fullWidth required disabled={loading}>
+              <FormControl fullWidth required disabled={loading} size="small">
                 <Select
                   value={formData.role}
-                  onChange={(e) =>
-                    setFormData((prev) => ({
-                      ...prev,
-                      role: e.target.value,
-                    }))
-                  }
-                  required
+                  onChange={handleRoleChange}
                   displayEmpty
-                  inputProps={{ "aria-label": "Without label" }}
-                  size="small"
+                  inputProps={{ "aria-label": "Select role", autoComplete: "off" }}
                 >
                   <MenuItem value="">Select Role</MenuItem>
                   <MenuItem value="user">User</MenuItem>
@@ -257,23 +308,16 @@ const AddUser = () => {
             </Stack>
           </Grid>
 
-          {/* status */}
+          {/* Status */}
           <Grid size={{ xs: 12, md: 6 }}>
             <Stack spacing={1}>
               <Typography variant="subtitle2">Status *</Typography>
-              <FormControl fullWidth required disabled={loading}>
+              <FormControl fullWidth required disabled={loading} size="small">
                 <Select
-                  value={formData?.status ?? ""}
-                  onChange={(e) =>
-                    setFormData((prev) => ({
-                      ...prev,
-                      status: e.target.value,
-                    }))
-                  }
-                  size="small"
-                  required
+                  value={formData.status ?? ""}
+                  onChange={handleStatusChange}
                   displayEmpty
-                  inputProps={{ "aria-label": "Without label" }}
+                  inputProps={{ "aria-label": "Select status", autoComplete: "off" }}
                 >
                   <MenuItem value="">Select Status</MenuItem>
                   <MenuItem value="active">Active</MenuItem>
@@ -288,50 +332,34 @@ const AddUser = () => {
             <Stack spacing={1}>
               <Typography variant="subtitle2">Location *</Typography>
               <Autocomplete
-                disableCloseOnSelect
                 multiple
+                disableCloseOnSelect
                 limitTags={1}
                 value={formData.location}
-                isOptionEqualToValue={(option, value) =>
-                  option._id === value._id
-                }
-                getOptionKey={(option) => option._id}
-                getOptionLabel={(option) => option.name}
-                onChange={(_, val) =>
-                  setFormData((prev) => ({ ...prev, location: val }))
-                } // Ensure val is never null
                 options={locations}
+                isOptionEqualToValue={isOptionEqualToValue}
+                getOptionLabel={getOptionLabel}
+                onChange={handleLocationChange}
                 renderInput={(params) => (
-                  <TextField
-                    {...params}
-                    placeholder="search location.."
-                    slotProps={{
-                      input: {
-                        ...params.InputProps,
-                      },
-                    }}
-                    size="small"
-                  />
+                  <TextField {...params} placeholder="Search location..." size="small" />
                 )}
               />
             </Stack>
           </Grid>
 
-          {/* Submit Button */}
+          {/* Submit */}
           <Grid size={{ xs: "auto", md: "auto" }}>
             <Button
               type="submit"
               variant="contained"
-              loading={loading}
-              fullWidth
+              disabled={loading}
+              sx={{ minWidth: 150 }}
             >
-              {user ? "Edit user" : "Create User"}
+              {loading ? (user ? "Saving..." : "Creating...") : user ? "Edit User" : "Create User"}
             </Button>
           </Grid>
         </Grid>
       </Box>
     </Container>
   );
-};
-
-export default AddUser;
+}

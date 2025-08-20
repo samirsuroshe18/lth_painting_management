@@ -196,6 +196,7 @@ const UserMaster = () => {
   const columns = [
     {
       headerName: "Sr. No",
+      field: "srNo",
       minWidth: 90,
       sortable: false,
       filterable: false,
@@ -367,7 +368,7 @@ const UserMaster = () => {
         <Grid size={{ xs: 12, md: 4 }}>
           <TextField
             fullWidth
-            placeholder="Search assets by name or location..."
+            placeholder="Search users by username, email, or role..."
             value={searchTerm}
             onChange={handleSearchChange}
             variant="outlined"
@@ -420,32 +421,32 @@ const UserMaster = () => {
       {/* CLIENT-SIDE DataGrid */}
       <Box sx={{ height: 410, width: "100%", mt: 3 }}>
         <DataGrid
-        rows={filteredRows}
-        columns={columns}
-        disableRowSelectionOnClick
-        loading={loading}
-        paginationModel={paginationModel}
-        onPaginationModelChange={(newModel) => {
-        //added this to reset page to 0 when pageSize changes
-          if (newModel.pageSize !== paginationModel.pageSize) {
-            setPaginationModel({ page: 0, pageSize: newModel.pageSize });
-          } else {
-            setPaginationModel(newModel);
-          }
-        }}
-        pageSizeOptions={[5, 10, 25, 50]}
-        rowHeight={60}
-        headerHeight={50}
-        sx={{
-          "& .MuiDataGrid-columnHeaders": {
-            backgroundColor: "rgba(99,102,241,0.06)",
-          },
-          borderRadius: 2,
-          border: "1px solid",
-          borderColor: "divider",
-        }}
-      />
-
+          rows={filteredRows}
+          columns={columns}
+          getRowId={(row) => row._id ?? row.id}
+          disableRowSelectionOnClick
+          loading={loading}
+          paginationModel={paginationModel}
+          onPaginationModelChange={(newModel) => {
+            //added this to reset page to 0 when pageSize changes
+            if (newModel.pageSize !== paginationModel.pageSize) {
+              setPaginationModel({ page: 0, pageSize: newModel.pageSize });
+            } else {
+              setPaginationModel(newModel);
+            }
+          }}
+          pageSizeOptions={[5, 10, 25, 50]}
+          rowHeight={60}
+          headerHeight={50}
+          sx={{
+            "& .MuiDataGrid-columnHeaders": {
+              backgroundColor: "rgba(99,102,241,0.06)",
+            },
+            borderRadius: 2,
+            border: "1px solid",
+            borderColor: "divider",
+          }}
+        />
       </Box>
 
       {/* Enhanced Delete confirmation dialog */}

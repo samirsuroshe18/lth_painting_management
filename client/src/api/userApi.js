@@ -50,18 +50,6 @@ const removeUser = async (id) => {
     }
 };
 
-const fetchUser = async (userId) => {
-  try {
-    const response = await axiosInstance.get(`/api/v1/usermaster/fetch-user/${userId}`);
-    return response.data.data;
-  } catch (error) {
-    if (import.meta.env.VITE_DEVELOPMENT === 'development') {
-      console.error('Error fetching user:', error);
-    }
-    throw error;
-  }
-};
-
 const updatePermissions = async (userId, permissions) => {
   try {
     const response = await axiosInstance.put(`/api/v1/usermaster/update-user-permissions/${userId}`, { permissions });
@@ -78,7 +66,6 @@ export {
   getAllUsers,
   createUser,
   updateUser,
-  fetchUser,
   updatePermissions,
   removeUser
 };

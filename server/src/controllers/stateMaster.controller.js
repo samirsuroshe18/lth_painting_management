@@ -3,37 +3,6 @@ import ApiError from '../utils/ApiError.js';
 import catchAsync from '../utils/catchAsync.js';
 import { State } from '../models/state.model.js';
 
-
-// For adding a new state
-// const addNewState = catchAsync(async (req, res) => {
-//     const { name, status } = req.body;
-
-//     if (!name || !status) {
-//         throw new ApiError(400, 'Name and status are required fields');
-//     }
-
-//     // Assuming we have a State model to interact with the database
-//     const newState = await State.create({
-//         name,
-//         status,
-//         createdBy: req.user._id,
-//         updatedBy: req.user._id
-//     });
-
-//     const isStateCreate = await State.findById(newState._id)
-//         .lean()
-//         .select('-__v')
-//         .populate('createdBy', 'userName')
-//         .populate('updatedBy', 'userName');
-
-//     if (!isStateCreate) {
-//         throw new ApiError(500, 'Failed to create new state');
-//     }
-
-//     return res.status(201).json(
-//         new ApiResponse(201, isStateCreate, 'New state created successfully')
-//     );
-// });
 const addNewState = catchAsync(async (req, res) => {
     const { name, status } = req.body;
 
@@ -51,11 +20,11 @@ const addNewState = catchAsync(async (req, res) => {
     const isStateCreate = await State.findById(newState._id);
 
     if (!isStateCreate) {
-        throw new ApiError(500, 'Failed to create new state');
+        throw new ApiError(500, 'Failed to create State');
     }
 
     return res.status(201).json(
-        new ApiResponse(201, isStateCreate, 'New state created successfully')
+        new ApiResponse(201, isStateCreate, 'State created successfully')
     );
 });
 
@@ -63,11 +32,11 @@ const getAllStates = catchAsync(async (req, res) => {
     const states = await State.find({}).sort({ createdAt: -1 });
 
     if (!states || states.length === 0) {
-        throw new ApiError(404, 'No states found');
+        throw new ApiError(404, 'No states available.');
     }
 
     return res.status(200).json(
-        new ApiResponse(200, states, 'Fetched all states successfully')
+        new ApiResponse(200, states, 'States retrieved successfully')
     );
 });
 
