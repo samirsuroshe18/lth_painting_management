@@ -30,20 +30,24 @@ import {
   Edit as EditIcon,
   Close as CloseIcon,
   Delete as DeleteIcon,
+  AddLocationAlt,
 } from "@mui/icons-material";
 import { DataGrid } from "@mui/x-data-grid";
-import { useDispatch } from "react-redux";
+import { useDispatch, useSelector } from "react-redux";
 import {
   getAllLocations,
   addLocation,
   updateLocation,
   deleteLocation,
+  addLocationToSuperAdmin,
 } from "../../api/locationApi";
 import { getAllStates } from "../../api/stateApi";
 import { showNotificationWithTimeout } from "../../redux/slices/notificationSlice";
 import { handleAxiosError } from "../../utils/handleAxiosError";
 
 const LocationMaster = () => {
+  const userData = useSelector((state) => state.auth.userData?.user);
+  const usersLocation = userData?.location || [];
   const dispatch = useDispatch();
   const [loading, setLoading] = useState(false);
   const [rows, setRows] = useState([]);
@@ -85,6 +89,7 @@ const LocationMaster = () => {
       const result = await getAllLocations();
       const locationssWithIds = result.data.map((location, index) => ({
         ...location,
+        hasAccess: usersLocation.some(userLoc => userLoc._id === location._id),
         id: location?._id ?? index,
       }));
 
@@ -215,6 +220,36 @@ const LocationMaster = () => {
     setFormData(location);
     setEditLocationId(location._id);
     setShowDialog(true);
+  };
+  
+  const handleRequestAccess = async (location) => {
+    try {
+      const result = await addLocationToSuperAdmin(location._id);
+      if (result.success) {
+        setRows((prev) =>
+          prev.map((item) =>
+            item.id === location.id ? { ...item, hasAccess: true } : item
+          )
+        );
+
+        dispatch(
+          showNotificationWithTimeout({
+            show: true,
+            type: "success",
+            message: "Access to location granted successfully",
+          })
+        );
+      }
+      
+    } catch (error) {
+      dispatch(
+        showNotificationWithTimeout({
+          show: true,
+          type: "error",
+          message: handleAxiosError(error),
+        })
+      );
+    }
   };
 
   const handleDeleteClick = (location) => {
@@ -364,13 +399,25 @@ const LocationMaster = () => {
       sortable: false,
       filterable: false,
       renderCell: (params) => (
-        <Chip
-          label={params.value ? "Active" : "Inactive"}
-          size="small"
-          color={params.value ? "success" : "default"}
-          variant={params.value ? "filled" : "outlined"}
-        />
-      ),
+          <Chip
+            label={
+              !params.row?.hasAccess && userData?.role == "superadmin"
+                ? "Not Added"
+                : params.value
+                  ? "Active"
+                  : "Inactive"
+            }
+            size="small"
+            color={
+              !params.row?.hasAccess && userData?.role == "superadmin"
+                ? "warning"
+                : params.value
+                  ? "success"
+                  : "default"
+            }
+            variant={params.value ? "filled" : "outlined"}
+          />
+        ),
     },
     {
       field: "actions",
@@ -390,29 +437,45 @@ const LocationMaster = () => {
             height: "100%",
           }}
         >
-          <IconButton
-            size="small"
-            color="primary"
-            onClick={(e) => {
-              e.stopPropagation();
-              handleEditClick(params.row);
-            }}
-            title="Edit Location"
-          >
-            <EditIcon fontSize="small" />
-          </IconButton>
+          {!params.row?.hasAccess && userData?.role == "superadmin" ? (
+            <IconButton
+              size="small"
+              color="warning"
+              onClick={(e) => {
+                e.stopPropagation();
+                handleRequestAccess(params.row);
+              }}
+              title="You don’t have access. Click to request."
+            >
+              <AddLocationAlt fontSize="small" />
+            </IconButton>
+          ) : (
+            <>
+              <IconButton
+                size="small"
+                color="primary"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  handleEditClick(params.row);
+                }}
+                title="Edit Location"
+              >
+                <EditIcon fontSize="small" />
+              </IconButton>
 
-          <IconButton
-            size="small"
-            color="error"
-            onClick={(e) => {
-              e.stopPropagation();
-              handleDeleteClick(params.row);
-            }}
-            title="Delete Location"
-          >
-            <DeleteIcon fontSize="small" />
-          </IconButton>
+              <IconButton
+                size="small"
+                color="error"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  handleDeleteClick(params.row);
+                }}
+                title="Delete Location"
+              >
+                <DeleteIcon fontSize="small" />
+              </IconButton>
+            </>
+          )}
         </Box>
       ),
     },
@@ -490,32 +553,31 @@ const LocationMaster = () => {
       {/* CLIENT-SIDE DataGrid */}
       <Box sx={{ height: 410, width: "100%", mt: 3 }}>
         <DataGrid
-        rows={filteredRows}
-        columns={columns}
-        disableRowSelectionOnClick
-        loading={loading}
-        paginationModel={paginationModel}
-        onPaginationModelChange={(newModel) => {
-        //added this to reset page to 0 when pageSize changes
-          if (newModel.pageSize !== paginationModel.pageSize) {
-            setPaginationModel({ page: 0, pageSize: newModel.pageSize });
-          } else {
-            setPaginationModel(newModel);
-          }
-        }}
-        pageSizeOptions={[5, 10, 25, 50]}
-        rowHeight={60}
-        headerHeight={50}
-        sx={{
-          "& .MuiDataGrid-columnHeaders": {
-            backgroundColor: "rgba(99,102,241,0.06)",
-          },
-          borderRadius: 2,
-          border: "1px solid",
-          borderColor: "divider",
-        }}
-      />
-
+          rows={filteredRows}
+          columns={columns}
+          disableRowSelectionOnClick
+          loading={loading}
+          paginationModel={paginationModel}
+          onPaginationModelChange={(newModel) => {
+            //added this to reset page to 0 when pageSize changes
+            if (newModel.pageSize !== paginationModel.pageSize) {
+              setPaginationModel({ page: 0, pageSize: newModel.pageSize });
+            } else {
+              setPaginationModel(newModel);
+            }
+          }}
+          pageSizeOptions={[5, 10, 25, 50]}
+          rowHeight={60}
+          headerHeight={50}
+          sx={{
+            "& .MuiDataGrid-columnHeaders": {
+              backgroundColor: "rgba(99,102,241,0.06)",
+            },
+            borderRadius: 2,
+            border: "1px solid",
+            borderColor: "divider",
+          }}
+        />
       </Box>
 
       {/* Add/Edit Dialog */}

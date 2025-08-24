@@ -48,4 +48,16 @@ const deleteLocation = async (locationId) => {
   }
 };
 
-export { getAllLocations, addLocation, updateLocation, deleteLocation };
+const addLocationToSuperAdmin = async (locationId) => {
+  try {
+    const response = await axiosInstance.put(`/api/v1/locationmaster/add-location-to-superadmin/${locationId}`);
+    return response.data;
+  } catch (error) {
+    if (import.meta.env.VITE_DEVELOPMENT === 'development') {
+      console.error('Error deleting location:', error);
+    }
+    throw error;
+  }
+};
+
+export { getAllLocations, addLocation, updateLocation, deleteLocation, addLocationToSuperAdmin };

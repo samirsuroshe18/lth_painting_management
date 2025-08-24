@@ -27,7 +27,6 @@ const userSchema = new Schema({
 
     mobileNo: {
         type: String,
-        required: true,
         trim: true,
     },
 
@@ -138,42 +137,3 @@ userSchema.methods.generateRefreshToken = function () {
 }
 
 export const User = mongoose.model("User", userSchema);
-
-
-
-// const assets = await Asset.find()
-//     .populate({
-//         path: 'locationId',
-//         model: 'Location', // specify the model
-//         populate: {
-//             path: 'stateId',
-//             model: 'State',
-//             populate: {
-//                 path: 'countryId',
-//                 model: 'Country'
-//             }
-//         }
-//     });
-
-
-
-//###### That's how you can check which permission this user has #######
-
-
-// const userPermissions = [
-//   { action: "read_reports", effect: "Allow" },
-//   { action: "delete_user", effect: "Deny" }
-// ];
-
-// const canAccess = (action) => {
-//   const permission = userPermissions.find((p) => p.action === action);
-//   return permission && permission.effect === "Allow";
-// };
-// Usage in JSX:
-
-// jsx
-// Copy
-// Edit
-// {canAccess("read_reports") && (
-//   <button onClick={downloadReport}>Download Report</button>
-// )}

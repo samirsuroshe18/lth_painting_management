@@ -37,7 +37,6 @@ const AssetDetailsPage = () => {
     Object.keys(auditLog.proposedChanges).every(
       (key) => key === "_id" || key === "__v"
     );
-  console.log(isProposedChangesEmpty);
 
   const auditItems = [
     {

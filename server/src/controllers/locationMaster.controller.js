@@ -3,6 +3,7 @@ import ApiError from '../utils/ApiError.js';
 import catchAsync from '../utils/catchAsync.js';
 import { Location } from '../models/location.model.js';
 import { User } from '../models/user.model.js';
+import mongoose from 'mongoose';
 
 const addNewLocation = catchAsync(async (req, res) => {
     const { name, state, area, status } = req.body;
@@ -15,8 +16,8 @@ const addNewLocation = catchAsync(async (req, res) => {
         stateId: state,
         area,
         status: status,
-        createdBy: req.user.id,
-        updatedBy: req.user.id,
+        createdBy: req.user._id,
+        updatedBy: req.user._id,
     });
 
     const isExist = await Location.findById(newLocation._id).populate('stateId', 'name');
@@ -25,9 +26,9 @@ const addNewLocation = catchAsync(async (req, res) => {
         throw new ApiError(500, 'Failed to create location');
     }
 
-    await User.updateMany(
+    await User.updateOne(
         { role: "superadmin" },
-        { $push: { locations: newLocation._id } }
+        { $push: { location: newLocation._id } }
     );
 
     return res.status(201).json(
@@ -51,7 +52,7 @@ const updateLocation = catchAsync(async (req, res) => {
             stateId: state,
             area,
             status,
-            updatedBy: req.user.id,
+            updatedBy: req.user._id,
         },
         { new: true }
     ).populate('stateId', 'name');
@@ -85,13 +86,36 @@ const deleteLocation = catchAsync(async (req, res) => {
         throw new ApiError(404, "Location not found");
     }
 
-    await User.updateMany(
-        { role: "superadmin" },
-        { $pull: { locations: id } }
-    );
+    if (req.user.role == "superadmin") {
+        await User.updateMany(
+            {},
+            { $pull: { location: id } }
+        );
+    }
 
     return res.status(200).json(
         new ApiResponse(200, {}, 'Location deleted successfully')
+    );
+});
+
+const addLocationToSuperAdmin = catchAsync(async (req, res) => {
+    const { id } = req.params;
+
+    if (!id) {
+        throw new ApiError(400, 'Location ID is required');
+    }
+
+    const result = await User.updateOne(
+        { role: "superadmin" },
+        { $addToSet: { location: mongoose.Types.ObjectId.createFromHexString(id) } }
+    );
+
+    if (result.modifiedCount === 0) {
+        throw new ApiError(500, 'Failed to add location to superadmin');
+    }
+
+    return res.status(200).json(
+        new ApiResponse(200, {}, 'Location added to superadmin successfully')
     );
 });
 
@@ -99,5 +123,6 @@ export {
     addNewLocation,
     updateLocation,
     getLocations,
-    deleteLocation
+    deleteLocation,
+    addLocationToSuperAdmin
 };
