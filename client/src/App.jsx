@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import Preloader from "./components/Preloader";
 import { Outlet, useNavigate } from "react-router";
 import { useDispatch, useSelector } from "react-redux";
 import { ReactRouterAppProvider } from "@toolpad/core/react-router";
@@ -25,10 +26,10 @@ import { setNavigate } from "./utils/navigationHelper";
 
 function App() {
   const userData = useSelector((state) => state.auth.userData?.user);
-  const [loading, setLoading] = useState(true);
 
-  // Detect Toolpad dark/light mode from localStorage
   const [mode, setMode] = useState(localStorage.getItem("mui-mode") || "light");
+  const [loading, setLoading] = useState(true);
+  const [fadeOut, setFadeOut] = useState(false);
 
   useEffect(() => {
     const handleStorage = () => {
@@ -49,13 +50,18 @@ function App() {
     setNavigate(navigate);
   }, [navigate]);
 
+  // 🔹 Fetch current user on mount
   useEffect(() => {
     const fetchData = async () => {
       try {
-        setLoading(true);
         const res = await getCurrentUser();
         dispatch(currentUser(res.data));
-        setLoading(false);
+
+        // ⏳ Show preloader for minimum 1.5s even if API is fast
+        setTimeout(() => {
+          setFadeOut(true); // trigger fade
+          setTimeout(() => setLoading(false), 800); // remove after fade
+        }, 500);
       } catch (error) {
         navigate("/login");
         setLoading(false);
@@ -124,13 +130,20 @@ function App() {
 
   const filterNavigationByPermissions = (items) =>
     items
-      .filter((item) => !item.permission || canAccess(userData?.permissions, item.permission))
+      .filter(
+        (item) =>
+          !item.permission || canAccess(userData?.permissions, item.permission)
+      )
       .map((item) => {
         if (item.children) {
           const filteredChildren = item.children.filter(
-            (child) => !child.permission || canAccess(userData?.permissions, child.permission)
+            (child) =>
+              !child.permission ||
+              canAccess(userData?.permissions, child.permission)
           );
-          return filteredChildren.length > 0 ? { ...item, children: filteredChildren } : item;
+          return filteredChildren.length > 0
+            ? { ...item, children: filteredChildren }
+            : item;
         }
         return item;
       })
@@ -138,10 +151,24 @@ function App() {
 
   const NAVIGATION = filterNavigationByPermissions(navigationConfig);
 
+  // 🔹 Preloader with fade-out
   if (loading) {
     return (
       <ReactRouterAppProvider>
-        <div style={{ width: "100%", height: "100vh", display: "flex", alignItems: "top" }}>
+        <div
+          style={{
+            width: "100%",
+            height: "100vh",
+            display: "flex",
+            flexDirection: "column",
+            alignItems: "center",
+            justifyContent: "center",
+            background: "white",
+            opacity: fadeOut ? 0 : 1,
+            transition: "opacity 1.5s ease",
+          }}
+        >
+          <Preloader />
           <LinearProgress style={{ width: "100%" }} />
         </div>
       </ReactRouterAppProvider>
@@ -151,32 +178,31 @@ function App() {
   return (
     <ThemeProvider theme={theme}>
       <CssBaseline />
-    <GlobalStyles
-  styles={{
-    body: {
-      transition: "background-color 0.35s ease, color 0.35s ease",
-    },
-    "#root": {
-      transition: "background-color 0.35s ease, color 0.35s ease",
-    },
-    ".MuiPaper-root": {
-      transition: "background-color 0.35s ease, color 0.35s ease",
-    },
-    ".MuiAppBar-root": {
-      transition: "background-color 0.35s ease, color 0.35s ease",
-    },
-    ".MuiToolbar-root": {
-      transition: "background-color 0.35s ease, color 0.35s ease",
-    },
-    ".MuiCardHeader-root": {
-      transition: "background-color 0.35s ease, color 0.35s ease",
-    },
-    ".MuiDialogTitle-root": {
-      transition: "background-color 0.35s ease, color 0.35s ease",
-    },
-  }}
-/>
-
+      <GlobalStyles
+        styles={{
+          body: {
+            transition: "background-color 0.35s ease, color 0.35s ease",
+          },
+          "#root": {
+            transition: "background-color 0.35s ease, color 0.35s ease",
+          },
+          ".MuiPaper-root": {
+            transition: "background-color 0.35s ease, color 0.35s ease",
+          },
+          ".MuiAppBar-root": {
+            transition: "background-color 0.35s ease, color 0.35s ease",
+          },
+          ".MuiToolbar-root": {
+            transition: "background-color 0.35s ease, color 0.35s ease",
+          },
+          ".MuiCardHeader-root": {
+            transition: "background-color 0.35s ease, color 0.35s ease",
+          },
+          ".MuiDialogTitle-root": {
+            transition: "background-color 0.35s ease, color 0.35s ease",
+          },
+        }}
+      />
 
       <ReactRouterAppProvider navigation={NAVIGATION} branding={BRANDING}>
         <Outlet />
