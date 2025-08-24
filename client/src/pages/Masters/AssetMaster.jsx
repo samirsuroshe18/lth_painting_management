@@ -406,7 +406,8 @@ export default function AssetMaster() {
     {
       field: "actions",
       headerName: "Actions",
-      width: 200,
+      minWidth: 240,
+      flex: 1,
       sortable: false,
       filterable: false,
       align: "center",
