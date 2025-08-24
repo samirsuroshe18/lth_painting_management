@@ -49,10 +49,10 @@ const AssetDetailsPage = () => {
       value: auditLog?.createdBy?.userName || "N/A",
       icon: <FaUser />,
     },
-    ...(auditLog?.updatedBy?.userName && auditLog?.reviewStatus === "approved"
+    ...(auditLog?.updatedBy?.userName && auditLog?.reviewStatus === "approved" || auditLog?.reviewStatus === "rejected"
       ? [
           {
-            label: "Audit Approved By",
+            label: auditLog?.reviewStatus == "approved" ? "Audit Approved By" : "Audit Rejected By",
             value: auditLog?.updatedBy?.userName || "N/A",
             icon: <FaUser />,
           },
