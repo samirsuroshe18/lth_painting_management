@@ -4,6 +4,7 @@ import { useDispatch } from "react-redux";
 import { showNotificationWithTimeout } from "../../redux/slices/notificationSlice";
 import { handleAxiosError } from "../../utils/handleAxiosError";
 import { Lock, Eye, EyeOff, Shield, CheckCircle2 } from "lucide-react";
+import SnackBar from "../../components/commonComponents/SnackBar";
 
 const ChangePassword = () => {
   const [isLoading, setLoading] = useState(false);
@@ -370,6 +371,7 @@ const ChangePassword = () => {
           </ul>
         </div>
       </div>
+      <SnackBar />
     </div>
   );
 };

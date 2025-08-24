@@ -5,6 +5,7 @@ import { Asset } from '../models/asset.model.js';
 import { Location } from '../models/location.model.js';
 import { uploadOnCloudinary } from '../utils/cloudinary.js';
 import QRCode from 'qrcode'
+import mongoose from 'mongoose';
 
 const addNewAsset = catchAsync(async (req, res) => {
     const { name, description, purchaseValue, locationId, year, artist, place, size, status } = req.body;
@@ -384,9 +385,16 @@ const getAssetsByLocation = catchAsync(async (req, res) => {
         throw new ApiError(400, 'locationIds must be a non-empty array');
     }
 
+    // Sanitize the input arrays to prevent injection attacks
+        const sanitizedLocationIds = locationIds.filter(id => typeof id === 'string' && mongoose.Types.ObjectId.isValid(id));
+    
+        if (sanitizedLocationIds.length === 0 ) {
+            throw new ApiError(400, 'Invalid ID format provided');
+        }
+
     // Query assets that match any of the location IDs
     const assets = await Asset.find({
-        locationId: { $in: locationIds }
+        locationId: { $in: sanitizedLocationIds }
     });
 
     return res.status(200).json(

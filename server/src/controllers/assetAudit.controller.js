@@ -4,8 +4,6 @@ import catchAsync from '../utils/catchAsync.js';
 import { Asset } from '../models/asset.model.js';
 import { uploadOnCloudinary } from '../utils/cloudinary.js';
 import { AssetAuditLog } from '../models/assetAuditLog.model.js';
-import { User } from '../models/user.model.js';
-import { Location } from '../models/location.model.js';
 import mongoose from 'mongoose';
 
 // To add a new asset audit
@@ -443,10 +441,18 @@ const fetchAudits = catchAsync(async (req, res) => {
         throw new ApiError(400, 'Both startDate and endDate are required');
     }
 
+    // Sanitize the input arrays to prevent injection attacks
+    const sanitizedLocationIds = locationIds.filter(id => typeof id === 'string' && mongoose.Types.ObjectId.isValid(id));
+    const sanitizedAssetIds = assetIds.filter(id => typeof id === 'string' && mongoose.Types.ObjectId.isValid(id));
+
+    if (sanitizedLocationIds.length === 0 || sanitizedAssetIds.length === 0) {
+        throw new ApiError(400, 'Invalid ID format provided');
+    }
+
     // Build the query object dynamically
     const query = {
-        locationId: { $in: locationIds },
-        assetId: { $in: assetIds },
+        locationId: { $in: sanitizedLocationIds },
+        assetId: { $in: sanitizedAssetIds },
         createdAt: {
             $gte: new Date(startDate),
             $lte: new Date(endDate)

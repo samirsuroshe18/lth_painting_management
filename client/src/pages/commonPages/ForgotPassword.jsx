@@ -5,6 +5,7 @@ import { showNotificationWithTimeout } from "../../redux/slices/notificationSlic
 import { handleAxiosError } from "../../utils/handleAxiosError";
 import { Mail, ArrowLeft, Shield } from "lucide-react";
 import { Link } from "react-router-dom";
+import SnackBar from "../../components/commonComponents/SnackBar";
 
 const ForgotPassword = () => {
   const [isLoading, setLoading] = useState(false);
@@ -164,6 +165,8 @@ const ForgotPassword = () => {
           </p>
         </div>
       </div>
+
+      <SnackBar />
     </div>
   );
 };
