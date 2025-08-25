@@ -167,6 +167,7 @@ const LocationMaster = () => {
 
         const data = result.data;
         data.id = data._id;
+        data.hasAccess = true;
         setFilteredRows((prev) =>
           prev.map((item) => (item.id === data.id ? data : item))
         );
