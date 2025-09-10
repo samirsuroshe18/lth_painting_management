@@ -6,7 +6,6 @@ import { ReactRouterAppProvider } from "@toolpad/core/react-router";
 import { getCurrentUser } from "./api/authApi";
 import { currentUser } from "./redux/slices/authSlice";
 import {
-  LinearProgress,
   ThemeProvider,
   CssBaseline,
   GlobalStyles,
@@ -27,22 +26,58 @@ import { setNavigate } from "./utils/navigationHelper";
 function App() {
   const userData = useSelector((state) => state.auth.userData?.user);
 
-  const [mode, setMode] = useState(localStorage.getItem("mui-mode") || "light");
-  const [loading, setLoading] = useState(true);
-  const [fadeOut, setFadeOut] = useState(false);
+  const [mode, setMode] = useState(() => {
+    const htmlEl = document.documentElement;
+    return htmlEl.getAttribute("data-toolpad-color-scheme") || "light";
+  });
 
   useEffect(() => {
-    const handleStorage = () => {
-      setMode(localStorage.getItem("mui-mode") || "light");
-    };
-    window.addEventListener("storage", handleStorage);
-    return () => {
-      window.removeEventListener("storage", handleStorage);
-    };
+    const observer = new MutationObserver(() => {
+      const scheme = document.documentElement.getAttribute("data-toolpad-color-scheme");
+      setMode(scheme || "light");
+    });
+
+    observer.observe(document.documentElement, {
+      attributes: true,
+      attributeFilter: ["data-toolpad-color-scheme"],
+    });
+
+    return () => observer.disconnect();
   }, []);
 
-  const theme = useMemo(() => createTheme({ palette: { mode } }), [mode]);
+  // ✅ Define theme with background + paper + text colors
+  const theme = useMemo(
+    () =>
+      createTheme({
+        palette: {
+          mode,
+          ...(mode === "dark"
+            ? {
+                background: {
+                  default: "#121212", // page bg
+                  paper: "#1e1e1e",   // cards, dialogs
+                },
+                text: {
+                  primary: "#ffffff",
+                  secondary: "#bbbbbb",
+                },
+              }
+            : {
+                background: {
+                  default: "#f5f5f5",
+                  paper: "#ffffff",
+                },
+                text: {
+                  primary: "#000000",
+                  secondary: "#333333",
+                },
+              }),
+        },
+      }),
+    [mode]
+  );
 
+  const [loading, setLoading] = useState(true);
   const navigate = useNavigate();
   const dispatch = useDispatch();
 
@@ -50,18 +85,16 @@ function App() {
     setNavigate(navigate);
   }, [navigate]);
 
-  // 🔹 Fetch current user on mount
+  // Fetch current user on mount
   useEffect(() => {
     const fetchData = async () => {
       try {
         const res = await getCurrentUser();
         dispatch(currentUser(res.data));
 
-        // ⏳ Show preloader for minimum 1.5s even if API is fast
         setTimeout(() => {
-          setFadeOut(true); // trigger fade
-          setTimeout(() => setLoading(false), 800); // remove after fade
-        }, 500);
+          setLoading(false);
+        }, 1500);
       } catch (error) {
         navigate("/login");
         setLoading(false);
@@ -151,27 +184,12 @@ function App() {
 
   const NAVIGATION = filterNavigationByPermissions(navigationConfig);
 
-  // 🔹 Preloader with fade-out
   if (loading) {
     return (
-      <ReactRouterAppProvider>
-        <div
-          style={{
-            width: "100%",
-            height: "100vh",
-            display: "flex",
-            flexDirection: "column",
-            alignItems: "center",
-            justifyContent: "center",
-            background: "white",
-            opacity: fadeOut ? 0 : 1,
-            transition: "opacity 1.5s ease",
-          }}
-        >
-          <Preloader />
-          <LinearProgress style={{ width: "100%" }} />
-        </div>
-      </ReactRouterAppProvider>
+      <ThemeProvider theme={theme}>
+        <CssBaseline />
+        <Preloader />
+      </ThemeProvider>
     );
   }
 
@@ -181,24 +199,14 @@ function App() {
       <GlobalStyles
         styles={{
           body: {
+            backgroundColor: theme.palette.background.default,
+            color: theme.palette.text.primary,
             transition: "background-color 0.35s ease, color 0.35s ease",
           },
           "#root": {
-            transition: "background-color 0.35s ease, color 0.35s ease",
-          },
-          ".MuiPaper-root": {
-            transition: "background-color 0.35s ease, color 0.35s ease",
-          },
-          ".MuiAppBar-root": {
-            transition: "background-color 0.35s ease, color 0.35s ease",
-          },
-          ".MuiToolbar-root": {
-            transition: "background-color 0.35s ease, color 0.35s ease",
-          },
-          ".MuiCardHeader-root": {
-            transition: "background-color 0.35s ease, color 0.35s ease",
-          },
-          ".MuiDialogTitle-root": {
+            backgroundColor: theme.palette.background.default,
+            color: theme.palette.text.primary,
+            minHeight: "100vh",
             transition: "background-color 0.35s ease, color 0.35s ease",
           },
         }}

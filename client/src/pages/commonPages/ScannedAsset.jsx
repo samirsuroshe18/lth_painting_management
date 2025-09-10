@@ -328,12 +328,14 @@ export default function ScannedAsset() {
 
             <Row label="Location" value={data.asset.locationId?.name || "-"} />
             <Row label="Area" value={data.asset.locationId?.area || "-"} />
-            <Row label="Size" value={data.asset.size || "-"} />
+            <Row label="Size" value={data.asset.size ? `${data.asset.size} ${data.asset.unit || "inches"}` : "-"}
+/>
+
             <Row label="Place" value={data.asset.place || "-"} />
-            <Row
+            {/* <Row
               label="Purchase Value"
               value={data.asset.purchaseValue ?? "-"}
-            />
+            /> */}
             <Row label="Artist" value={data.asset.artist || "-"} />
           </div>
         </CardContent>

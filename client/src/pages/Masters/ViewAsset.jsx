@@ -5,7 +5,7 @@ import {
   FaPalette,
   FaMapMarkerAlt,
   FaRulerCombined,
-  FaDollarSign,
+  FaRupeeSign,
   FaImage,
 } from "react-icons/fa";
 import { useLocation } from "react-router-dom";
@@ -36,7 +36,7 @@ const ViewAsset = () => {
       value: initialAsset?.purchaseValue
         ? `₹${Number(initialAsset?.purchaseValue).toLocaleString("en-IN")}`
         : "-",
-      icon: <FaDollarSign />,
+      icon: <FaRupeeSign />,
     },
     {
       label: "Artist",

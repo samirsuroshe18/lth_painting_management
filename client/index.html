@@ -1,27 +1,48 @@
 <!doctype html>
-<html lang="en">
+<html lang="en" data-toolpad-color-scheme="light">
   <head>
     <meta charset="UTF-8" />
     <link rel="icon" type="image/svg+xml" href="/lt-logo.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>LTH Artifcact Management Portal</title>
+    <title>LTH Artifact Management Portal</title>
+
+    <!-- ✅ Ensure background matches scheme before React mounts -->
+    <style>
+      html[data-toolpad-color-scheme="dark"],
+      body[data-toolpad-color-scheme="dark"] {
+        background-color: #121212 !important;
+        color: #fff !important;
+      }
+      html[data-toolpad-color-scheme="light"],
+      body[data-toolpad-color-scheme="light"] {
+        background-color: #ffffff !important;
+        color: #000 !important;
+      }
+    </style>
   </head>
   <body>
     <div id="root"></div>
     <script type="module" src="/src/main.jsx"></script>
-    <script>
-      const observer = new MutationObserver(() => {
-        const htmlEl = document.documentElement;
-        const scheme = htmlEl.getAttribute("data-toolpad-color-scheme");
 
+    <script>
+      // ✅ Keep body class in sync when Toolpad changes scheme
+      const htmlEl = document.documentElement;
+
+      const applyScheme = () => {
+        const scheme = htmlEl.getAttribute("data-toolpad-color-scheme");
         if (scheme === "dark") {
           htmlEl.classList.add("dark");
+          document.body.classList.add("dark");
         } else {
           htmlEl.classList.remove("dark");
+          document.body.classList.remove("dark");
         }
-      });
+      };
 
-      observer.observe(document.documentElement, {
+      applyScheme(); // run once on load
+
+      const observer = new MutationObserver(applyScheme);
+      observer.observe(htmlEl, {
         attributes: true,
         attributeFilter: ["data-toolpad-color-scheme"],
       });

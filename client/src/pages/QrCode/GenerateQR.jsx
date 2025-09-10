@@ -27,6 +27,9 @@ import { getQrCodes } from "../../api/assetMasterApi";
 import { useSelector } from "react-redux";
 import { handleAxiosError } from "../../utils/handleAxiosError";
 
+// 🔹 Import your custom QR component
+import QrWithCenterImage from "../../components/QrWithCenterImage";
+
 const GenerateQR = () => {
   const userData = useSelector((state) => state.auth.userData?.user);
   const [locations, setLocations] = useState(userData?.location || []);
@@ -41,7 +44,6 @@ const GenerateQR = () => {
     fetchAssets();
   }, []);
 
-  // Apply filters whenever search term, selected location, or assets change
   useEffect(() => {
     applyFilters();
   }, [searchTerm, selectedLocation, assets]);
@@ -53,7 +55,9 @@ const GenerateQR = () => {
       const allAssets = res?.data || [];
       const assetsWithQR = allAssets.filter((asset) => asset.qrCode);
 
-      setAssets(assetsWithQR);
+      // Add a field for merged QR in each asset
+      const updated = assetsWithQR.map((a) => ({ ...a, mergedQr: a.qrCode }));
+      setAssets(updated);
       setError(null);
     } catch (err) {
       setError(handleAxiosError(err));
@@ -65,13 +69,12 @@ const GenerateQR = () => {
   const applyFilters = () => {
     let filtered = [...assets];
 
-    // Apply search filter
     if (searchTerm.trim()) {
       const searchLower = searchTerm.toLowerCase().trim();
       filtered = filtered.filter((asset) => {
         const assetName = (asset.name || "").toLowerCase();
         const locationName = (asset.locationId?.name || "").toLowerCase();
-        
+
         return (
           assetName.includes(searchLower) ||
           locationName.includes(searchLower)
@@ -79,7 +82,6 @@ const GenerateQR = () => {
       });
     }
 
-    // Apply location filter
     if (selectedLocation !== "all") {
       filtered = filtered.filter((asset) => {
         return asset.locationId?.name === selectedLocation;
@@ -119,7 +121,6 @@ const GenerateQR = () => {
     setSearchTerm("");
   };
 
-  // Check if filters are active
   const hasActiveFilters = searchTerm.trim() !== "" || selectedLocation !== "all";
 
   if (error) {
@@ -149,7 +150,6 @@ const GenerateQR = () => {
 
   return (
     <Container maxWidth="xl" sx={{ py: 3 }}>
-      {/* Header card with title + actions */}
       <Grid container spacing={2} alignItems="center">
         <Grid size={{ xs: 12, md: "auto" }}>
           <Typography variant="h4" fontWeight={700} color="primary">
@@ -161,7 +161,7 @@ const GenerateQR = () => {
         </Grid>
       </Grid>
 
-      {/* Search & Filter Card */}
+      {/* Search & Filter */}
       <Grid container spacing={2} sx={{ mt: 4 }}>
         <Grid size={{ xs: 12, md: 4 }}>
           <TextField
@@ -240,7 +240,6 @@ const GenerateQR = () => {
         </Grid>
       </Grid>
 
-      {/* Results Info */}
       {!loading && (
         <Box sx={{ mt: 2, mb: 2 }}>
           <Typography variant="body2" color="text.secondary">
@@ -257,20 +256,15 @@ const GenerateQR = () => {
         </Box>
       )}
 
-      {/* No Results Message */}
       {!loading && filteredAssets.length === 0 && assets.length > 0 && (
-        <Box sx={{ textAlign: 'center', py: 4 }}>
+        <Box sx={{ textAlign: "center", py: 4 }}>
           <Typography variant="h6" color="text.secondary" gutterBottom>
             No QR codes found
           </Typography>
           <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
             Try adjusting your search or filter criteria
           </Typography>
-          <Button
-            variant="outlined"
-            startIcon={<Cancel />}
-            onClick={handleClear}
-          >
+          <Button variant="outlined" startIcon={<Cancel />} onClick={handleClear}>
             Clear all filters
           </Button>
         </Box>
@@ -280,95 +274,13 @@ const GenerateQR = () => {
         {loading
           ? Array.from({ length: 40 }).map((_, index) => (
               <Grid key={`initial-skeleton-${index}`} size={{ xs: 4, md: 1.5 }}>
-                <Box
-                  sx={{
-                    textAlign: "center",
-                  }}
-                >
-                  {/* QR Code Skeleton */}
-                  <Box
-                    sx={{
-                      bgcolor: "white",
-                      borderRadius: 1,
-                      boxShadow: "0 2px 12px rgba(0,0,0,0.08)",
-                      border: "1px solid rgba(0,0,0,0.06)",
-                      mb: 1.5,
-                    }}
-                  >
-                    <Box
-                      sx={{
-                        height: 118,
-                        bgcolor: "grey.200",
-                        borderRadius: 1,
-                        animation: "pulse 1.5s ease-in-out infinite",
-                        "@keyframes pulse": {
-                          "0%": {
-                            opacity: 1,
-                          },
-                          "50%": {
-                            opacity: 0.4,
-                          },
-                          "100%": {
-                            opacity: 1,
-                          },
-                        },
-                      }}
-                    />
-                  </Box>
-
-                  {/* Asset Name Skeleton */}
-                  <Box
-                    sx={{
-                      height: 16,
-                      bgcolor: "grey.200",
-                      borderRadius: 0.5,
-                      mb: 0.5,
-                      mx: 1,
-                      animation: "pulse 1.5s ease-in-out infinite",
-                      animationDelay: "0.1s",
-                    }}
-                  />
-
-                  {/* Location Skeleton */}
-                  <Box
-                    sx={{
-                      height: 12,
-                      bgcolor: "grey.200",
-                      borderRadius: 0.5,
-                      mb: 1.5,
-                      mx: 2,
-                      animation: "pulse 1.5s ease-in-out infinite",
-                      animationDelay: "0.2s",
-                    }}
-                  />
-
-                  {/* Download Button Skeleton */}
-                  <Box
-                    sx={{
-                      width: 36,
-                      height: 36,
-                      bgcolor: "grey.200",
-                      borderRadius: "50%",
-                      mx: "auto",
-                      animation: "pulse 1.5s ease-in-out infinite",
-                      animationDelay: "0.3s",
-                    }}
-                  />
-                </Box>
+                {/* skeleton UI */}
+                <Box sx={{ height: 180, bgcolor: "grey.200", borderRadius: 1 }} />
               </Grid>
             ))
           : filteredAssets.map((asset) => (
               <Grid key={asset._id} size={{ xs: 4, md: 1.5 }}>
-                <Box
-                  sx={{
-                    textAlign: "center",
-                    transition: "transform 0.2s ease",
-                    "&:hover": {
-                      transform: "translateY(-2px)",
-                    },
-                  }}
-                >
-                  {/* QR Code Container */}
+                <Box sx={{ textAlign: "center" }}>
                   <Box
                     sx={{
                       bgcolor: "white",
@@ -378,14 +290,15 @@ const GenerateQR = () => {
                       mb: 1.5,
                     }}
                   >
-                    <Box
-                      component="img"
-                      src={asset.qrCode}
-                      alt={`QR Code for ${asset.name}`}
+                    {/* 🔹 Use merged QR component */}
+                    <QrWithCenterImage
+                      qrSrc={asset.qrCode}
+                      logoSrc={asset.image}
+                      size={180}
+                      onReady={(mergedUrl) => (asset.mergedQr = mergedUrl)}
                     />
                   </Box>
 
-                  {/* Asset Name */}
                   <Typography
                     variant="body2"
                     fontWeight={600}
@@ -393,9 +306,6 @@ const GenerateQR = () => {
                     sx={{
                       mb: 0.25,
                       minHeight: 28,
-                      display: "-webkit-box",
-                      WebkitLineClamp: 2,
-                      WebkitBoxOrient: "vertical",
                       overflow: "hidden",
                       textOverflow: "ellipsis",
                       lineHeight: 1.2,
@@ -405,19 +315,9 @@ const GenerateQR = () => {
                     {asset.name || "Unnamed Asset"}
                   </Typography>
 
-                  {/* Location */}
                   {asset.locationId?.name && (
-                    <Box
-                      display="flex"
-                      alignItems="center"
-                      justifyContent="center"
-                      mt={-1}
-                      mb={1}
-                    >
-                      <LocationOn
-                        fontSize="small"
-                        sx={{ color: "grey.500", mr: 0.5 }}
-                      />
+                    <Box display="flex" alignItems="center" justifyContent="center" mt={-1} mb={1}>
+                      <LocationOn fontSize="small" sx={{ color: "grey.500", mr: 0.5 }} />
                       <Typography
                         variant="caption"
                         color="text.secondary"
@@ -434,17 +334,12 @@ const GenerateQR = () => {
                     </Box>
                   )}
 
-                  {/* Minimal Download Icon Button */}
                   <IconButton
-                    onClick={() => downloadQRCode(asset.qrCode, asset.name)}
+                    onClick={() => downloadQRCode(asset.mergedQr || asset.qrCode, asset.name)}
                     sx={{
-                      backgroundColor: (theme) =>
-                        theme.palette.mode === "dark" ? "#0d47a1" : "#1976d2",
+                      backgroundColor: "#1976d2",
                       color: "white",
-                      "&:hover": {
-                        backgroundColor: (theme) =>
-                          theme.palette.mode === "dark" ? "#1565c0" : "#1565c0",
-                      },
+                      "&:hover": { backgroundColor: "#1565c0" },
                       width: 36,
                       height: 36,
                       boxShadow: "0 2px 8px rgba(25, 118, 210, 0.3)",

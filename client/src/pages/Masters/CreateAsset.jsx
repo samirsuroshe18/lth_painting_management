@@ -44,9 +44,39 @@ const CreateNewAsset = () => {
   const [loading, setLoading] = useState(false);
   const [fileImage, setFileImage] = useState(null);
   const [dragOver, setDragOver] = useState(false);
-  const [yearError, setYearError] = useState("");
   const [successDialogOpen, setSuccessDialogOpen] = useState(false);
   const theme = useTheme();
+
+  // Add these state variables for separate size inputs
+  const [sizeWidth, setSizeWidth] = useState(() => {
+    if (asset?.size) {
+      const parts = asset.size.split('x');
+      return parts[0]?.trim() || '';
+    }
+    return '';
+  });
+
+  const [sizeHeight, setSizeHeight] = useState(() => {
+    if (asset?.size) {
+      const parts = asset.size.split('x');
+      return parts[1]?.replace(/\s*inches?$/i, '').trim() || '';
+    }
+    return '';
+  });
+
+  // Add this function to handle size changes and update the main formData
+  const handleSizeChange = (width, height) => {
+    setSizeWidth(width);
+    setSizeHeight(height);
+    
+    // Combine into the format expected by backend (always inches)
+    let combinedSize = '';
+    if (width && height) {
+      combinedSize = `${width}x${height} inches`;
+    }
+    
+    setFormData((prev) => ({ ...prev, size: combinedSize }));
+  };
 
   // Fetch locations if not available in Redux store
   useEffect(() => {
@@ -146,20 +176,22 @@ const CreateNewAsset = () => {
       return;
     }
 
-    if (!formData.year) {
-      setYearError("Year is required.");
-      return;
-    }
-
     try {
       setLoading(true);
 
       // Add 1 second delay for loading state visibility
       await new Promise((resolve) => setTimeout(resolve, 1000));
 
+      // Prepare the data to send - handle null/empty year properly
+   const dataToSend = {
+  ...formData,
+  year: formData.year && formData.year.isValid && formData.year.isValid() ? formData.year : null,
+};
+
       const response = asset
-        ? await updateAsset(formData)
-        : await createNewAsset(formData);
+        ? await updateAsset(dataToSend)
+        : await createNewAsset(dataToSend);
+        
       dispatch(
         showNotificationWithTimeout({
           show: true,
@@ -187,6 +219,14 @@ const CreateNewAsset = () => {
     navigate(-1);
   };
 
+  // Custom component for labels with red asterisks
+  const LabelWithRedAsterisk = ({ children, required = false }) => (
+    <Typography variant="subtitle2">
+      {children}
+      {required && <span style={{ color: '#f44336', marginLeft: '2px' }}>*</span>}
+    </Typography>
+  );
+
   return (
     <Container maxWidth="lg" sx={{ py: 3 }}>
       {/* Header card */}
@@ -213,7 +253,7 @@ const CreateNewAsset = () => {
           {/* Image */}
           <Grid size={{ xs: 12, md: 12 }}>
             <Stack spacing={1}>
-              <Typography variant="subtitle2">Asset Image *</Typography>
+              <LabelWithRedAsterisk required>Asset Image</LabelWithRedAsterisk>
               <Box
                 onDrop={handleDrop}
                 onDragOver={handleDragOver}
@@ -310,7 +350,7 @@ const CreateNewAsset = () => {
           {/* Name */}
           <Grid size={{ xs: 12, md: 6 }}>
             <Stack spacing={1}>
-              <Typography variant="subtitle2">Name *</Typography>
+              <LabelWithRedAsterisk required>Name</LabelWithRedAsterisk>
               <TextField
                 name="name"
                 value={formData.name}
@@ -329,10 +369,10 @@ const CreateNewAsset = () => {
             </Stack>
           </Grid>
 
-          {/* Name */}
+          {/* Artist */}
           <Grid size={{ xs: 12, md: 6 }}>
             <Stack spacing={1}>
-              <Typography variant="subtitle2">Artist *</Typography>
+              <LabelWithRedAsterisk required>Artist</LabelWithRedAsterisk>
               <TextField
                 name="artist"
                 value={formData.artist}
@@ -354,7 +394,7 @@ const CreateNewAsset = () => {
           {/* Place */}
           <Grid size={{ xs: 12, md: 6 }}>
             <Stack spacing={1}>
-              <Typography variant="subtitle2">Place *</Typography>
+              <LabelWithRedAsterisk required>Place</LabelWithRedAsterisk>
               <TextField
                 name="place"
                 value={formData.place}
@@ -371,7 +411,7 @@ const CreateNewAsset = () => {
           {/* Location */}
           <Grid size={{ xs: 12, md: 6 }}>
             <Stack spacing={1}>
-              <Typography variant="subtitle2">Location *</Typography>
+              <LabelWithRedAsterisk required>Location</LabelWithRedAsterisk>
               <FormControl fullWidth required disabled={loading}>
                 <Select
                   value={formData.location}
@@ -402,56 +442,88 @@ const CreateNewAsset = () => {
             </Stack>
           </Grid>
 
-          {/* currentValue */}
+          {/* Purchase Value - Made optional */}
           <Grid size={{ xs: 12, md: 6 }}>
             <Stack spacing={1}>
-              <Typography variant="subtitle2">Purchase Value *</Typography>
-              <TextField
-                name="currentValue"
-                value={formData.currentValue}
-                onChange={handleChange}
-                fullWidth
-                size="small"
-                placeholder="Enter current value"
-                required
-                disabled={loading}
-                type="number"
-                sx={{
-                  "& .MuiOutlinedInput-root": {
-                    backgroundColor: "inherit",
-                  },
-                }}
-              />
+              <LabelWithRedAsterisk>Purchase Value</LabelWithRedAsterisk>
+            <TextField
+              name="currentValue"
+              value={formData.currentValue}
+              onChange={handleChange}
+              fullWidth
+              size="small"
+              placeholder="Enter purchase value"
+              disabled={loading}
+              type="number"
+              slotProps={{
+                htmlInput: { min: 0 },  // ✅ replaces inputProps
+              }}
+              sx={{
+              "& .MuiOutlinedInput-root": {
+              backgroundColor: "inherit",
+              },
+          }}
+            />
+
             </Stack>
           </Grid>
 
-          {/* Size */}
+          {/* Size - Updated for better UX (inches only) */}
           <Grid size={{ xs: 12, md: 6 }}>
             <Stack spacing={1}>
-              <Typography variant="subtitle2">Size *</Typography>
-              <TextField
-                name="size"
-                value={formData.size}
-                onChange={handleChange}
-                fullWidth
-                size="small"
-                placeholder="e.g. 10x20"
-                required
-                disabled={loading}
-                type="text"
-                sx={{
-                  "& .MuiOutlinedInput-root": {
-                    backgroundColor: "inherit",
-                  },
-                }}
-              />
+              <LabelWithRedAsterisk required>Size (inches)</LabelWithRedAsterisk>
+              <Stack direction="row" spacing={1} alignItems="center">
+                <TextField
+                  value={sizeWidth}
+                  onChange={(e) => handleSizeChange(e.target.value, sizeHeight)}
+                  size="small"
+                  placeholder="Width"
+                  required={!sizeHeight} // Required if height is empty
+                  disabled={loading}
+                  type="number"
+                  slotProps={{
+                    htmlInput: { min: 0, step: "0.1" },
+                  }}
+                  sx={{
+                    flex: 1,
+                    "& .MuiOutlinedInput-root": {
+                      backgroundColor: "inherit",
+                    },
+                  }}
+                />
+                <Typography variant="body1" sx={{ mx: 1, fontWeight: 600 }}>
+                  ×
+                </Typography>
+                <TextField
+                  value={sizeHeight}
+                  onChange={(e) => handleSizeChange(sizeWidth, e.target.value)}
+                  size="small"
+                  placeholder="Height"
+                  required={!sizeWidth} // Required if width is empty
+                  disabled={loading}
+                  type="number"
+                  slotProps={{
+                    htmlInput: { min: 0, step: "0.1" },
+                  }}
+                  sx={{
+                    flex: 1,
+                    "& .MuiOutlinedInput-root": {
+                      backgroundColor: "inherit",
+                    },
+                  }}
+                />
+                <Typography variant="body2" color="text.secondary" sx={{ minWidth: 40 }}>
+                  inches
+                </Typography>
+              </Stack>
+            
             </Stack>
           </Grid>
 
-          {/* Year */}
+          {/* Year - Made optional */}
           <Grid size={{ xs: 12, md: 6 }}>
             <Stack spacing={1}>
-              <Typography variant="subtitle2">Year *</Typography>
+              <LabelWithRedAsterisk>Year</LabelWithRedAsterisk>
               <LocalizationProvider dateAdapter={AdapterDayjs}>
                 <DatePicker
                   views={["year"]}
@@ -460,14 +532,10 @@ const CreateNewAsset = () => {
                   maxDate={dayjs()}
                   onChange={(value) => {
                     setFormData({ ...formData, year: value });
-                    setYearError("");
                   }}
                   disabled={loading}
                   slotProps={{
                     textField: {
-                      error: Boolean(yearError),
-                      helperText: yearError,
-                      required: true,
                       fullWidth: true,
                       size: "small",
                       placeholder: "Enter date",
@@ -478,10 +546,10 @@ const CreateNewAsset = () => {
             </Stack>
           </Grid>
 
-          {/* status */}
+          {/* Status */}
           <Grid size={{ xs: 12, md: 6 }}>
             <Stack spacing={1}>
-              <Typography variant="subtitle2">Status *</Typography>
+              <LabelWithRedAsterisk required>Status</LabelWithRedAsterisk>
               <FormControl fullWidth required disabled={loading}>
                 <Select
                   value={formData?.status ?? ""}
@@ -508,7 +576,7 @@ const CreateNewAsset = () => {
           {/* Description */}
           <Grid size={{ xs: 12, md: 6 }}>
             <Stack spacing={1}>
-              <Typography variant="subtitle2">Description *</Typography>
+              <LabelWithRedAsterisk>Description</LabelWithRedAsterisk>
               <TextField
                 name="description"
                 value={formData.description}
@@ -516,7 +584,6 @@ const CreateNewAsset = () => {
                 fullWidth
                 size="small"
                 placeholder="Enter description"
-                required
                 multiline
                 minRows={3}
                 sx={{
@@ -630,6 +697,8 @@ const CreateNewAsset = () => {
                 status: "",
               });
               setFileImage(null);
+              setSizeWidth('');
+              setSizeHeight('');
               setSuccessDialogOpen(false);
             }}
             variant="contained"
