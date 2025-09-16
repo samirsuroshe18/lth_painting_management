@@ -17,7 +17,13 @@ import SettingsIcon from "@mui/icons-material/Settings";
 import PeopleIcon from "@mui/icons-material/People";
 import DevicesOtherIcon from "@mui/icons-material/DevicesOther";
 import LocationOnIcon from "@mui/icons-material/LocationOn";
+import CorporateFareIcon from "@mui/icons-material/CorporateFare";
+import FloorIcon from "@mui/icons-material/Layers";
 import PublicIcon from "@mui/icons-material/Public";
+import BuildingIcon from "@mui/icons-material/Apartment";
+import DepartmentIcon from "@mui/icons-material/Domain";
+import AreaIcon from "@mui/icons-material/Map";
+import CityIcon from "@mui/icons-material/LocationCity";
 import QrCodeIcon from "@mui/icons-material/QrCode";
 import AssessmentIcon from "@mui/icons-material/Assessment";
 import SnackBar from "./components/commonComponents/SnackBar";
@@ -103,14 +109,52 @@ function App() {
         {
           segment: "location-master",
           title: "Location Master",
-          icon: <LocationOnIcon />,
+          icon: <CorporateFareIcon />,
           permission: "locationMaster:view",
-        },
-        {
-          segment: "state-master",
-          title: "State Master",
-          icon: <PublicIcon />,
-          permission: "stateMaster:view",
+          children: [
+            {
+              segment: "location",
+              title: "Location",
+              icon: <LocationOnIcon />,
+              permission: "locationMaster:view",
+            },
+            {
+              segment: "state",
+              title: "State",
+              icon: <PublicIcon />,
+              permission: "stateMaster:view",
+            },
+            {
+              segment: "city",
+              title: "City",
+              icon: <CityIcon />,
+              permission: "stateMaster:view",
+            },
+            {
+              segment: "area",
+              title: "Area",
+              icon: <AreaIcon />,
+              permission: "stateMaster:view",
+            },
+            {
+              segment: "department",
+              title: "Department",
+              icon: <DepartmentIcon />,
+              permission: "stateMaster:view",
+            },
+            {
+              segment: "building",
+              title: "Building Name/Block",
+              icon: <BuildingIcon />,
+              permission: "stateMaster:view",
+            },
+            {
+              segment: "floor",
+              title: "Floor",
+              icon: <FloorIcon />,
+              permission: "stateMaster:view",
+            },
+          ],
         },
       ],
     },

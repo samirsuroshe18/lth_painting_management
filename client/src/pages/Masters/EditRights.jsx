@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useMemo, useState, useEffect } from "react";
 import { useParams, useNavigate, useLocation } from "react-router-dom";
 import { updatePermissions } from "../../api/userApi";
 import { useDispatch } from "react-redux";
@@ -8,24 +8,51 @@ import { handleAxiosError } from "../../utils/handleAxiosError";
 // Canonical actions
 const ALL_ACTIONS = [
   "allAccess",
+
   "dashboard:view",
   "dashboard:edit",
+
   "masters:view",
   "masters:edit",
+
   "userMaster:view",
   "userMaster:edit",
+
   "roleMaster:view",
   "roleMaster:edit",
+
   "assetMaster:view",
   "assetMaster:edit",
+
   "locationMaster:view",
   "locationMaster:edit",
+
   "stateMaster:view",
   "stateMaster:edit",
+  
+  'cityMaster:view',
+  'cityMaster:edit',
+
+  'areaMaster:view',
+  'areaMaster:edit',
+
+  'departmentMaster:view',
+  'departmentMaster:edit',
+
+  'buildingMaster:view',
+  'buildingMaster:edit',
+
+  'floorMaster:view',
+  'floorMaster:edit',
+
   "generateQrCode",
+
   "auditReport:view",
   "auditReport:edit",
 ];
+
+// Get all actions except allAccess
+const NON_ALL_ACCESS_ACTIONS = ALL_ACTIONS.filter(action => action !== "allAccess");
 
 // Grouping for nicer UI
 const GROUPS = [
@@ -37,6 +64,11 @@ const GROUPS = [
   { key: "asset", label: "Asset Master", actions: ["assetMaster:view", "assetMaster:edit"] },
   { key: "location", label: "Location Master", actions: ["locationMaster:view", "locationMaster:edit"] },
   { key: "state", label: "State Master", actions: ["stateMaster:view", "stateMaster:edit"] },
+  { key: "city", label: "City Master", actions: ["cityMaster:view", "cityMaster:edit"] },
+  { key: "area", label: "Area Master", actions: ["areaMaster:view", "areaMaster:edit"] },
+  { key: "department", label: "Department Master", actions: ["departmentMaster:view", "departmentMaster:edit"] },
+  { key: "building", label: "Building Master", actions: ["buildingMaster:view", "buildingMaster:edit"] },
+  { key: "floor", label: "Floor Master", actions: ["floorMaster:view", "floorMaster:edit"] },
   { key: "audit", label: "Audit Reports", actions: ["auditReport:view", "auditReport:edit"] },
 ];
 
@@ -90,14 +122,52 @@ const EditRights = () => {
     [permissions]
   );
 
+  // Effect to auto-manage allAccess based on other permissions
+  useEffect(() => {
+    const nonAllAccessPerms = permissions.filter(p => p.action !== "allAccess");
+    const allOtherPermissionsAllowed = nonAllAccessPerms.length > 0 && nonAllAccessPerms.every(p => p.effect === "Allow");
+    const hasAnyDeniedPermission = nonAllAccessPerms.some(p => p.effect === "Deny");
+    
+    const currentAllAccess = permissions.find(p => p.action === "allAccess");
+    
+    // If all other permissions are allowed, enable allAccess
+    // If any permission is denied, disable allAccess
+    if (currentAllAccess) {
+      if (allOtherPermissionsAllowed && currentAllAccess.effect !== "Allow") {
+        setPermissions(prev =>
+          prev.map(p =>
+            p.action === "allAccess" ? { ...p, effect: "Allow" } : p
+          )
+        );
+      } else if (hasAnyDeniedPermission && currentAllAccess.effect !== "Deny") {
+        setPermissions(prev =>
+          prev.map(p =>
+            p.action === "allAccess" ? { ...p, effect: "Deny" } : p
+          )
+        );
+      }
+    }
+  }, [permissions]);
+
   const togglePermission = (action) => {
-    setPermissions((prev) =>
-      prev.map((p) =>
+    setPermissions((prev) => {
+      const newPermissions = prev.map((p) =>
         p.action === action
           ? { ...p, effect: p.effect === "Allow" ? "Deny" : "Allow" }
           : p
-      )
-    );
+      );
+
+      // Special handling for allAccess toggle
+      if (action === "allAccess") {
+        const allAccessPerm = newPermissions.find(p => p.action === "allAccess");
+        if (allAccessPerm && allAccessPerm.effect === "Allow") {
+          // If allAccess is being enabled, enable all other permissions
+          return newPermissions.map(p => ({ ...p, effect: "Allow" }));
+        }
+      }
+
+      return newPermissions;
+    });
   };
 
   const setBulk = (actions, effect) => {

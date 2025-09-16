@@ -25,6 +25,21 @@ const ALL_ACTIONS = [
   'stateMaster:view',
   'stateMaster:edit',
 
+  'cityMaster:view',
+  'cityMaster:edit',
+
+  'areaMaster:view',
+  'areaMaster:edit',
+
+  'departmentMaster:view',
+  'departmentMaster:edit',
+
+  'buildingMaster:view',
+  'buildingMaster:edit',
+
+  'floorMaster:view',
+  'floorMaster:edit',
+
   'generateQrCode',
 
   'auditReport:view',
@@ -36,24 +51,47 @@ const ROLE_ALLOW = {
   superadmin: [...ALL_ACTIONS],
 
   admin: [
-    'dashboard:view', 'dashboard:edit',
-    'masters:view', 'masters:edit',
-    'userMaster:view', 'userMaster:edit',
-    'roleMaster:view',                  // no edit
-    'assetMaster:view', 'assetMaster:edit',
-    'locationMaster:view', 'locationMaster:edit',
-    'stateMaster:view', 'stateMaster:edit',
+    'dashboard:view', 
+    'dashboard:edit',
+
+    'masters:view',
+    'masters:edit',
+
+    'userMaster:view',
+    'userMaster:edit',
+
+    'roleMaster:view',
+    
+    'assetMaster:view',
+    'assetMaster:edit',
+
+    'locationMaster:view',
+    'locationMaster:edit',
+
+    'stateMaster:view',
+    'stateMaster:edit',
+
     'generateQrCode',
-    'auditReport:view', 'auditReport:edit',
-    // 'allAccess' intentionally not granted
+    
+    'auditReport:view',
+    'auditReport:edit',
   ],
 
   auditor: [
     'dashboard:view',
+
     'masters:view',
+
     'assetMaster:view',
+
     'generateQrCode',
+    
     'auditReport:view',
+  ],
+
+  supervisor: [
+    'dashboard:view',                   // view‑only dashboard (as requested)
+    'generateQrCode',
   ],
 
   user: [

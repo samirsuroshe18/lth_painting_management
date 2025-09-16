@@ -9,6 +9,17 @@ const checkAccess = (...actions) => {
         throw new ApiError(403, "Access denied");
       }
 
+      // Check if user has allAccess permission
+      const hasAllAccess = permissions.some(p => 
+        p.action === 'allAccess' && p.effect === 'Allow'
+      );
+
+      // If user has allAccess, grant access to everything
+      if (hasAllAccess) {
+        return next();
+      }
+
+      // Otherwise, check specific permissions
       const hasAccess = actions.every(action =>
         permissions.some(p => p.action === action && p.effect === 'Allow')
       );

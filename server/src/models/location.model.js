@@ -3,6 +3,7 @@ import mongoose, { Schema } from 'mongoose';
 const LocationSchema = new Schema({
     name: {
         type: String,
+        unique: true,
         required: true,
         maxlength: 255
     },
@@ -13,9 +14,34 @@ const LocationSchema = new Schema({
         required: true
     },
 
-    area: {
-        type: String,
-        maxlength: 500,
+    cityId: {
+        type: Schema.Types.ObjectId,
+        ref: 'City',
+        required: true
+    },
+
+    areaId: {
+        type: Schema.Types.ObjectId,
+        ref: 'Area',
+        required: true
+    },
+
+    departmentId: {
+        type: Schema.Types.ObjectId,
+        ref: 'Department',
+        required: true
+    },
+
+    buildingId: {
+        type: Schema.Types.ObjectId,
+        ref: 'Building',
+        required: true
+    },
+
+    floorId: {
+        type: Schema.Types.ObjectId,
+        ref: 'Floor',
+        required: true
     },
 
     status: {

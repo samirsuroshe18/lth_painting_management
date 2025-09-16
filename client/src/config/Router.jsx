@@ -15,6 +15,11 @@ import AssetMaster from "../pages/Masters/AssetMaster.jsx";
 import AssetDetailsPage from "../pages/Masters/AssetDetailsPage.jsx";
 import LocationMaster from "../pages/Masters/LocationMaster.jsx";
 import StateMaster from "../pages/Masters/StateMaster.jsx";
+import CityMaster from "../pages/Masters/CityMaster.jsx";
+import AreaMaster from "../pages/Masters/AreaMaster.jsx";
+import DepartmentMaster from "../pages/Masters/DepartmentMaster.jsx";
+import BuildingMaster from "../pages/Masters/BuildingMaster.jsx";
+import FloorMaster from "../pages/Masters/FloorMaster.jsx";
 
 import ChangePassword from "../pages/commonPages/ChangePassword.jsx";
 import ForgotPassword from "../pages/commonPages/ForgotPassword.jsx";
@@ -62,8 +67,19 @@ const router = createBrowserRouter([
                   { path: "new", element: <CreateAsset /> },
                 ],
               },
-              { path: "location-master", element: <LocationMaster /> },
-              { path: "state-master", element: <StateMaster /> },
+              {
+                path: "Location-master",
+                children: [
+                  { path: "", element: <LocationMaster /> },
+                  { path: "location", element: <LocationMaster /> },
+                  { path: "state", element: <StateMaster /> },
+                  { path: "city", element: <CityMaster /> },
+                  { path: "area", element: <AreaMaster /> },
+                  { path: "department", element: <DepartmentMaster /> },
+                  { path: "building", element: <BuildingMaster /> },
+                  { path: "floor", element: <FloorMaster /> },
+                ],
+              },
             ],
           },
           { path: "generate-qr", element: <GenerateQR /> },
