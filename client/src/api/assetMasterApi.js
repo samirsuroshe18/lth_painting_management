@@ -71,59 +71,72 @@ const viewAssetPublic = async (id) => {
 };
 
 const createNewAsset = async (assetData) => {
-    try {
-        const form = new FormData();
+  try {
+    const form = new FormData();
 
-        form.append("name", assetData.name || "");
-        form.append("description", assetData.description || "");
-        form.append("purchaseValue", assetData.currentValue || "");
-        form.append("locationId", assetData.location || "");
-        form.append("year", new Date(assetData.year).getFullYear());
-        form.append("artist", assetData.artist || "");
-        form.append("place", assetData.place || "");
-        form.append("size", assetData.size || "");
-        form.append("status", assetData.status == 'Active' ? true : false);
-
-        if (assetData.image) {
-            form.append("file", assetData.image);
-        }
-
-        const response = await axiosInstance.post(
-            "api/v1/assetmaster/add-asset",
-            form,
-            {
-                headers: { "Content-Type": "multipart/form-data" },
-            }
-        );
-        return response.data;
-    } catch (error) {
-        if (import.meta.env.VITE_DEVELOPMENT === 'development') {
-            console.error('Error creating new asset:', error);
-        }
-        throw error;
+    if (assetData.name) form.append("name", assetData.name);
+    if (assetData.description) form.append("description", assetData.description);
+    if (assetData.currentValue) form.append("purchaseValue", assetData.currentValue);
+    if (assetData.location) form.append("locationId", assetData.location);
+    
+    // ✅ Fixed: Only append year if it exists and is valid
+    if (assetData.year && assetData.year.isValid && assetData.year.isValid()) {
+      form.append("year", assetData.year.year());
     }
+    
+    if (assetData.artist) form.append("artist", assetData.artist);
+    if (assetData.place) form.append("place", assetData.place);
+    if (assetData.size) form.append("size", assetData.size);
+
+    // ✅ Fixed: Consistent status handling (boolean conversion)
+    form.append("status", assetData.status === "active");
+
+    if (assetData.image) {
+      form.append("file", assetData.image);
+    }
+
+    const response = await axiosInstance.post(
+      "/api/v1/assetmaster/add-asset",
+      form,
+      { headers: { "Content-Type": "multipart/form-data" } }
+    );
+
+    return response.data;
+  } catch (error) {
+    if (import.meta.env.VITE_DEVELOPMENT === "development") {
+      console.error("Error creating new asset:", error);
+    }
+    throw error;
+  }
 };
 
 const updateAsset = async (assetData) => {
     try {
         const form = new FormData();
 
-        form.append("name", assetData.name || "");
-        form.append("description", assetData.description || "");
-        form.append("purchaseValue", assetData.currentValue || "");
-        form.append("locationId", assetData.location || "");
-        form.append("year", new Date(assetData.year).getFullYear());
-        form.append("artist", assetData.artist || "");
-        form.append("place", assetData.place || "");
-        form.append("size", assetData.size || "");
-        form.append("status", assetData.status == 'active' ? true : false);
+        if (assetData.name) form.append("name", assetData.name);
+        if (assetData.description) form.append("description", assetData.description);
+        if (assetData.currentValue) form.append("purchaseValue", assetData.currentValue);
+        if (assetData.location) form.append("locationId", assetData.location);
+        
+        // ✅ Fixed: Only append year if it exists and is valid
+        if (assetData.year && assetData.year.isValid && assetData.year.isValid()) {
+            form.append("year", assetData.year.year());
+        }
+        
+        if (assetData.artist) form.append("artist", assetData.artist);
+        if (assetData.place) form.append("place", assetData.place);
+        if (assetData.size) form.append("size", assetData.size);
+        
+        // ✅ Fixed: Consistent status handling (boolean conversion)
+        form.append("status", assetData.status === "active");
 
         if (assetData.image) {
             form.append("file", assetData.image);
         }
 
         const response = await axiosInstance.put(
-            `api/v1/assetmaster/update-asset/${assetData.id}`,
+            `/api/v1/assetmaster/update-asset/${assetData.id}`,
             form,
             {
                 headers: { "Content-Type": "multipart/form-data" },

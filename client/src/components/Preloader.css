@@ -4,8 +4,12 @@
   justify-content: center;
   height: 100vh;
   width: 100%;
-  background-color: white; /* or your theme bg */
-  transition: opacity 0.5s ease;
+  position: fixed;
+  top: 0;
+  left: 0;
+  z-index: 9999;
+  transition: opacity 0.8s ease;
+  flex-direction: column;
 }
 
 .preloader-logo {
@@ -15,8 +19,46 @@
 }
 
 @keyframes pulse {
-  0%   { transform: scale(1);   opacity: 1; }
-  30%  { transform: scale(1.1); opacity: 0.8; }
-  70%  { transform: scale(1.1); opacity: 0.8; }
-  100% { transform: scale(1);   opacity: 1; }
+  0% {
+    transform: scale(1);
+    opacity: 1;
+  }
+  30% {
+    transform: scale(1.1);
+    opacity: 0.8;
+  }
+  70% {
+    transform: scale(1.1);
+    opacity: 0.8;
+  }
+  100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+
+.preloader.fade-out {
+  opacity: 0;
+  pointer-events: none;
+}
+
+.loading-bar {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  height: 4px;
+  width: 100%;
+  background: linear-gradient(to right, #1976d2, #42a5f5);
+  animation: load 1s linear forwards;
+}
+
+@keyframes load {
+  from {
+    transform: scaleX(0);
+    transform-origin: left;
+  }
+  to {
+    transform: scaleX(1);
+    transform-origin: left;
+  }
 }

@@ -11,7 +11,7 @@ import {
   FaPalette,
   FaMapMarkerAlt,
   FaRulerCombined,
-  FaDollarSign,
+  FaRupeeSign,
   FaCommentAlt,
   FaTimesCircle,
   FaPaperclip,
@@ -124,7 +124,7 @@ const AssetDetailsPage = () => {
       value: auditLog.assetId?.purchaseValue
         ? `₹${Number(auditLog.assetId?.purchaseValue).toLocaleString("en-IN")}`
         : "-",
-      icon: <FaDollarSign />,
+      icon: <FaRupeeSign />,
     },
     {
       label: "Artist",

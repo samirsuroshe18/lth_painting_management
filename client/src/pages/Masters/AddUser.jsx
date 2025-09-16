@@ -55,6 +55,14 @@ export default function AddUser() {
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
+  // Custom component for labels with red asterisks
+  const LabelWithRedAsterisk = ({ children, required = false }) => (
+    <Typography variant="subtitle2">
+      {children}
+      {required && <span style={{ color: '#f44336', marginLeft: '2px' }}>*</span>}
+    </Typography>
+  );
+
   // stable callbacks
   const handleChange = useCallback((e) => {
     const { name, value } = e.target;
@@ -166,7 +174,7 @@ export default function AddUser() {
           {/* Name */}
           <Grid size={{ xs: 12, md: 6 }}>
             <Stack spacing={1}>
-              <Typography variant="subtitle2">Name *</Typography>
+              <LabelWithRedAsterisk required>Name</LabelWithRedAsterisk>
               <TextField
                 name="userName"
                 value={formData.userName}
@@ -185,7 +193,7 @@ export default function AddUser() {
           {/* Email */}
           <Grid size={{ xs: 12, md: 6 }}>
             <Stack spacing={1}>
-              <Typography variant="subtitle2">Email *</Typography>
+              <LabelWithRedAsterisk required>Email</LabelWithRedAsterisk>
               <TextField
                 name="email"
                 value={formData.email}
@@ -205,7 +213,7 @@ export default function AddUser() {
             <>
               <Grid size={{ xs: 12, md: 6 }}>
                 <Stack spacing={1}>
-                  <Typography variant="subtitle2">Password *</Typography>
+                  <LabelWithRedAsterisk required>Password</LabelWithRedAsterisk>
                   <TextField
                     name="password"
                     value={formData.password}
@@ -233,7 +241,7 @@ export default function AddUser() {
 
               <Grid size={{ xs: 12, md: 6 }}>
                 <Stack spacing={1}>
-                  <Typography variant="subtitle2">Confirm Password *</Typography>
+                  <LabelWithRedAsterisk required>Confirm Password</LabelWithRedAsterisk>
                   <TextField
                     name="confirmPassword"
                     value={formData.confirmPassword}
@@ -268,7 +276,7 @@ export default function AddUser() {
           {/* Mobile */}
           <Grid size={{ xs: 12, md: 6 }}>
             <Stack spacing={1}>
-              <Typography variant="subtitle2">Mobile No *</Typography>
+              <LabelWithRedAsterisk required>Mobile No</LabelWithRedAsterisk>
               <TextField
                 name="mobileNo"
                 value={formData.mobileNo}
@@ -291,7 +299,7 @@ export default function AddUser() {
           {/* Role */}
           <Grid size={{ xs: 12, md: 6 }}>
             <Stack spacing={1}>
-              <Typography variant="subtitle2">Role *</Typography>
+              <LabelWithRedAsterisk required>Role</LabelWithRedAsterisk>
               <FormControl fullWidth required disabled={loading} size="small">
                 <Select
                   value={formData.role}
@@ -311,7 +319,7 @@ export default function AddUser() {
           {/* Status */}
           <Grid size={{ xs: 12, md: 6 }}>
             <Stack spacing={1}>
-              <Typography variant="subtitle2">Status *</Typography>
+              <LabelWithRedAsterisk required>Status</LabelWithRedAsterisk>
               <FormControl fullWidth required disabled={loading} size="small">
                 <Select
                   value={formData.status ?? ""}
@@ -330,7 +338,7 @@ export default function AddUser() {
           {/* Location */}
           <Grid size={{ xs: 12, md: 6 }}>
             <Stack spacing={1}>
-              <Typography variant="subtitle2">Location *</Typography>
+              <LabelWithRedAsterisk required>Location</LabelWithRedAsterisk>
               <Autocomplete
                 multiple
                 disableCloseOnSelect

@@ -20,8 +20,9 @@ const addNewAsset = catchAsync(async (req, res) => {
         return res.status(403).json({ message: 'You do not have access to this location.' });
     }
 
-    if (!name || !description || !purchaseValue || !locationId || !year || !artist || !place) {
-        throw new ApiError(400, 'All fields are required');
+    // Updated validation - removed description, purchaseValue, and year from required check
+    if (!name || !locationId || !artist || !place) {
+        throw new ApiError(400, 'Name, location, artist, and place are required fields');
     }
 
     if (imagePath) {
@@ -29,13 +30,11 @@ const addNewAsset = catchAsync(async (req, res) => {
         imageUrl = uploadResult.secure_url;
     }
 
-    const newAsset = await Asset.create({
+    // Prepare asset data with proper null handling
+    const assetData = {
         name,
         image: imageUrl || 'N/A',
-        description,
-        purchaseValue,
         locationId,
-        year,
         artist,
         place,
         size,
@@ -43,11 +42,30 @@ const addNewAsset = catchAsync(async (req, res) => {
         createdBy: req.user._id,
         updatedBy: req.user._id,
         reviewStatus: req.user.role === 'auditor' ? 'pending' : 'approved',
-    });
+    };
+
+    // Only add optional fields if they have meaningful values
+    if (description && description.trim() !== '') {
+        assetData.description = description.trim();
+    }
+
+    if (purchaseValue !== null && purchaseValue !== undefined && purchaseValue !== '' && !isNaN(purchaseValue)) {
+        assetData.purchaseValue = Number(purchaseValue);
+    }
+
+    // Critical fix for year handling
+    if (year !== null && year !== undefined && year !== '' && !isNaN(year) && year > 0) {
+        assetData.year = Number(year);
+    }
+    // If year is null, undefined, empty string, or invalid, don't include it in assetData
+    // This way MongoDB won't store any value for year field
+
+    const newAsset = await Asset.create(assetData);
 
     if (!newAsset) {
         throw new ApiError(500, 'Failed to create asset');
     }
+console.log("QR Code URL:", process.env.QR_CODE_DATA_URL);
 
     const qrCodeDataUrl = await QRCode.toDataURL(`${process.env.QR_CODE_DATA_URL}${newAsset._id}`);
 
@@ -413,4 +431,4 @@ export {
     getAssetsByLocation,
     getQrCodes,
     getAllAssets
-};
+}; 
