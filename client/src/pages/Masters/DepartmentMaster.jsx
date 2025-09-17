@@ -1,9 +1,10 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import {
   getAllDepartment,
   addDepartment,
   updateDepartment,
   deleteDepartment,
+  addDepartmentsFromExcel
 } from "../../api/departmentApi";
 import { useDispatch } from "react-redux";
 import { showNotificationWithTimeout } from "../../redux/slices/notificationSlice";
@@ -29,6 +30,9 @@ import {
   InputLabel,
   Stack,
   Alert,
+  List,
+  ListItem,
+  ListItemText,
 } from "@mui/material";
 import {
   DriveFileRenameOutline as EditIcon,
@@ -38,12 +42,16 @@ import {
   Cancel,
   Close as CloseIcon,
   Delete as DeleteIcon,
+  Upload as UploadIcon,
+  CloudUpload as CloudUploadIcon,
+  Download as DownloadIcon,
 } from "@mui/icons-material";
 import { DataGrid } from "@mui/x-data-grid";
 import { handleAxiosError } from "../../utils/handleAxiosError";
 
 const DepartmentMaster = () => {
   const dispatch = useDispatch();
+  const fileInputRef = useRef(null);
   const [loading, setLoading] = useState(false);
   const [rows, setRows] = useState([]);
   const [searchTerm, setSearchTerm] = useState("");
@@ -61,6 +69,12 @@ const DepartmentMaster = () => {
     page: 0,
     pageSize: 5,
   });
+  
+  // Excel upload states
+  const [excelUploadLoading, setExcelUploadLoading] = useState(false);
+  const [showExcelDialog, setShowExcelDialog] = useState(false);
+  const [selectedFile, setSelectedFile] = useState(null);
+  const [uploadResults, setUploadResults] = useState(null);
 
   useEffect(() => {
     fetchDepartment();
@@ -101,13 +115,9 @@ const DepartmentMaster = () => {
     if (searchTerm.trim()) {
       const searchLower = searchTerm.toLowerCase().trim();
 
-      filtered = filtered.filter((asset) => {
-        const assetName = (asset.name || "").toLowerCase();
-        const locationName = (asset.locationId?.name || "").toLowerCase();
-
-        return (
-          assetName.includes(searchLower) || locationName.includes(searchLower)
-        );
+      filtered = filtered.filter((department) => {
+        const departmentName = (department.name || "").toLowerCase();
+        return departmentName.includes(searchLower);
       });
     }
 
@@ -218,7 +228,7 @@ const DepartmentMaster = () => {
           showNotificationWithTimeout({
             show: true,
             type: "error",
-            message: "Failed to delete city",
+            message: "Failed to delete department",
           })
         );
       }
@@ -269,6 +279,97 @@ const DepartmentMaster = () => {
     setSearchTerm(e.target.value);
   };
 
+  // Excel functionality
+  const handleExcelUploadClick = () => {
+    setShowExcelDialog(true);
+    setSelectedFile(null);
+    setUploadResults(null);
+  };
+
+  const handleFileSelect = (event) => {
+    const file = event.target.files[0];
+    if (file) {
+      // Validate file type
+      const validTypes = ['application/vnd.ms-excel', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'];
+      if (!validTypes.includes(file.type) && !file.name.match(/\.(xlsx|xls)$/)) {
+        dispatch(
+          showNotificationWithTimeout({
+            show: true,
+            type: "error",
+            message: "Please select a valid Excel file (.xlsx or .xls)",
+          })
+        );
+        return;
+      }
+      setSelectedFile(file);
+    }
+  };
+
+  const handleExcelUpload = async () => {
+    if (!selectedFile) {
+      dispatch(
+        showNotificationWithTimeout({
+          show: true,
+          type: "error",
+          message: "Please select a file first",
+        })
+      );
+      return;
+    }
+
+    try {
+      setExcelUploadLoading(true);
+      const result = await addDepartmentsFromExcel(selectedFile);
+      
+      setUploadResults(result.data);
+      
+      // Refresh the data to show new departments
+      await fetchDepartment();
+
+      dispatch(
+        showNotificationWithTimeout({
+          show: true,
+          type: "success",
+          message: result.message || "Excel file processed successfully",
+        })
+      );
+
+    } catch (error) {
+      dispatch(
+        showNotificationWithTimeout({
+          show: true,
+          type: "error",
+          message: handleAxiosError(error),
+        })
+      );
+    } finally {
+      setExcelUploadLoading(false);
+    }
+  };
+
+  const handleCloseExcelDialog = () => {
+    setShowExcelDialog(false);
+    setSelectedFile(null);
+    setUploadResults(null);
+    if (fileInputRef.current) {
+      fileInputRef.current.value = '';
+    }
+  };
+
+  const downloadTemplate = () => {
+    // Create a simple CSV template
+    const csvContent = "name|status\nIT Department|true\nHR Department|false\nFinance Department|true";
+    const blob = new Blob([csvContent], { type: 'text/csv' });
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'department_template.csv';
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    window.URL.revokeObjectURL(url);
+  };
+
   const columns = [
     {
       field: "srNo",
@@ -311,7 +412,7 @@ const DepartmentMaster = () => {
     {
       field: "status",
       headerName: "Status",
-      flex: 1, // equal width
+      flex: 1,
       minWidth: 130,
       align: "center",
       sortable: false,
@@ -329,7 +430,7 @@ const DepartmentMaster = () => {
     {
       field: "actions",
       headerName: "Actions",
-      flex: 2, // equal width
+      flex: 2,
       minWidth: 140,
       sortable: false,
       filterable: false,
@@ -434,6 +535,14 @@ const DepartmentMaster = () => {
               Refresh
             </Button>
             <Button
+              variant="outlined"
+              startIcon={<UploadIcon />}
+              onClick={handleExcelUploadClick}
+              disabled={loading}
+            >
+              Upload Excel
+            </Button>
+            <Button
               variant="contained"
               startIcon={<AddIcon />}
               onClick={handleCreateClick}
@@ -447,32 +556,30 @@ const DepartmentMaster = () => {
       {/* DataGrid */}
       <Box sx={{ height: 410, width: "100%", mt: 3 }}>
         <DataGrid
-        rows={filteredRows}
-        columns={columns}
-        disableRowSelectionOnClick
-        loading={loading}
-        paginationModel={paginationModel}
-        onPaginationModelChange={(newModel) => {
-        //added this to reset page to 0 when pageSize changes
-          if (newModel.pageSize !== paginationModel.pageSize) {
-            setPaginationModel({ page: 0, pageSize: newModel.pageSize });
-          } else {
-            setPaginationModel(newModel);
-          }
-        }}
-        pageSizeOptions={[5, 10, 25, 50]}
-        rowHeight={60}
-        headerHeight={50}
-        sx={{
-          "& .MuiDataGrid-columnHeaders": {
-            backgroundColor: "rgba(99,102,241,0.06)",
-          },
-          borderRadius: 2,
-          border: "1px solid",
-          borderColor: "divider",
-        }}
-      />
-
+          rows={filteredRows}
+          columns={columns}
+          disableRowSelectionOnClick
+          loading={loading}
+          paginationModel={paginationModel}
+          onPaginationModelChange={(newModel) => {
+            if (newModel.pageSize !== paginationModel.pageSize) {
+              setPaginationModel({ page: 0, pageSize: newModel.pageSize });
+            } else {
+              setPaginationModel(newModel);
+            }
+          }}
+          pageSizeOptions={[5, 10, 25, 50]}
+          rowHeight={60}
+          headerHeight={50}
+          sx={{
+            "& .MuiDataGrid-columnHeaders": {
+              backgroundColor: "rgba(99,102,241,0.06)",
+            },
+            borderRadius: 2,
+            border: "1px solid",
+            borderColor: "divider",
+          }}
+        />
       </Box>
 
       {/* Add/Edit Dialog */}
@@ -557,6 +664,155 @@ const DepartmentMaster = () => {
               </Button>
             </DialogActions>
           </form>
+        </Dialog>
+      )}
+
+      {/* Excel Upload Dialog */}
+      {showExcelDialog && (
+        <Dialog
+          open={showExcelDialog}
+          onClose={handleCloseExcelDialog}
+          maxWidth="md"
+          fullWidth
+        >
+          <DialogTitle>
+            <Box
+              display="flex"
+              alignItems="center"
+              justifyContent="space-between"
+            >
+              <Typography variant="h6">
+                Upload Departments from Excel
+              </Typography>
+              <IconButton
+                onClick={handleCloseExcelDialog}
+                size="small"
+                disabled={excelUploadLoading}
+              >
+                <CloseIcon />
+              </IconButton>
+            </Box>
+          </DialogTitle>
+
+          <DialogContent>
+            <Box display="flex" flexDirection="column" gap={3} pt={1}>
+              <Alert severity="info">
+                <Typography variant="body2">
+                  Upload an Excel file with departments. The file should have columns: <strong>name</strong> and <strong>status</strong> (boolean: true/false).
+                </Typography>
+              </Alert>
+
+              <Box>
+                <Button
+                  variant="outlined"
+                  startIcon={<DownloadIcon />}
+                  onClick={downloadTemplate}
+                  sx={{ mb: 2 }}
+                >
+                  Download Template
+                </Button>
+                
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  accept=".xlsx,.xls"
+                  onChange={handleFileSelect}
+                  style={{ display: 'none' }}
+                />
+                
+                <Box
+                  sx={{
+                    border: '2px dashed',
+                    borderColor: selectedFile ? 'success.main' : 'grey.300',
+                    borderRadius: 2,
+                    p: 3,
+                    textAlign: 'center',
+                    cursor: 'pointer',
+                    transition: 'all 0.3s ease',
+                    '&:hover': {
+                      borderColor: 'primary.main',
+                      backgroundColor: (theme) => 
+                        theme.palette.mode === 'dark' 
+                          ? 'rgba(255, 255, 255, 0.05)' 
+                          : 'rgba(0, 0, 0, 0.04)'
+                    }
+                  }}
+                  onClick={() => fileInputRef.current?.click()}
+                >
+                  <CloudUploadIcon 
+                    sx={{ 
+                      fontSize: 48, 
+                      color: selectedFile ? 'success.main' : 'grey.400',
+                      mb: 1 
+                    }} 
+                  />
+                  <Typography variant="body1" sx={{ mb: 1 }}>
+                    {selectedFile ? selectedFile.name : 'Click to select Excel file'}
+                  </Typography>
+                  <Typography variant="body2" color="text.secondary">
+                    Supported formats: .xlsx, .xls
+                  </Typography>
+                </Box>
+              </Box>
+
+              {uploadResults && (
+                <Box>
+                  <Typography variant="h6" gutterBottom color="success.main">
+                    Upload Results
+                  </Typography>
+                  <Alert severity="success" sx={{ mb: 2 }}>
+                    Successfully processed {uploadResults.summary?.successfullyCreated || 0} departments
+                  </Alert>
+                  
+                  {uploadResults.summary?.failed > 0 && (
+                    <Alert severity="warning" sx={{ mb: 2 }}>
+                      {uploadResults.summary.failed} departments failed to create
+                    </Alert>
+                  )}
+
+                  {uploadResults.summary?.errors && (
+                    <Box>
+                      <Typography variant="subtitle2" color="error" gutterBottom>
+                        Errors:
+                      </Typography>
+                      <List dense>
+                        {uploadResults.summary.errors.map((error, index) => (
+                          <ListItem key={index}>
+                            <ListItemText 
+                              primary={error}
+                              primaryTypographyProps={{ variant: 'body2', color: 'error' }}
+                            />
+                          </ListItem>
+                        ))}
+                      </List>
+                    </Box>
+                  )}
+                </Box>
+              )}
+            </Box>
+          </DialogContent>
+
+          <DialogActions sx={{ px: 3, pb: 3 }}>
+            <Button
+              onClick={handleCloseExcelDialog}
+              variant="outlined"
+              disabled={excelUploadLoading}
+            >
+              {uploadResults ? 'Close' : 'Cancel'}
+            </Button>
+            {!uploadResults && (
+              <Button
+                onClick={handleExcelUpload}
+                variant="contained"
+                disabled={excelUploadLoading || !selectedFile}
+                startIcon={
+                  excelUploadLoading ? <CircularProgress size={16} /> : <UploadIcon />
+                }
+              >
+                {excelUploadLoading ? "Uploading..." : "Upload File"}
+              </Button>
+            )}
+          </DialogActions>
         </Dialog>
       )}
 

@@ -48,4 +48,23 @@ const deleteDepartment = async (stateId) => {
   }
 };
 
-export { getAllDepartment, addDepartment, updateDepartment, deleteDepartment };
+const addDepartmentsFromExcel = async (excelFile) => {
+  try {
+    const formData = new FormData();
+    formData.append('file', excelFile);
+
+    const response = await axiosInstance.post('/api/v1/departmentmaster/add-excel-department', formData, {
+      headers: {
+        'Content-Type': 'multipart/form-data',
+      },
+    });
+    return response.data;
+  } catch (error) {
+    if (import.meta.env.VITE_DEVELOPMENT === 'development') {
+      console.error('Error adding departments from Excel:', error);
+    }
+    throw error;
+  }
+};
+
+export { getAllDepartment, addDepartment, updateDepartment, deleteDepartment, addDepartmentsFromExcel };

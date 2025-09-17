@@ -23,15 +23,29 @@ export const upload = multer({
     headerPairs: 2000          // Maximum header pairs
   },
   fileFilter: (req, file, cb) => {
-    // Optional: Add file type validation
-    const allowedTypes = /jpeg|jpg|png|gif|pdf|doc|docx/;
+    const allowedTypes = /jpeg|jpg|png|gif|pdf|doc|docx|xlsx|xls|csv/;
     const extname = allowedTypes.test(file.originalname.toLowerCase());
-    const mimetype = allowedTypes.test(file.mimetype);
+    
+    // Updated MIME types to include Excel formats
+    const allowedMimeTypes = [
+      'image/jpeg',
+      'image/jpg', 
+      'image/png',
+      'image/gif',
+      'application/pdf',
+      'application/msword',
+      'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+      'application/vnd.ms-excel',
+      'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+      'text/csv'
+    ];
+    
+    const mimetype = allowedMimeTypes.includes(file.mimetype);
     
     if (extname && mimetype) {
       return cb(null, true);
     } else {
-      cb(new Error('Only images, PDFs, and documents are allowed!'));
+      cb(new Error('Only images, PDFs, documents, and Excel files are allowed!'));
     }
   }
 });
