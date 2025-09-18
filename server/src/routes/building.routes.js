@@ -1,10 +1,12 @@
 import { Router } from "express";
 import { verifyJwt } from "../middlewares/auth.middleware.js";
 import { checkAccess } from "../middlewares/checkAccess.middleware.js";
-import { addNewBuilding, deleteBuilding, getAllBuilding, updateBuilding } from "../controllers/buildingMaster.controller.js";
+import { addBuildingFromExcel, addNewBuilding, deleteBuilding, getAllBuilding, updateBuilding } from "../controllers/buildingMaster.controller.js";
+import { upload } from "../middlewares/multer.middleware.js";
 
 const router = Router();
 
+router.route('/add-excel-buildings').post(verifyJwt, checkAccess('buildingMaster:edit'), upload.single("file"), addBuildingFromExcel);
 router.route('/add-building').post(verifyJwt, checkAccess('buildingMaster:edit'), addNewBuilding);
 router.route('/get-all-buildings').get(verifyJwt, checkAccess('buildingMaster:view'), getAllBuilding);
 router.route('/update-building/:id').put(verifyJwt, checkAccess('buildingMaster:edit'), updateBuilding);

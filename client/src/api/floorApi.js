@@ -48,4 +48,23 @@ const deleteFloor = async (stateId) => {
   }
 };
 
-export { getAllFloors, addFloor, updateFloor, deleteFloor };
+const addFloorsFromExcel = async (excelFile) => {
+  try {
+    const formData = new FormData();
+    formData.append('file', excelFile);
+
+    const response = await axiosInstance.post('/api/v1/floormaster/add-excel-floors', formData, {
+      headers: {
+        'Content-Type': 'multipart/form-data',
+      },
+    });
+    return response.data;
+  } catch (error) {
+    if (import.meta.env.VITE_DEVELOPMENT === 'development') {
+      console.error('Error adding floors from Excel:', error);
+    }
+    throw error;
+  }
+};
+
+export { getAllFloors, addFloor, updateFloor, deleteFloor, addFloorsFromExcel };

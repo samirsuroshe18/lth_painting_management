@@ -48,4 +48,23 @@ const deleteBuilding = async (stateId) => {
   }
 };
 
-export { getAllBuildings, addBuilding, updateBuilding, deleteBuilding };
+const addBuildingsFromExcel = async (excelFile) => {
+  try {
+    const formData = new FormData();
+    formData.append('file', excelFile);
+
+    const response = await axiosInstance.post('/api/v1/buildingmaster/add-excel-buildings', formData, {
+      headers: {
+        'Content-Type': 'multipart/form-data',
+      },
+    });
+    return response.data;
+  } catch (error) {
+    if (import.meta.env.VITE_DEVELOPMENT === 'development') {
+      console.error('Error adding buildings from Excel:', error);
+    }
+    throw error;
+  }
+};
+
+export { getAllBuildings, addBuilding, updateBuilding, deleteBuilding, addBuildingsFromExcel };

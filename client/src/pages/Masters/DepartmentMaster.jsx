@@ -672,7 +672,7 @@ const DepartmentMaster = () => {
         <Dialog
           open={showExcelDialog}
           onClose={handleCloseExcelDialog}
-          maxWidth="md"
+          maxWidth="sm"
           fullWidth
         >
           <DialogTitle>
