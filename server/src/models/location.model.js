@@ -26,23 +26,6 @@ const LocationSchema = new Schema({
         required: true
     },
 
-    departmentId: {
-        type: Schema.Types.ObjectId,
-        ref: 'Department',
-        required: true
-    },
-
-    buildingId: {
-        type: Schema.Types.ObjectId,
-        ref: 'Building',
-        required: true
-    },
-
-    floorId: {
-        type: Schema.Types.ObjectId,
-        ref: 'Floor',
-        required: true
-    },
 
     status: {
         type: Boolean,

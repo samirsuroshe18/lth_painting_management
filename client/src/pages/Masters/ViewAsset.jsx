@@ -7,12 +7,22 @@ import {
   FaRulerCombined,
   FaRupeeSign,
   FaImage,
+  FaBuilding,
+  FaUsers,
+  FaLayerGroup,
 } from "react-icons/fa";
 import { useLocation } from "react-router-dom";
 
 const ViewAsset = () => {
   const { state } = useLocation();
   const initialAsset = state?.asset || {};
+
+  // Debug: Log the asset data to console to see what's available
+  console.log("Asset data:", initialAsset);
+  console.log("Location data:", initialAsset?.locationId);
+  console.log("Department data:", initialAsset?.departmentId);
+  console.log("Building data:", initialAsset?.buildingId);
+  console.log("Floor data:", initialAsset?.floorId);
 
   const assetDetails = [
     {
@@ -64,14 +74,24 @@ const ViewAsset = () => {
       icon: <FaMapMarkerAlt />,
     },
     {
-      label: "Asset Place",
-      value: initialAsset?.place || "-",
+      label: "Asset Location Area",
+      value: initialAsset?.locationId?.areaId?.name || "-",
       icon: <FaMapMarkerAlt />,
     },
     {
-      label: "Asset Location Area",
-      value: initialAsset?.locationId?.area || "-",
-      icon: <FaMapMarkerAlt />,
+      label: "Department",
+      value: initialAsset?.departmentId?.name || "-",
+      icon: <FaUsers />,
+    },
+    {
+      label: "Building Name",
+      value: initialAsset?.buildingId?.name || "-",
+      icon: <FaBuilding />,
+    },
+    {
+      label: "Floor",
+      value: initialAsset?.floorId?.name || "-",
+      icon: <FaLayerGroup />,
     },
   ];
 

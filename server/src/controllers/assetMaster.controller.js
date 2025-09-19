@@ -4,11 +4,27 @@ import catchAsync from '../utils/catchAsync.js';
 import { Asset } from '../models/asset.model.js';
 import { Location } from '../models/location.model.js';
 import { uploadOnCloudinary } from '../utils/cloudinary.js';
+import { Department } from '../models/department.model.js';  // Add this import
+import { Building } from '../models/building.model.js';      // Add this import
+import { Floor } from '../models/floor.model.js';
 import QRCode from 'qrcode'
 import mongoose from 'mongoose';
 
 const addNewAsset = catchAsync(async (req, res) => {
-    const { name, description, purchaseValue, locationId, year, artist, place, size, status } = req.body;
+    const { 
+        name, 
+        description, 
+        purchaseValue, 
+        locationId, 
+        year, 
+        artist,  
+        size, 
+        status,
+        department,
+        building,
+        floor
+    } = req.body;
+    
     let imageUrl = null;
     const imagePath = req.file?.path || null;
 
@@ -21,8 +37,8 @@ const addNewAsset = catchAsync(async (req, res) => {
     }
 
     // Updated validation - removed description, purchaseValue, and year from required check
-    if (!name || !locationId || !artist || !place) {
-        throw new ApiError(400, 'Name, location, artist, and place are required fields');
+    if (!name || !locationId || !artist ) {
+        throw new ApiError(400, 'Name, location, and artist are required fields');
     }
 
     if (imagePath) {
@@ -36,13 +52,25 @@ const addNewAsset = catchAsync(async (req, res) => {
         image: imageUrl || 'N/A',
         locationId,
         artist,
-        place,
         size,
         status,
         createdBy: req.user._id,
         updatedBy: req.user._id,
         reviewStatus: req.user.role === 'auditor' ? 'pending' : 'approved',
     };
+
+    // Add new fields if they have values
+    if (department) {
+        assetData.departmentId = department;
+    }
+    
+    if (building) {
+        assetData.buildingId = building;
+    }
+    
+    if (floor) {
+        assetData.floorId = floor;
+    }
 
     // Only add optional fields if they have meaningful values
     if (description && description.trim() !== '') {
@@ -65,7 +93,8 @@ const addNewAsset = catchAsync(async (req, res) => {
     if (!newAsset) {
         throw new ApiError(500, 'Failed to create asset');
     }
-console.log("QR Code URL:", process.env.QR_CODE_DATA_URL);
+    
+    console.log("QR Code URL:", process.env.QR_CODE_DATA_URL);
 
     const qrCodeDataUrl = await QRCode.toDataURL(`${process.env.QR_CODE_DATA_URL}${newAsset._id}`);
 
@@ -86,26 +115,80 @@ const viewAsset = catchAsync(async (req, res) => {
     if (!assetId) {
         throw new ApiError(400, 'Asset ID is required');
     }
-    const asset = await Asset.findById(assetId).populate('locationId', 'name')
-        .populate('createdBy', 'userName')
-        .populate('updatedBy', 'userName');
+
+    const asset = await Asset.findById(assetId)
+        .populate({
+            path: "locationId",
+            populate: [
+                { path: "stateId", select: "name" },
+                { path: "cityId", select: "name" },
+                { path: "areaId", select: "name" },
+            ],
+            select: "name stateId cityId areaId"
+        })
+        .populate("departmentId", "name")
+        .populate("buildingId", "name")
+        .populate("floorId", "name")
+        .populate("createdBy", "userName")
+        .populate("updatedBy", "userName");
 
     if (!asset) {
         throw new ApiError(404, 'Asset not found');
     }
+
     return res.status(200).json(
         new ApiResponse(200, asset, "Asset retrieved successfully")
     );
 });
 
+// const viewAssetPublic = catchAsync(async (req, res) => {
+//     const assetId = req.params.assetId;
+//     if (!assetId) {
+//         throw new ApiError(400, 'Asset ID is required');
+//     }
+//     const asset = await Asset.findOne({ _id: assetId, status: true, reviewStatus: 'approved' })
+//         .select('-updatedAt -reviewedBy -reviewStatus -status -qrCode -__v')
+//         .populate('locationId', 'name area')
+//         .populate('departmentId', 'name')
+//         .populate('buildingId', 'name')
+//         .populate('floorId', 'name')
+//         .populate('createdBy', 'userName');
+
+//     if (!asset) {
+//         throw new ApiError(404, 'Asset not found');
+//     }
+
+//     const locations = await Location.find()
+//         .select('name area stateId')
+//         .populate('stateId', 'name');
+
+//     return res.status(200).json(
+//         new ApiResponse(200, {
+//             asset,
+//             locations
+//         }, "Asset retrieved successfully")
+//     );
+// });
 const viewAssetPublic = catchAsync(async (req, res) => {
     const assetId = req.params.assetId;
     if (!assetId) {
         throw new ApiError(400, 'Asset ID is required');
     }
+         
     const asset = await Asset.findOne({ _id: assetId, status: true, reviewStatus: 'approved' })
         .select('-updatedAt -reviewedBy -reviewStatus -status -qrCode -__v')
-        .populate('locationId', 'name area')
+        .populate({
+            path: 'locationId',
+            select: 'name area stateId cityId areaId',
+            populate: [
+                { path: 'stateId', select: 'name' },
+                { path: 'cityId', select: 'name' },
+                { path: 'areaId', select: 'name' }
+            ]
+        })
+        .populate('departmentId', 'name')
+        .populate('buildingId', 'name')
+        .populate('floorId', 'name')
         .populate('createdBy', 'userName');
 
     if (!asset) {
@@ -113,20 +196,51 @@ const viewAssetPublic = catchAsync(async (req, res) => {
     }
 
     const locations = await Location.find()
-        .select('name area stateId')
-        .populate('stateId', 'name');
+        .select('name area stateId cityId areaId')
+        .populate('stateId', 'name')
+        .populate('cityId', 'name')
+        .populate('areaId', 'name');
+
+    // Add the missing database queries
+    const departments = await Department.find()
+        .select('name')
+        .sort({ name: 1 }); // Optional: sort alphabetically
+
+    const buildings = await Building.find()
+        .select('name')
+        .sort({ name: 1 }); // Optional: sort alphabetically
+
+    const floors = await Floor.find()
+        .select('name')
+        .sort({ name: 1 }); // Optional: sort alphabetically
 
     return res.status(200).json(
         new ApiResponse(200, {
             asset,
-            locations
+            locations,
+            departments,
+            buildings,
+            floors
         }, "Asset retrieved successfully")
     );
 });
 
 const updateAsset = catchAsync(async (req, res) => {
     const { assetId } = req.params;
-    const { name, locationId, place, purchaseValue, year, description, artist, size, status } = req.body;
+    const { 
+        name, 
+        locationId, 
+        purchaseValue, 
+        year, 
+        description, 
+        artist, 
+        size, 
+        status,
+        department,
+        building,
+        floor
+    } = req.body;
+    
     let imageUrl = null;
     const imagePath = req.file?.path || null;
 
@@ -162,10 +276,14 @@ const updateAsset = catchAsync(async (req, res) => {
     if (locationId !== undefined) updateData.locationId = locationId;
     if (year !== undefined) updateData.year = year;
     if (artist !== undefined) updateData.artist = artist;
-    if (place !== undefined) updateData.place = place;
     if (size !== undefined) updateData.size = size;
     if (status !== undefined) updateData.status = status;
     if (imageUrl) updateData.image = imageUrl;
+    
+    // Add new fields to update data
+    if (department !== undefined) updateData.departmentId = department;
+    if (building !== undefined) updateData.buildingId = building;
+    if (floor !== undefined) updateData.floorId = floor;
 
     // Update the asset
     const updatedAsset = await Asset.findByIdAndUpdate(
@@ -203,7 +321,7 @@ const reviewAssetStatus = catchAsync(async (req, res) => {
                     select: 'name',
                 },
             ]
-        },)
+        })
         .populate('createdBy', 'userName');
 
     if (!asset) {
@@ -233,6 +351,101 @@ const reviewAssetStatus = catchAsync(async (req, res) => {
     );
 });
 
+// const getAssets = catchAsync(async (req, res) => {
+//     // Pagination parameters
+//     const page = parseInt(req.query.page) || 1;
+//     const limit = parseInt(req.query.limit) || 10;
+//     const skip = (page - 1) * limit;
+
+//     // Filter parameters
+//     const filters = {};
+
+//     // Status filter
+//     if (req.query.status) {
+//         filters.reviewStatus = req.query.status;
+//     }
+
+//     // Date range filter
+//     if (req.query.startDate && req.query.endDate) {
+//         const startDate = new Date(req.query.startDate);
+//         const endDate = new Date(req.query.endDate);
+//         endDate.setHours(23, 59, 59, 999); // Set to end of day
+
+//         filters.createdAt = {
+//             $gte: startDate,
+//             $lte: endDate
+//         };
+//     }
+
+//     if (req.query.startDate) {
+//         const startDate = new Date(req.query.startDate);
+
+//         filters.createdAt = {
+//             $gte: startDate
+//         };
+//     }
+
+//     if (req.query.endDate) {
+//         const endDate = new Date(req.query.endDate);
+//         endDate.setHours(23, 59, 59, 999);
+
+//         filters.createdAt = {
+//             $lte: endDate
+//         };
+//     }
+
+//     // Name/keyword search
+//     if (req.query.search) {
+//         filters.$or = [
+//             { name: { $regex: req.query.search, $options: 'i' } },
+//         ];
+//     }
+
+//     // Base match conditions for DeliveryEntry
+//     const assetMatch = {
+//         isDeleted: false,
+//         locationId: { $in: req.user.location.map(loc => loc._id) },
+//         ...filters
+//     };
+
+//     // Sorting parameters
+//     let sort = { createdAt: -1 }; // default sort (newest first)
+//     if (req.query.sortField && req.query.sortOrder) {
+//         const sortField = req.query.sortField;
+//         const sortOrder = parseInt(req.query.sortOrder);
+//         sort = { [sortField]: sortOrder };
+//     }
+
+//     // Count total documents for pagination
+//     const totalCount = await Asset.countDocuments(assetMatch);
+//     const totalPages = Math.ceil(totalCount / limit);
+//     const updatedAsset = await Asset.find(assetMatch)
+//         .sort(sort)
+//         .populate('locationId', 'name')
+//         .populate('departmentId', 'name')
+//         .populate('buildingId', 'name')
+//         .populate('floorId', 'name')
+//         .populate('createdBy', 'userName');
+//     // Apply pagination on combined results
+//     const response = updatedAsset.slice(skip, skip + limit);
+
+//     if (response.length <= 0) {
+//         throw new ApiError(404, "No assets available.");
+//     }
+
+//     return res.status(200).json(
+//         new ApiResponse(200, {
+//             assets: response,
+//             pagination: {
+//                 totalEntries: totalCount,
+//                 entriesPerPage: limit,
+//                 currentPage: page,
+//                 totalPages: totalPages,
+//                 hasMore: page < totalPages
+//             }
+//         }, "Assets retrieved successfully")
+//     );
+// });
 const getAssets = catchAsync(async (req, res) => {
     // Pagination parameters
     const page = parseInt(req.query.page) || 1;
@@ -257,37 +470,25 @@ const getAssets = catchAsync(async (req, res) => {
             $gte: startDate,
             $lte: endDate
         };
-    }
-
-    if (req.query.startDate) {
+    } else if (req.query.startDate) {
         const startDate = new Date(req.query.startDate);
-
-        filters.createdAt = {
-            $gte: startDate
-        };
-    }
-
-    if (req.query.endDate) {
+        filters.createdAt = { $gte: startDate };
+    } else if (req.query.endDate) {
         const endDate = new Date(req.query.endDate);
         endDate.setHours(23, 59, 59, 999);
-
-        filters.createdAt = {
-            $lte: endDate
-        };
+        filters.createdAt = { $lte: endDate };
     }
 
     // Name/keyword search
     if (req.query.search) {
-        filters.$or = [
-            { name: { $regex: req.query.search, $options: 'i' } },
-        ];
+        filters.$or = [{ name: { $regex: req.query.search, $options: "i" } }];
     }
 
-    // Base match conditions for DeliveryEntry
+    // Base match conditions for assets
     const assetMatch = {
         isDeleted: false,
-        locationId: { $in: req.user.location.map(loc => loc._id) },
-        ...filters
+        locationId: { $in: req.user.location.map((loc) => loc._id) },
+        ...filters,
     };
 
     // Sorting parameters
@@ -301,28 +502,45 @@ const getAssets = catchAsync(async (req, res) => {
     // Count total documents for pagination
     const totalCount = await Asset.countDocuments(assetMatch);
     const totalPages = Math.ceil(totalCount / limit);
+
+    // Fetch assets with nested populate
     const updatedAsset = await Asset.find(assetMatch)
         .sort(sort)
-        .populate('locationId', 'name')
-        .populate('createdBy', 'userName');
-    // Apply pagination on combined results
-    const response = updatedAsset.slice(skip, skip + limit);
+        .populate({
+            path: "locationId",
+            select: "name area cityId",
+            populate: {
+                path: "cityId",
+                select: "name", // city name
+                model: "City"
+            }
+        })
+        .populate("departmentId", "name")
+        .populate("buildingId", "name")
+        .populate("floorId", "name")
+        .populate("createdBy", "userName")
+        .skip(skip)
+        .limit(limit);
 
-    if (response.length <= 0) {
+    if (updatedAsset.length <= 0) {
         throw new ApiError(404, "No assets available.");
     }
 
     return res.status(200).json(
-        new ApiResponse(200, {
-            assets: response,
-            pagination: {
-                totalEntries: totalCount,
-                entriesPerPage: limit,
-                currentPage: page,
-                totalPages: totalPages,
-                hasMore: page < totalPages
-            }
-        }, "Assets retrieved successfully")
+        new ApiResponse(
+            200,
+            {
+                assets: updatedAsset,
+                pagination: {
+                    totalEntries: totalCount,
+                    entriesPerPage: limit,
+                    currentPage: page,
+                    totalPages: totalPages,
+                    hasMore: page < totalPages,
+                },
+            },
+            "Assets retrieved successfully"
+        )
     );
 });
 
@@ -340,8 +558,19 @@ const getAllAssets = catchAsync(async (req, res) => {
                     path: 'stateId',
                     select: 'name',
                 },
+                {
+                    path: 'cityId',
+                    select: 'name',
+                },
+                {
+                    path: 'areaId',
+                    select: 'name',
+                },
             ]
-        },)
+        })
+        .populate("departmentId", "name")
+        .populate("buildingId", "name")
+        .populate("floorId", "name")
         .populate('createdBy', 'userName');
 
     if (response.length <= 0) {
@@ -359,6 +588,9 @@ const getQrCodes = catchAsync(async (req, res) => {
         locationId: { $in: req.user.location.map(loc => loc._id) },
     })
     .populate('locationId', 'name')
+    .populate('departmentId', 'name')
+    .populate('buildingId', 'name')
+    .populate('floorId', 'name')
     .sort({createdAt: -1});
 
     if (response.length <= 0) {
@@ -404,16 +636,19 @@ const getAssetsByLocation = catchAsync(async (req, res) => {
     }
 
     // Sanitize the input arrays to prevent injection attacks
-        const sanitizedLocationIds = locationIds.filter(id => typeof id === 'string' && mongoose.Types.ObjectId.isValid(id));
-    
-        if (sanitizedLocationIds.length === 0 ) {
-            throw new ApiError(400, 'Invalid ID format provided');
-        }
+    const sanitizedLocationIds = locationIds.filter(id => typeof id === 'string' && mongoose.Types.ObjectId.isValid(id));
+
+    if (sanitizedLocationIds.length === 0) {
+        throw new ApiError(400, 'Invalid ID format provided');
+    }
 
     // Query assets that match any of the location IDs
     const assets = await Asset.find({
         locationId: { $in: sanitizedLocationIds }
-    });
+    })
+    .populate('departmentId', 'name')
+    .populate('buildingId', 'name')
+    .populate('floorId', 'name');
 
     return res.status(200).json(
         new ApiResponse(200, { assets }, "success")
@@ -431,4 +666,4 @@ export {
     getAssetsByLocation,
     getQrCodes,
     getAllAssets
-}; 
+};

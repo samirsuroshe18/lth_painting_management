@@ -5,8 +5,9 @@ import { Location } from '../models/location.model.js';
 import { User } from '../models/user.model.js';
 import mongoose from 'mongoose';
 
+
 const addNewLocation = catchAsync(async (req, res) => {
-    const { name, state, city, area, department, building, floor, status } = req.body;
+    const { name, state, city, area, status } = req.body;
     if (!name || !state || !area || status == null) {
         throw new ApiError(400, 'Name, state, area, and status are required fields');
     }
@@ -16,20 +17,15 @@ const addNewLocation = catchAsync(async (req, res) => {
         stateId: state,
         cityId: city,
         areaId: area,
-        departmentId: department,
-        buildingId: building,
-        floorId: floor,
         status: status,
         createdBy: req.user._id,
         updatedBy: req.user._id,
     });
 
-    const isExist = await Location.findById(newLocation._id).populate('stateId', 'name')
+    const isExist = await Location.findById(newLocation._id)
+        .populate('stateId', 'name')
         .populate('cityId', 'name')
-        .populate('areaId', 'name')
-        .populate('departmentId', 'name')
-        .populate('buildingId', 'name')
-        .populate('floorId', 'name');
+        .populate('areaId', 'name');
 
     if (!isExist) {
         throw new ApiError(500, 'Failed to create location');
@@ -43,12 +39,11 @@ const addNewLocation = catchAsync(async (req, res) => {
     return res.status(201).json(
         new ApiResponse(201, isExist, 'Location created successfully')
     );
-
 });
 
 const updateLocation = catchAsync(async (req, res) => {
     const { id } = req.params;
-    const { name, state, city, area, department, building, floor, status } = req.body;
+    const { name, state, city, area, status } = req.body;
 
     if (!name || !state || !area || !status) {
         throw new ApiError(400, 'Name, state, area, and status are required fields');
@@ -61,19 +56,14 @@ const updateLocation = catchAsync(async (req, res) => {
             stateId: state,
             cityId: city,
             areaId: area,
-            departmentId: department,
-            buildingId: building,
-            floorId: floor,
             status,
             updatedBy: req.user._id,
         },
         { new: true }
-    ).populate('stateId', 'name')
+    )
+        .populate('stateId', 'name')
         .populate('cityId', 'name')
-        .populate('areaId', 'name')
-        .populate('departmentId', 'name')
-        .populate('buildingId', 'name')
-        .populate('floorId', 'name');
+        .populate('areaId', 'name');
 
     if (!updatedLocation) {
         throw new ApiError(404, 'Location not found');
@@ -89,14 +79,104 @@ const getLocations = catchAsync(async (req, res) => {
         .populate('stateId', 'name')
         .populate('cityId', 'name')
         .populate('areaId', 'name')
-        .populate('departmentId', 'name')
-        .populate('buildingId', 'name')
-        .populate('floorId', 'name')
         .sort({ createdAt: -1 });
     return res.status(200).json(
         new ApiResponse(200, locations, 'Locations retrieved successfully')
     );
 });
+
+// const addNewLocation = catchAsync(async (req, res) => {
+//     const { name, state, city, area, department, building, floor, status } = req.body;
+//     if (!name || !state || !area || status == null) {
+//         throw new ApiError(400, 'Name, state, area, and status are required fields');
+//     }
+
+//     const newLocation = await Location.create({
+//         name,
+//         stateId: state,
+//         cityId: city,
+//         areaId: area,
+//         departmentId: department,
+//         buildingId: building,
+//         floorId: floor,
+//         status: status,
+//         createdBy: req.user._id,
+//         updatedBy: req.user._id,
+//     });
+
+//     const isExist = await Location.findById(newLocation._id).populate('stateId', 'name')
+//         .populate('cityId', 'name')
+//         .populate('areaId', 'name')
+//         .populate('departmentId', 'name')
+//         .populate('buildingId', 'name')
+//         .populate('floorId', 'name');
+
+//     if (!isExist) {
+//         throw new ApiError(500, 'Failed to create location');
+//     }
+
+//     await User.updateOne(
+//         { role: "superadmin" },
+//         { $push: { location: newLocation._id } }
+//     );
+
+//     return res.status(201).json(
+//         new ApiResponse(201, isExist, 'Location created successfully')
+//     );
+
+// });
+
+// const updateLocation = catchAsync(async (req, res) => {
+//     const { id } = req.params;
+//     const { name, state, city, area, department, building, floor, status } = req.body;
+
+//     if (!name || !state || !area || !status) {
+//         throw new ApiError(400, 'Name, state, area, and status are required fields');
+//     }
+
+//     const updatedLocation = await Location.findByIdAndUpdate(
+//         id,
+//         {
+//             name,
+//             stateId: state,
+//             cityId: city,
+//             areaId: area,
+//             departmentId: department,
+//             buildingId: building,
+//             floorId: floor,
+//             status,
+//             updatedBy: req.user._id,
+//         },
+//         { new: true }
+//     ).populate('stateId', 'name')
+//         .populate('cityId', 'name')
+//         .populate('areaId', 'name')
+//         .populate('departmentId', 'name')
+//         .populate('buildingId', 'name')
+//         .populate('floorId', 'name');
+
+//     if (!updatedLocation) {
+//         throw new ApiError(404, 'Location not found');
+//     }
+
+//     return res.status(200).json(
+//         new ApiResponse(200, updatedLocation, 'Location updated successfully')
+//     );
+// });
+
+// const getLocations = catchAsync(async (req, res) => {
+//     const locations = await Location.find({})
+//         .populate('stateId', 'name')
+//         .populate('cityId', 'name')
+//         .populate('areaId', 'name')
+//         .populate('departmentId', 'name')
+//         .populate('buildingId', 'name')
+//         .populate('floorId', 'name')
+//         .sort({ createdAt: -1 });
+//     return res.status(200).json(
+//         new ApiResponse(200, locations, 'Locations retrieved successfully')
+//     );
+// });
 
 const deleteLocation = catchAsync(async (req, res) => {
     const { id } = req.params;

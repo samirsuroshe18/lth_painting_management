@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, Fragment } from "react";
 import {
   Box,
   Typography,
@@ -13,6 +13,7 @@ import {
   Card,
   IconButton,
   FormControl,
+  Autocomplete,
 } from "@mui/material";
 import {
   Dialog,
@@ -27,8 +28,11 @@ import { LocalizationProvider } from "@mui/x-date-pickers/LocalizationProvider";
 import { DatePicker } from "@mui/x-date-pickers/DatePicker";
 import { CloudUpload, DeleteOutline, CheckCircle } from "@mui/icons-material";
 import { createNewAsset, updateAsset } from "../../api/assetMasterApi";
-import { getAllLocations } from "../../api/locationApi"; // Add this import
-import { useDispatch, useSelector } from "react-redux"; // Add useSelector
+import { getAllLocations } from "../../api/locationApi";
+import { getAllDepartment } from "../../api/departmentApi"; // Add this import
+import { getAllBuildings } from "../../api/buildingApi"; // Add this import
+import { getAllFloors } from "../../api/floorApi"; // Add this import
+import { useDispatch, useSelector } from "react-redux";
 import { showNotificationWithTimeout } from "../../redux/slices/notificationSlice";
 import { handleAxiosError } from "../../utils/handleAxiosError";
 import { useLocation, useNavigate } from "react-router-dom";
@@ -46,6 +50,21 @@ const CreateNewAsset = () => {
   const [dragOver, setDragOver] = useState(false);
   const [successDialogOpen, setSuccessDialogOpen] = useState(false);
   const theme = useTheme();
+
+  // Department dropdown states
+  const [departmentOpen, setDepartmentOpen] = useState(false);
+  const [departmentOptions, setDepartmentOptions] = useState([]);
+  const [departmentLoading, setDepartmentLoading] = useState(false);
+  
+  // Building dropdown states
+  const [buildingOpen, setBuildingOpen] = useState(false);
+  const [buildingOptions, setBuildingOptions] = useState([]);
+  const [buildingLoading, setBuildingLoading] = useState(false);
+  
+  // Floor dropdown states
+  const [floorOpen, setFloorOpen] = useState(false);
+  const [floorOptions, setFloorOptions] = useState([]);
+  const [floorLoading, setFloorLoading] = useState(false);
 
   // Add these state variables for separate size inputs
   const [sizeWidth, setSizeWidth] = useState(() => {
@@ -101,18 +120,105 @@ const CreateNewAsset = () => {
   }, [dispatch]);
 
   const [formData, setFormData] = useState({
-    id: asset?._id ?? undefined,
-    image: null,
-    name: asset?.name ?? "",
-    artist: asset?.artist ?? "",
-    place: asset?.place ?? "",
-    location: asset?.locationId?._id ?? "",
-    currentValue: asset?.purchaseValue ?? "",
-    year: asset?.year ? dayjs().year(asset?.year) : null,
-    description: asset?.description ?? "",
-    size: asset?.size ?? "",
-    status: asset?.status === true ? "active" : "inactive",
-  });
+  id: asset?._id ?? undefined,
+  image: null,
+  name: asset?.name ?? "",
+  artist: asset?.artist ?? "",
+  place: asset?.place ?? "",
+  location: asset?.locationId?._id ?? "",
+  departmentId: asset?.departmentId || null,  // Changed from {} to null
+  buildingId: asset?.buildingId || null,      // Changed from {} to null
+  floorId: asset?.floorId || null,            // Changed from {} to null
+  currentValue: asset?.purchaseValue ?? "",
+  year: asset?.year ? dayjs().year(asset?.year) : null,
+  description: asset?.description ?? "",
+  size: asset?.size ?? "",
+  status: asset?.status === true ? "active" : "inactive",
+});
+
+  // Department dropdown handlers
+  const handleDepartmentOpen = () => {
+    setDepartmentOpen(true);
+    (async () => {
+      try {
+        setDepartmentLoading(true);
+        const res = await getAllDepartment();
+        setDepartmentOptions(res?.data ?? []);
+      } catch (error) {
+        setDepartmentOptions([]);
+        dispatch(
+          showNotificationWithTimeout({
+            show: true,
+            type: "error",
+            message: handleAxiosError(error),
+          })
+        );
+      } finally {
+        setDepartmentLoading(false);
+      }
+    })();
+  };
+
+  const handleDepartmentClose = () => {
+    setDepartmentOpen(false);
+    setDepartmentOptions([]);
+  };
+
+  // Building dropdown handlers
+  const handleBuildingOpen = () => {
+    setBuildingOpen(true);
+    (async () => {
+      try {
+        setBuildingLoading(true);
+        const res = await getAllBuildings();
+        setBuildingOptions(res?.data ?? []);
+      } catch (error) {
+        setBuildingOptions([]);
+        dispatch(
+          showNotificationWithTimeout({
+            show: true,
+            type: "error",
+            message: handleAxiosError(error),
+          })
+        );
+      } finally {
+        setBuildingLoading(false);
+      }
+    })();
+  };
+
+  const handleBuildingClose = () => {
+    setBuildingOpen(false);
+    setBuildingOptions([]);
+  };
+
+  // Floor dropdown handlers
+  const handleFloorOpen = () => {
+    setFloorOpen(true);
+    (async () => {
+      try {
+        setFloorLoading(true);
+        const res = await getAllFloors();
+        setFloorOptions(res?.data ?? []);
+      } catch (error) {
+        setFloorOptions([]);
+        dispatch(
+          showNotificationWithTimeout({
+            show: true,
+            type: "error",
+            message: handleAxiosError(error),
+          })
+        );
+      } finally {
+        setFloorLoading(false);
+      }
+    })();
+  };
+
+  const handleFloorClose = () => {
+    setFloorOpen(false);
+    setFloorOptions([]);
+  };
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -183,10 +289,25 @@ const CreateNewAsset = () => {
       await new Promise((resolve) => setTimeout(resolve, 1000));
 
       // Prepare the data to send - handle null/empty year properly
-   const dataToSend = {
-  ...formData,
-  year: formData.year && formData.year.isValid && formData.year.isValid() ? formData.year : null,
-};
+      const dataToSend = {
+        ...formData,
+        year: formData.year && formData.year.isValid && formData.year.isValid() ? formData.year : null,
+      };
+
+      // Only include department, building, floor if they have valid _id values
+      if (formData.departmentId && formData.departmentId._id) {
+        dataToSend.department = formData.departmentId._id;
+      }
+      
+      if (formData.buildingId && formData.buildingId._id) {
+        dataToSend.building = formData.buildingId._id;
+      }
+      
+      if (formData.floorId && formData.floorId._id) {
+        dataToSend.floor = formData.floorId._id;
+      }
+
+      console.log('Data being sent to backend:', dataToSend); // Debug log
 
       const response = asset
         ? await updateAsset(dataToSend)
@@ -391,23 +512,6 @@ const CreateNewAsset = () => {
             </Stack>
           </Grid>
 
-          {/* Place */}
-          <Grid size={{ xs: 12, md: 6 }}>
-            <Stack spacing={1}>
-              <LabelWithRedAsterisk required>Place</LabelWithRedAsterisk>
-              <TextField
-                name="place"
-                value={formData.place}
-                onChange={handleChange}
-                fullWidth
-                size="small"
-                placeholder="Enter place"
-                required
-                type="text"
-              />
-            </Stack>
-          </Grid>
-
           {/* Location */}
           <Grid size={{ xs: 12, md: 6 }}>
             <Stack spacing={1}>
@@ -439,6 +543,150 @@ const CreateNewAsset = () => {
                   )}
                 </Select>
               </FormControl>
+            </Stack>
+          </Grid>
+
+          {/* Department */}
+          <Grid size={{ xs: 12, md: 6 }}>
+            <Stack spacing={1}>
+              <LabelWithRedAsterisk>Department</LabelWithRedAsterisk>
+              <Autocomplete
+                open={departmentOpen}
+                onOpen={handleDepartmentOpen}
+                onClose={handleDepartmentClose}
+                value={formData?.departmentId}
+                loading={departmentLoading}
+                options={departmentOptions}
+                getOptionLabel={(option) => option?.name || ""}
+                disabled={loading}
+                ListboxProps={{
+                  style: {
+                    maxHeight: 200, // 5 items * ~40px per item
+                  },
+                }}
+                onChange={(e, newValue) =>
+                  setFormData((prev) => ({
+                    ...prev,
+                    departmentId: newValue || {},
+                  }))
+                }
+                renderInput={(params) => (
+                  <TextField
+                    {...params}
+                    placeholder="Search department..."
+                    size="small"
+                    slotProps={{
+                      input: {
+                        ...params.InputProps,
+                        endAdornment: (
+                          <Fragment>
+                            {departmentLoading ? (
+                              <CircularProgress color="inherit" size={20} />
+                            ) : null}
+                            {params.InputProps.endAdornment}
+                          </Fragment>
+                        ),
+                      },
+                    }}
+                  />
+                )}
+              />
+            </Stack>
+          </Grid>
+
+          {/* Building Name */}
+          <Grid size={{ xs: 12, md: 6 }}>
+            <Stack spacing={1}>
+              <LabelWithRedAsterisk>Building Name</LabelWithRedAsterisk>
+              <Autocomplete
+                open={buildingOpen}
+                onOpen={handleBuildingOpen}
+                onClose={handleBuildingClose}
+                value={formData?.buildingId}
+                loading={buildingLoading}
+                options={buildingOptions}
+                getOptionLabel={(option) => option?.name || ""}
+                disabled={loading}
+                ListboxProps={{
+                  style: {
+                    maxHeight: 200, // 5 items * ~40px per item
+                  },
+                }}
+                onChange={(e, newValue) =>
+                  setFormData((prev) => ({
+                    ...prev,
+                    buildingId: newValue || {},
+                  }))
+                }
+                renderInput={(params) => (
+                  <TextField
+                    {...params}
+                    placeholder="Search building..."
+                    size="small"
+                    slotProps={{
+                      input: {
+                        ...params.InputProps,
+                        endAdornment: (
+                          <Fragment>
+                            {buildingLoading ? (
+                              <CircularProgress color="inherit" size={20} />
+                            ) : null}
+                            {params.InputProps.endAdornment}
+                          </Fragment>
+                        ),
+                      },
+                    }}
+                  />
+                )}
+              />
+            </Stack>
+          </Grid>
+
+          {/* Floor */}
+          <Grid size={{ xs: 12, md: 6 }}>
+            <Stack spacing={1}>
+              <LabelWithRedAsterisk>Floor</LabelWithRedAsterisk>
+              <Autocomplete
+                open={floorOpen}
+                onOpen={handleFloorOpen}
+                onClose={handleFloorClose}
+                value={formData?.floorId}
+                loading={floorLoading}
+                options={floorOptions}
+                getOptionLabel={(option) => option?.name || ""}
+                disabled={loading}
+                ListboxProps={{
+                  style: {
+                    maxHeight: 200, // 5 items * ~40px per item
+                  },
+                }}
+                onChange={(e, newValue) =>
+                  setFormData((prev) => ({
+                    ...prev,
+                    floorId: newValue || {},
+                  }))
+                }
+                renderInput={(params) => (
+                  <TextField
+                    {...params}
+                    placeholder="Search floor..."
+                    size="small"
+                    slotProps={{
+                      input: {
+                        ...params.InputProps,
+                        endAdornment: (
+                          <Fragment>
+                            {floorLoading ? (
+                              <CircularProgress color="inherit" size={20} />
+                            ) : null}
+                            {params.InputProps.endAdornment}
+                          </Fragment>
+                        ),
+                      },
+                    }}
+                  />
+                )}
+              />
             </Stack>
           </Grid>
 
@@ -687,14 +935,16 @@ const CreateNewAsset = () => {
               setFormData({
                 name: "",
                 image: null,
-                location: "", // Fixed: was empty string, now array
-                place: "",
+                location: "",
                 currentValue: "",
                 year: null,
                 description: "",
                 artist: "",
                 size: "",
                 status: "",
+                departmentId: {},
+                buildingId: {},
+                floorId: {},
               });
               setFileImage(null);
               setSizeWidth('');

@@ -90,8 +90,16 @@ const ROLE_ALLOW = {
   ],
 
   supervisor: [
-    'dashboard:view',                   // view‑only dashboard (as requested)
+    'dashboard:view',   
+      
+    'masters:view',
+
+    'assetMaster:view',
+    'assetMaster:edit',    
+
     'generateQrCode',
+    'auditReport:view',
+
   ],
 
   user: [

@@ -44,7 +44,7 @@ export default function AddUser() {
       mobileNo: user?.mobileNo ?? "",
       password: "",
       confirmPassword: "",
-      role: user?.role ?? "user",
+      role: user?.role ?? "supervisor",
       status: user?.isActive ? "active" : "inactive",
       location: Array.isArray(user?.location) ? user.location : [],
     }),
@@ -308,7 +308,7 @@ export default function AddUser() {
                   inputProps={{ "aria-label": "Select role", autoComplete: "off" }}
                 >
                   <MenuItem value="">Select Role</MenuItem>
-                  <MenuItem value="user">User</MenuItem>
+                  <MenuItem value="supervisor">Supervisor</MenuItem>
                   <MenuItem value="admin">Admin</MenuItem>
                   <MenuItem value="auditor">Auditor</MenuItem>
                 </Select>

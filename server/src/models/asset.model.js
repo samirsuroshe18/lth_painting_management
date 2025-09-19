@@ -19,14 +19,14 @@ const AssetSchema = new mongoose.Schema({
     
     description: {
         type: String,
-        required: false, // Changed from true to false
+        required: false,
         maxlength: 500,
-        default: '' // Optional: add default empty string
+        default: ''
     },
     
     purchaseValue: {
         type: Number,
-        required: false, // Changed from true to false
+        required: false,
     },
     
     locationId: {
@@ -35,21 +35,35 @@ const AssetSchema = new mongoose.Schema({
         required: true
     },
     
+    // ADD THESE NEW FIELDS:
+    departmentId: {
+    type: Schema.Types.ObjectId,
+    ref: 'Department',  // Changed from 'Department' to 'departments'
+    required: false
+    },
+
+    buildingId: {
+    type: Schema.Types.ObjectId,
+    ref: 'Building',    // Changed from 'Building' to 'buildings'  
+    required: false
+    },
+
+    floorId: {
+    type: Schema.Types.ObjectId,
+    ref: 'Floor',       // Changed from 'Floor' to 'floors'
+    required: false
+    },   
+    
     year: {
         type: Number,
-        required: false, // Changed from true to false
+        required: false,
     },
     
     artist: {
         type: String,
         required: true,
     },
-    
-    place: {
-        type: String,
-        required: true,
-        maxlength: 100
-    },
+  
     
     size: {
         type: String,

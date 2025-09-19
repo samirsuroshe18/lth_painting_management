@@ -42,6 +42,8 @@ import {
   addLocationToSuperAdmin,
 } from "../../api/locationApi";
 import { getAllStates } from "../../api/stateApi";
+import { getAllCities } from "../../api/cityApi";
+import { getAllArea } from "../../api/areaApi";
 import { showNotificationWithTimeout } from "../../redux/slices/notificationSlice";
 import { handleAxiosError } from "../../utils/handleAxiosError";
 
@@ -60,13 +62,27 @@ const LocationMaster = () => {
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [deleteLoading, setDeleteLoading] = useState(false);
   const [filteredRows, setFilteredRows] = useState([]);
-  const [open, setOpen] = useState(false);
-  const [options, setOptions] = useState([]);
+  
+  // State dropdown states
+  const [stateOpen, setStateOpen] = useState(false);
+  const [stateOptions, setStateOptions] = useState([]);
   const [stateLoading, setStateLoading] = useState(false);
+  
+  // City dropdown states
+  const [cityOpen, setCityOpen] = useState(false);
+  const [cityOptions, setCityOptions] = useState([]);
+  const [cityLoading, setCityLoading] = useState(false);
+  
+  // Area dropdown states
+  const [areaOpen, setAreaOpen] = useState(false);
+  const [areaOptions, setAreaOptions] = useState([]);
+  const [areaLoading, setAreaLoading] = useState(false);
+  
   const [formData, setFormData] = useState({
     name: "",
-    area: "",
     stateId: {},
+    cityId: {},
+    areaId: {},
     status: "",
   });
   const [paginationModel, setPaginationModel] = useState({
@@ -125,8 +141,8 @@ const LocationMaster = () => {
     setFilteredRows(filtered);
   };
 
-  const handleOpen = () => {
-    setOpen(true);
+  const handleStateOpen = () => {
+    setStateOpen(true);
     (async () => {
       try {
         setStateLoading(true);
@@ -134,9 +150,9 @@ const LocationMaster = () => {
         const activeStates = (res?.data ?? []).filter(
           (state) => state.status === true
         );
-        setOptions(activeStates);
+        setStateOptions(activeStates);
       } catch (error) {
-        setOptions([]);
+        setStateOptions([]);
         dispatch(
           showNotificationWithTimeout({
             show: true,
@@ -150,9 +166,65 @@ const LocationMaster = () => {
     })();
   };
 
-  const handleClose = () => {
-    setOpen(false);
-    setOptions([]);
+  const handleStateClose = () => {
+    setStateOpen(false);
+    setStateOptions([]);
+  };
+
+  const handleCityOpen = () => {
+    setCityOpen(true);
+    (async () => {
+      try {
+        setCityLoading(true);
+        const res = await getAllCities();
+        // Show all cities regardless of status
+        setCityOptions(res?.data ?? []);
+      } catch (error) {
+        setCityOptions([]);
+        dispatch(
+          showNotificationWithTimeout({
+            show: true,
+            type: "error",
+            message: handleAxiosError(error),
+          })
+        );
+      } finally {
+        setCityLoading(false);
+      }
+    })();
+  };
+
+  const handleCityClose = () => {
+    setCityOpen(false);
+    setCityOptions([]);
+  };
+
+  const handleAreaOpen = () => {
+    setAreaOpen(true);
+    (async () => {
+      try {
+        setAreaLoading(true);
+        const res = await getAllArea();
+        // Show all areas regardless of status
+        setAreaOptions(res?.data ?? []);
+      } catch (error) {
+        setAreaOptions([]);
+        dispatch(
+          showNotificationWithTimeout({
+            show: true,
+            type: "error",
+            message: handleAxiosError(error),
+          })
+        );
+      } finally {
+        setAreaLoading(false);
+      }
+    })();
+  };
+
+  const handleAreaClose = () => {
+    setAreaOpen(false);
+    setAreaOptions([]);
   };
 
   const handleSubmit = async (e) => {
@@ -162,7 +234,12 @@ const LocationMaster = () => {
       setSubmitLoading(true);
 
       if (editMode) {
-        let payload = { ...formData, state: formData.stateId?._id };
+        let payload = { 
+          ...formData, 
+          state: formData.stateId?._id,
+          city: formData.cityId?._id,
+          area: formData.areaId?._id 
+        };
         const result = await updateLocation(editLocationId, payload);
 
         const data = result.data;
@@ -180,7 +257,12 @@ const LocationMaster = () => {
           })
         );
       } else {
-        let payload = { ...formData, state: formData.stateId?._id };
+        let payload = { 
+          ...formData, 
+          state: formData.stateId?._id,
+          city: formData.cityId?._id,
+          area: formData.areaId?._id 
+        };
         const result = await addLocation(payload);
 
         const data = result.data;
@@ -306,6 +388,8 @@ const LocationMaster = () => {
       name: "",
       area: "",
       stateId: null,
+      cityId: null,
+      areaId: null,
       status: null,
     });
   };
@@ -382,104 +466,103 @@ const LocationMaster = () => {
       ),
     },
     {
+      field: "city",
+      headerName: "City",
+      flex: 1,
+      minWidth: 140,
+      align: "center",
+      headerAlign: "center",
+      sortable: false,
+      filterable: false,
+      renderCell: (params) => (
+        <Chip
+          label={params.row.cityId?.name || "-"}
+          size="small"
+          variant="outlined"
+          color="secondary"
+        />
+      ),
+    },
+    {
       field: "area",
       headerName: "Area",
       flex: 1,
-      minWidth: 220,
-      align: "center",
-      headerAlign: "center",
-      sortable: false,
-      filterable: false,
-    },
-    {
-      field: "status",
-      headerName: "Status",
-      width: 140,
+      minWidth: 140,
       align: "center",
       headerAlign: "center",
       sortable: false,
       filterable: false,
       renderCell: (params) => (
-          <Chip
-            label={
-              !params.row?.hasAccess && userData?.role == "superadmin"
-                ? "Not Added"
-                : params.value
-                  ? "Active"
-                  : "Inactive"
-            }
-            size="small"
-            color={
-              !params.row?.hasAccess && userData?.role == "superadmin"
-                ? "warning"
-                : params.value
-                  ? "success"
-                  : "default"
-            }
-            variant={params.value ? "filled" : "outlined"}
-          />
-        ),
-    },
-    {
-      field: "actions",
-      headerName: "Actions",
-      width: 150,
-      align: "center",
-      headerAlign: "center",
-      sortable: false,
-      filterable: false,
-      renderCell: (params) => (
-        <Box
-          sx={{
-            display: "flex",
-            gap: 0.5,
-            justifyContent: "center",
-            alignItems: "center",
-            height: "100%",
-          }}
-        >
-          {!params.row?.hasAccess && userData?.role == "superadmin" ? (
-            <IconButton
-              size="small"
-              color="warning"
-              onClick={(e) => {
-                e.stopPropagation();
-                handleRequestAccess(params.row);
-              }}
-              title="You don’t have access. Click to request."
-            >
-              <AddLocationAlt fontSize="small" />
-            </IconButton>
-          ) : (
-            <>
-              <IconButton
-                size="small"
-                color="primary"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  handleEditClick(params.row);
-                }}
-                title="Edit Location"
-              >
-                <EditIcon fontSize="small" />
-              </IconButton>
-
-              <IconButton
-                size="small"
-                color="error"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  handleDeleteClick(params.row);
-                }}
-                title="Delete Location"
-              >
-                <DeleteIcon fontSize="small" />
-              </IconButton>
-            </>
-          )}
-        </Box>
+        <Chip
+          label={params.row.areaId?.name || "-"}
+          size="small"
+          variant="outlined"
+          color="info"
+        />
       ),
     },
+   {
+  field: "status",
+  headerName: "Status",
+  width: 140,
+  align: "center",
+  headerAlign: "center",
+  sortable: false,
+  filterable: false,
+  renderCell: (params) => (
+    <Chip
+      label={params.value ? "Active" : "Inactive"}
+      size="small"
+      color={params.value ? "success" : "default"}
+      variant={params.value ? "filled" : "outlined"}
+    />
+  ),
+},
+   {
+  field: "actions",
+  headerName: "Actions",
+  width: 150,
+  align: "center",
+  headerAlign: "center",
+  sortable: false,
+  filterable: false,
+  renderCell: (params) => (
+    <Box
+      sx={{
+        display: "flex",
+        gap: 0.5,
+        justifyContent: "center",
+        alignItems: "center",
+        height: "100%",
+      }}
+    >
+      {/* Remove role/access check, always show edit/delete */}
+      <IconButton
+        size="small"
+        color="primary"
+        onClick={(e) => {
+          e.stopPropagation();
+          handleEditClick(params.row);
+        }}
+        title="Edit Location"
+      >
+        <EditIcon fontSize="small" />
+      </IconButton>
+
+      <IconButton
+        size="small"
+        color="error"
+        onClick={(e) => {
+          e.stopPropagation();
+          handleDeleteClick(params.row);
+        }}
+        title="Delete Location"
+      >
+        <DeleteIcon fontSize="small" />
+      </IconButton>
+    </Box>
+  ),
+},
   ];
 
   return (
@@ -624,31 +707,18 @@ const LocationMaster = () => {
                   disabled={submitLoading}
                 />
 
-                <TextField
-                  fullWidth
-                  label="Area"
-                  value={formData.area}
-                  onChange={(e) =>
-                    setFormData((prev) => ({ ...prev, area: e.target.value }))
-                  }
-                  placeholder="Enter area name"
-                  variant="outlined"
-                  required
-                  disabled={submitLoading}
-                />
-
                 <Autocomplete
-                  open={open}
-                  onOpen={handleOpen}
-                  onClose={handleClose}
+                  open={stateOpen}
+                  onOpen={handleStateOpen}
+                  onClose={handleStateClose}
                   value={formData?.stateId}
                   loading={stateLoading}
-                  options={options}
+                  options={stateOptions}
                   getOptionLabel={(option) => option?.name || ""}
                   onChange={(e, newValue) =>
                     setFormData((prev) => ({
                       ...prev,
-                      stateId: newValue || {}, // keep only _id in state
+                      stateId: newValue || {},
                     }))
                   }
                   renderInput={(params) => (
@@ -663,6 +733,108 @@ const LocationMaster = () => {
                           endAdornment: (
                             <Fragment>
                               {stateLoading ? (
+                                <CircularProgress color="inherit" size={20} />
+                              ) : null}
+                              {params.InputProps.endAdornment}
+                            </Fragment>
+                          ),
+                        },
+                      }}
+                    />
+                  )}
+                />
+
+                <Autocomplete
+                  open={cityOpen}
+                  onOpen={handleCityOpen}
+                  onClose={handleCityClose}
+                  value={formData?.cityId}
+                  loading={cityLoading}
+                  options={cityOptions}
+                  getOptionLabel={(option) => option?.name || ""}
+                  renderOption={(props, option) => (
+                    <Box component="li" {...props}>
+                      {option.name}
+                      {!option.status && (
+                        <Chip
+                          size="small"
+                          label="Inactive"
+                          color="default"
+                          variant="outlined"
+                          sx={{ ml: 1, fontSize: '0.6rem', height: '16px' }}
+                        />
+                      )}
+                    </Box>
+                  )}
+                  onChange={(e, newValue) =>
+                    setFormData((prev) => ({
+                      ...prev,
+                      cityId: newValue || {},
+                    }))
+                  }
+                  renderInput={(params) => (
+                    <TextField
+                      {...params}
+                      label="City"
+                      placeholder="search city.."
+                      required
+                      slotProps={{
+                        input: {
+                          ...params.InputProps,
+                          endAdornment: (
+                            <Fragment>
+                              {cityLoading ? (
+                                <CircularProgress color="inherit" size={20} />
+                              ) : null}
+                              {params.InputProps.endAdornment}
+                            </Fragment>
+                          ),
+                        },
+                      }}
+                    />
+                  )}
+                />
+
+                <Autocomplete
+                  open={areaOpen}
+                  onOpen={handleAreaOpen}
+                  onClose={handleAreaClose}
+                  value={formData?.areaId}
+                  loading={areaLoading}
+                  options={areaOptions}
+                  getOptionLabel={(option) => option?.name || ""}
+                  renderOption={(props, option) => (
+                    <Box component="li" {...props}>
+                      {option.name}
+                      {!option.status && (
+                        <Chip
+                          size="small"
+                          label="Inactive"
+                          color="default"
+                          variant="outlined"
+                          sx={{ ml: 1, fontSize: '0.6rem', height: '16px' }}
+                        />
+                      )}
+                    </Box>
+                  )}
+                  onChange={(e, newValue) =>
+                    setFormData((prev) => ({
+                      ...prev,
+                      areaId: newValue || {},
+                    }))
+                  }
+                  renderInput={(params) => (
+                    <TextField
+                      {...params}
+                      label="Area"
+                      placeholder="search area.."
+                      required
+                      slotProps={{
+                        input: {
+                          ...params.InputProps,
+                          endAdornment: (
+                            <Fragment>
+                              {areaLoading ? (
                                 <CircularProgress color="inherit" size={20} />
                               ) : null}
                               {params.InputProps.endAdornment}

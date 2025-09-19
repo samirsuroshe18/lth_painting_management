@@ -70,6 +70,45 @@ const viewAssetPublic = async (id) => {
     }
 };
 
+// const createNewAsset = async (assetData) => {
+//   try {
+//     const form = new FormData();
+
+//     if (assetData.name) form.append("name", assetData.name);
+//     if (assetData.description) form.append("description", assetData.description);
+//     if (assetData.currentValue) form.append("purchaseValue", assetData.currentValue);
+//     if (assetData.location) form.append("locationId", assetData.location);
+    
+//     // ✅ Fixed: Only append year if it exists and is valid
+//     if (assetData.year && assetData.year.isValid && assetData.year.isValid()) {
+//       form.append("year", assetData.year.year());
+//     }
+    
+//     if (assetData.artist) form.append("artist", assetData.artist);
+//     if (assetData.place) form.append("place", assetData.place);
+//     if (assetData.size) form.append("size", assetData.size);
+
+//     // ✅ Fixed: Consistent status handling (boolean conversion)
+//     form.append("status", assetData.status === "active");
+
+//     if (assetData.image) {
+//       form.append("file", assetData.image);
+//     }
+
+//     const response = await axiosInstance.post(
+//       "/api/v1/assetmaster/add-asset",
+//       form,
+//       { headers: { "Content-Type": "multipart/form-data" } }
+//     );
+
+//     return response.data;
+//   } catch (error) {
+//     if (import.meta.env.VITE_DEVELOPMENT === "development") {
+//       console.error("Error creating new asset:", error);
+//     }
+//     throw error;
+//   }
+// };
 const createNewAsset = async (assetData) => {
   try {
     const form = new FormData();
@@ -79,20 +118,30 @@ const createNewAsset = async (assetData) => {
     if (assetData.currentValue) form.append("purchaseValue", assetData.currentValue);
     if (assetData.location) form.append("locationId", assetData.location);
     
-    // ✅ Fixed: Only append year if it exists and is valid
+    // ADDED: Department, Building, Floor fields
+    if (assetData.department) form.append("department", assetData.department);
+    if (assetData.building) form.append("building", assetData.building);
+    if (assetData.floor) form.append("floor", assetData.floor);
+    
+    // Fixed: Only append year if it exists and is valid
     if (assetData.year && assetData.year.isValid && assetData.year.isValid()) {
       form.append("year", assetData.year.year());
     }
     
     if (assetData.artist) form.append("artist", assetData.artist);
-    if (assetData.place) form.append("place", assetData.place);
     if (assetData.size) form.append("size", assetData.size);
 
-    // ✅ Fixed: Consistent status handling (boolean conversion)
+    // Fixed: Consistent status handling (boolean conversion)
     form.append("status", assetData.status === "active");
 
     if (assetData.image) {
       form.append("file", assetData.image);
+    }
+
+    // Debug log to see what's being sent
+    console.log('FormData being sent to API:');
+    for (let [key, value] of form.entries()) {
+      console.log(`${key}:`, value);
     }
 
     const response = await axiosInstance.post(
@@ -110,6 +159,48 @@ const createNewAsset = async (assetData) => {
   }
 };
 
+
+// const updateAsset = async (assetData) => {
+//     try {
+//         const form = new FormData();
+
+//         if (assetData.name) form.append("name", assetData.name);
+//         if (assetData.description) form.append("description", assetData.description);
+//         if (assetData.currentValue) form.append("purchaseValue", assetData.currentValue);
+//         if (assetData.location) form.append("locationId", assetData.location);
+        
+//         // ✅ Fixed: Only append year if it exists and is valid
+//         if (assetData.year && assetData.year.isValid && assetData.year.isValid()) {
+//             form.append("year", assetData.year.year());
+//         }
+        
+//         if (assetData.artist) form.append("artist", assetData.artist);
+//         if (assetData.place) form.append("place", assetData.place);
+//         if (assetData.size) form.append("size", assetData.size);
+        
+//         // ✅ Fixed: Consistent status handling (boolean conversion)
+//         form.append("status", assetData.status === "active");
+
+//         if (assetData.image) {
+//             form.append("file", assetData.image);
+//         }
+
+//         const response = await axiosInstance.put(
+//             `/api/v1/assetmaster/update-asset/${assetData.id}`,
+//             form,
+//             {
+//                 headers: { "Content-Type": "multipart/form-data" },
+//             }
+//         );
+//         return response.data;
+//     } catch (error) {
+//         if (import.meta.env.VITE_DEVELOPMENT === 'development') {
+//             console.error('Error updating asset:', error);
+//         }
+//         throw error;
+//     }
+// };
+
 const updateAsset = async (assetData) => {
     try {
         const form = new FormData();
@@ -119,20 +210,30 @@ const updateAsset = async (assetData) => {
         if (assetData.currentValue) form.append("purchaseValue", assetData.currentValue);
         if (assetData.location) form.append("locationId", assetData.location);
         
-        // ✅ Fixed: Only append year if it exists and is valid
+        // ADDED: Department, Building, Floor fields
+        if (assetData.department) form.append("department", assetData.department);
+        if (assetData.building) form.append("building", assetData.building);
+        if (assetData.floor) form.append("floor", assetData.floor);
+        
+        // Fixed: Only append year if it exists and is valid
         if (assetData.year && assetData.year.isValid && assetData.year.isValid()) {
             form.append("year", assetData.year.year());
         }
         
         if (assetData.artist) form.append("artist", assetData.artist);
-        if (assetData.place) form.append("place", assetData.place);
         if (assetData.size) form.append("size", assetData.size);
         
-        // ✅ Fixed: Consistent status handling (boolean conversion)
+        // Fixed: Consistent status handling (boolean conversion)
         form.append("status", assetData.status === "active");
 
         if (assetData.image) {
             form.append("file", assetData.image);
+        }
+
+        // Debug log to see what's being sent
+        console.log('FormData being sent to update API:');
+        for (let [key, value] of form.entries()) {
+          console.log(`${key}:`, value);
         }
 
         const response = await axiosInstance.put(

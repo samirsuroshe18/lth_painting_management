@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { useDispatch } from "react-redux";
+import { useDispatch, useSelector } from "react-redux";
 import {
   IconButton,
   Tooltip,
@@ -47,6 +47,11 @@ import CloseRoundedIcon from "@mui/icons-material/CloseRounded";
 export default function AssetMaster() {
   const dispatch = useDispatch();
   const navigate = useNavigate();
+
+   const userRole = useSelector((state) => state.auth?.userData?.user?.role || '');
+
+  const isSupervisor = userRole?.toLowerCase() === 'supervisor';
+
   const [rows, setRows] = useState([]);
   const [loading, setLoading] = useState(true);
   const [deleteLoading, setDeleteLoading] = useState(false);
@@ -122,6 +127,8 @@ export default function AssetMaster() {
   };
 
   const handleApprove = (assetIdOrRow) => {
+    if (isSupervisor) return; // Simply do nothing for supervisors
+    
     const row =
       typeof assetIdOrRow === "object"
         ? assetIdOrRow
@@ -131,6 +138,8 @@ export default function AssetMaster() {
   };
 
   const handleReject = (assetIdOrRow) => {
+    if (isSupervisor) return; // Simply do nothing for supervisors
+    
     const row =
       typeof assetIdOrRow === "object"
         ? assetIdOrRow
@@ -176,7 +185,6 @@ export default function AssetMaster() {
     }
   };
 
-  // NEW: confirm reject (remark required)
   const handleConfirmReject = async () => {
     if (!assetToReject || !rejectRemark.trim()) return;
     try {
@@ -184,7 +192,7 @@ export default function AssetMaster() {
       const result = await reviewAssetStatus(assetToReject.id, {
         reviewStatus: "rejected",
         rejectRemark,
-      }); // implement this API
+      });
 
       const data = result.data;
       data.id = data._id;
@@ -221,10 +229,7 @@ export default function AssetMaster() {
   // Navigate to read-only edit screen (view details)
   const handleView = (row) => navigate("view-asset", { state: { asset: row } });
 
-  // Delete handler:
-  // - Optimistically update
-  // - If page becomes empty and not first page, go to previous page
-  // - Else, refetch current page
+  // Delete handler
   const handleDelete = async () => {
     if (!assetToDelete) return;
 
@@ -278,7 +283,7 @@ export default function AssetMaster() {
   const handleRefresh = () => fetchAssets();
 
   // ---------------------------
-  // DataGrid columns (sorting/filtering disabled per column)
+  // DataGrid columns
   // ---------------------------
   const columns = [
     {
@@ -338,14 +343,22 @@ export default function AssetMaster() {
       ),
     },
     {
-      field: "place",
-      headerName: "Place",
+      field: "city",
+      headerName: "City",
       flex: 1,
       minWidth: 140,
       sortable: false,
       filterable: false,
       align: "center",
       headerAlign: "center",
+      renderCell: (params) => (
+        <Chip
+          label={params.row.locationId?.cityId?.name || "-"}
+          size="small"
+          variant="outlined"
+          color="secondary"
+        />
+      ),
     },
     {
       field: "status",
@@ -420,7 +433,8 @@ export default function AssetMaster() {
           gap={0.5}
           height="100%"
         >
-          {params.row.reviewStatus === "pending" && (
+          {/* Only show approve/reject buttons if NOT supervisor and asset is pending */}
+          {!isSupervisor && params.row.reviewStatus === "pending" && (
             <>
               <Tooltip title="Approve">
                 <IconButton
@@ -493,19 +507,22 @@ export default function AssetMaster() {
             </IconButton>
           </Tooltip>
 
-          <Tooltip title="Delete">
-            <IconButton
-              size="small"
-              color="error"
-              onClick={(e) => {
-                e.stopPropagation();
-                setAssetToDelete(params.row);
-                setDeleteDialogOpen(true);
-              }}
-            >
-              <DeleteIcon fontSize="small" />
-            </IconButton>
-          </Tooltip>
+          {/* Only show delete button if NOT supervisor */}
+          {!isSupervisor && (
+            <Tooltip title="Delete">
+              <IconButton
+                size="small"
+                color="error"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setAssetToDelete(params.row);
+                  setDeleteDialogOpen(true);
+                }}
+              >
+                <DeleteIcon fontSize="small" />
+              </IconButton>
+            </Tooltip>
+          )}
 
           <Tooltip title="Audit Logs">
             <IconButton
@@ -623,6 +640,8 @@ export default function AssetMaster() {
         />
       </Box>
 
+      {/* All the dialogs remain the same */}
+      
       {/* QR Code dialog */}
       <Dialog
         open={qrDialogOpen}
