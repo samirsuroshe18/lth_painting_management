@@ -1,16 +1,6 @@
-import { useEffect, useMemo, useState } from "react";
-import Preloader from "./components/Preloader";
-import { Outlet, useNavigate } from "react-router";
-import { useDispatch, useSelector } from "react-redux";
+import { Outlet } from "react-router";
+import { useSelector } from "react-redux";
 import { ReactRouterAppProvider } from "@toolpad/core/react-router";
-import { getCurrentUser } from "./api/authApi";
-import { currentUser } from "./redux/slices/authSlice";
-import {
-  ThemeProvider,
-  CssBaseline,
-  GlobalStyles,
-  createTheme,
-} from "@mui/material";
 import DashboardIcon from "@mui/icons-material/Dashboard";
 import SettingsIcon from "@mui/icons-material/Settings";
 import PeopleIcon from "@mui/icons-material/People";
@@ -27,87 +17,10 @@ import QrCodeIcon from "@mui/icons-material/QrCode";
 import AssessmentIcon from "@mui/icons-material/Assessment";
 import SnackBar from "./components/commonComponents/SnackBar";
 import canAccess from "./utils/canAccess";
-import { setNavigate } from "./utils/navigationHelper";
+import "../src/components/Preloader.css"
 
 function App() {
   const userData = useSelector((state) => state.auth.userData?.user);
-
-  const [mode, setMode] = useState(() => {
-    const htmlEl = document.documentElement;
-    return htmlEl.getAttribute("data-toolpad-color-scheme") || "light";
-  });
-
-  useEffect(() => {
-    const observer = new MutationObserver(() => {
-      const scheme = document.documentElement.getAttribute("data-toolpad-color-scheme");
-      setMode(scheme || "light");
-    });
-
-    observer.observe(document.documentElement, {
-      attributes: true,
-      attributeFilter: ["data-toolpad-color-scheme"],
-    });
-
-    return () => observer.disconnect();
-  }, []);
-
-  // ✅ Define theme with background + paper + text colors
-  const theme = useMemo(
-    () =>
-      createTheme({
-        palette: {
-          mode,
-          ...(mode === "dark"
-            ? {
-                background: {
-                  default: "#121212", // page bg
-                  paper: "#1e1e1e",   // cards, dialogs
-                },
-                text: {
-                  primary: "#ffffff",
-                  secondary: "#bbbbbb",
-                },
-              }
-            : {
-                background: {
-                  default: "#f5f5f5",
-                  paper: "#ffffff",
-                },
-                text: {
-                  primary: "#000000",
-                  secondary: "#333333",
-                },
-              }),
-        },
-      }),
-    [mode]
-  );
-
-  const [loading, setLoading] = useState(true);
-  const navigate = useNavigate();
-  const dispatch = useDispatch();
-
-  useEffect(() => {
-    setNavigate(navigate);
-  }, [navigate]);
-
-  // Fetch current user on mount
-  useEffect(() => {
-    const fetchData = async () => {
-      try {
-        const res = await getCurrentUser();
-        dispatch(currentUser(res.data));
-
-        setTimeout(() => {
-          setLoading(false);
-        }, 1500);
-      } catch (error) {
-        navigate("/login");
-        setLoading(false);
-      }
-    };
-    fetchData();
-  }, [dispatch, navigate]);
 
   const BRANDING = {
     title: "Artifact E-Gallary Portal",
@@ -228,39 +141,11 @@ function App() {
 
   const NAVIGATION = filterNavigationByPermissions(navigationConfig);
 
-  if (loading) {
-    return (
-      <ThemeProvider theme={theme}>
-        <CssBaseline />
-        <Preloader />
-      </ThemeProvider>
-    );
-  }
-
   return (
-    <ThemeProvider theme={theme}>
-      <CssBaseline />
-      <GlobalStyles
-        styles={{
-          body: {
-            backgroundColor: theme.palette.background.default,
-            color: theme.palette.text.primary,
-            transition: "background-color 0.35s ease, color 0.35s ease",
-          },
-          "#root": {
-            backgroundColor: theme.palette.background.default,
-            color: theme.palette.text.primary,
-            minHeight: "100vh",
-            transition: "background-color 0.35s ease, color 0.35s ease",
-          },
-        }}
-      />
-
-      <ReactRouterAppProvider navigation={NAVIGATION} branding={BRANDING}>
-        <Outlet />
-        <SnackBar />
-      </ReactRouterAppProvider>
-    </ThemeProvider>
+    <ReactRouterAppProvider navigation={NAVIGATION} branding={BRANDING}>
+      <Outlet />
+      <SnackBar />
+    </ReactRouterAppProvider>
   );
 }
 

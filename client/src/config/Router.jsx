@@ -29,11 +29,16 @@ import CreateAsset from "../pages/Masters/CreateAsset.jsx";
 import CreateNewAssset from "../pages/commonPages/CreateNewAssset.jsx";
 import SuperAdminDashboard from "../pages/Dashboards/SuperAdminDashboard.jsx";
 import ViewAsset from "../pages/Masters/ViewAsset.jsx";
+import ProtectedRoute from "../components/ProtectedRoute.jsx";
 
 const router = createBrowserRouter([
   {
     path: "/",
-    element: <App />,
+    element: (
+      <ProtectedRoute>
+        <App />
+      </ProtectedRoute>
+    ),
     children: [
       {
         path: "",

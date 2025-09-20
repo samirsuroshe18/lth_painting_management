@@ -35,10 +35,10 @@ import PendingRoundedIcon from "@mui/icons-material/PendingRounded";
 import CloseRoundedIcon from "@mui/icons-material/CloseRounded";
 
 const statusFilters = [
-  { label: "All Audits", value: "all", icon: <ListAlt /> }, // Changed from "All" to "all"
-  { label: "Review Pending", value: "pending", icon: <Schedule /> }, // Changed from "Pending" to "pending"
-  { label: "Approved", value: "approved", icon: <CheckCircle /> }, // Changed from "Approved" to "approved"
-  { label: "Rejected", value: "rejected", icon: <Cancel /> }, // Changed from "Rejected" to "rejected"
+  { label: "All Audits", value: "all", icon: <ListAlt /> },
+  { label: "Review Pending", value: "pending", icon: <Schedule /> },
+  { label: "Approved", value: "approved", icon: <CheckCircle /> },
+  { label: "Rejected", value: "rejected", icon: <Cancel /> },
 ];
 
 const SuperAdminDashboard = () => {
@@ -51,9 +51,9 @@ const SuperAdminDashboard = () => {
   const [activeFilter, setActiveFilter] = useState("all");
   const [counts, setCounts] = useState({
     all: 0,
-    pending: 0, // Changed from "Pending" to "pending"
-    approved: 0, // Changed from "Approved" to "approved"
-    rejected: 0, // Changed from "Rejected" to "rejected"
+    pending: 0,
+    approved: 0,
+    rejected: 0,
   });
   const [paginationModel, setPaginationModel] = useState({
     page: 0,
@@ -71,7 +71,7 @@ const SuperAdminDashboard = () => {
   const fetchAssets = async () => {
     try {
       setLoading(true);
-      const result = await getAllAudits();
+      const result = await getAllAudits(); 
 
       const auditsWithIds = result.data.map((audit, index) => ({
         ...audit,
