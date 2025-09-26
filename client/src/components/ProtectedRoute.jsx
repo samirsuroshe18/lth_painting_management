@@ -23,7 +23,6 @@ const ProtectedRoute = ({ children }) => {
       const scheme = document.documentElement.getAttribute(
         "data-toolpad-color-scheme"
       );
-      console.log(scheme);
       setMode(scheme || "light");
     });
 

@@ -59,7 +59,7 @@ const FloorMaster = () => {
   const [editMode, setEditMode] = useState(false);
   const [editFloorId, setEditFloorId] = useState(null);
   const [floorName, setFloorName] = useState("");
-  const [status, setStatus] = useState(true);
+  const [status, setStatus] = useState("");
   const [submitLoading, setSubmitLoading] = useState(false);
   const [floorToDelete, setFloorToDelete] = useState(null);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
@@ -196,7 +196,7 @@ const FloorMaster = () => {
 
   const handleEditClick = (floor) => {
     setFloorName(floor?.name ?? "");
-    setStatus(!!floor.status);
+    setStatus(floor?.status);
     setEditFloorId(floor._id);
     setEditMode(true);
     setShowDialog(true);
@@ -257,7 +257,7 @@ const FloorMaster = () => {
     setShowDialog(false);
     setEditMode(false);
     setFloorName("");
-    setStatus(null);
+    setStatus("");
     setEditFloorId(null);
   };
 
@@ -265,7 +265,7 @@ const FloorMaster = () => {
     setShowDialog(true);
     setEditMode(false);
     setFloorName("");
-    setStatus(true);
+    setStatus("");
   };
 
   const handleRefresh = () => {
@@ -624,16 +624,25 @@ const FloorMaster = () => {
                   disabled={submitLoading}
                 />
 
-                <FormControl fullWidth required disabled={submitLoading}>
-                  <InputLabel>Status</InputLabel>
+                <FormControl fullWidth>
                   <Select
-                    value={status === null ? "" : String(status)}
-                    onChange={(e) => setStatus(e.target.value === "true")}
-                    label="Status"
+                    value={status}
+                    onChange={(e) => setStatus(e.target.value)}
+                    required
+                    displayEmpty
+                    renderValue={(selected) => {
+                      if (selected === "") {
+                        return (
+                          <span style={{ color: "#999" }}>Select status</span>
+                        );
+                      }
+                      return selected == "active" || selected === true
+                        ? "Active"
+                        : "Inactive";
+                    }}
                   >
-                    <MenuItem value="">Select status</MenuItem>
-                    <MenuItem value="true">Active</MenuItem>
-                    <MenuItem value="false">Inactive</MenuItem>
+                    <MenuItem value="active">Active</MenuItem>
+                    <MenuItem value="inactive">Inactive</MenuItem>
                   </Select>
                 </FormControl>
               </Box>

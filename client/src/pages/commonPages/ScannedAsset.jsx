@@ -1,7 +1,6 @@
 import { useEffect, useState, Fragment } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import {
-  Box,
   Button,
   Card,
   CardContent,
@@ -17,12 +16,13 @@ import {
   Select,
   Autocomplete,
   Grid,
+  Box,
 } from "@mui/material";
 import { AlertTriangle } from "lucide-react";
 import { showNotificationWithTimeout } from "../../redux/slices/notificationSlice";
 import { useDispatch, useSelector } from "react-redux";
 import { handleAxiosError } from "../../utils/handleAxiosError";
-import { viewAssetPublic, updateAsset } from "../../api/assetMasterApi";
+import { viewAssetPublic } from "../../api/assetMasterApi";
 import { getAllDepartment } from "../../api/departmentApi";
 import { getAllBuildings } from "../../api/buildingApi";
 import { getAllFloors } from "../../api/floorApi";
@@ -34,6 +34,9 @@ import { submitAudit } from "../../api/auditLogApi";
 import SnackBar from "../../components/commonComponents/SnackBar";
 import CloudUploadIcon from "@mui/icons-material/CloudUpload";
 import { styled } from "@mui/material/styles";
+import LabelWithRedAsterisk from "../../components/LabelWithRedAsterisk";
+import { getCurrentUser } from "../../api/authApi";
+import Row from "../../components/Row";
 
 const VisuallyHiddenInput = styled("input")({
   clip: "rect(0 0 0 0)",
@@ -47,24 +50,6 @@ const VisuallyHiddenInput = styled("input")({
   width: 1,
 });
 
-// Label component with red asterisk for required fields
-const LabelWithRedAsterisk = ({ children, required }) => (
-  <Typography variant="body2" component="label" sx={{ fontWeight: 600 }}>
-    {children}
-    {required && <span style={{ color: "red", marginLeft: "2px" }}>*</span>}
-  </Typography>
-);
-
-// Row component for displaying asset details
-const Row = ({ label, value }) => (
-  <div className="space-y-1">
-    <p className="text-xs font-medium text-slate-500 uppercase tracking-wide">
-      {label}
-    </p>
-    <p className="text-sm text-slate-900 break-words">{value}</p>
-  </div>
-);
-
 export default function ScannedAsset() {
   const { id } = useParams();
   const isAdmin = useSelector((state) => state.admin.admin);
@@ -72,108 +57,74 @@ export default function ScannedAsset() {
   const dispatch = useDispatch();
   const [loading, setLoading] = useState(true);
   const [submit, setSubmit] = useState(false);
+  const [data, setData] = useState(null);
   const [imageOpen, setImageOpen] = useState({
     image: null,
     open: false,
     name: null,
   });
-  const [data, setData] = useState(null);
   const [showEditForm, setShowEditForm] = useState(false);
-  
-  // Enhanced form data state
+  const [locations, setLocations] = useState([]);
   const [formData, setFormData] = useState({
-    name: "",
-    artist: "",
-    location: "",
-    departmentId: null,
-    buildingId: null,
-    floorId: null,
-    currentValue: "",
-    size: "",
-    year: null,
-    status: "active",
-    description: "",
-    image: null,
-  });
-
-  // Size state for width x height input
-  const [sizeWidth, setSizeWidth] = useState("");
-  const [sizeHeight, setSizeHeight] = useState("");
-
-  // Department dropdown states
-  const [departmentOpen, setDepartmentOpen] = useState(false);
-  const [departmentOptions, setDepartmentOptions] = useState([]);
-  const [departmentLoading, setDepartmentLoading] = useState(false);
-
-  // Building dropdown states
-  const [buildingOpen, setBuildingOpen] = useState(false);
-  const [buildingOptions, setBuildingOptions] = useState([]);
-  const [buildingLoading, setBuildingLoading] = useState(false);
-
-  // Floor dropdown states
-  const [floorOpen, setFloorOpen] = useState(false);
-  const [floorOptions, setFloorOptions] = useState([]);
-  const [floorLoading, setFloorLoading] = useState(false);
-
-  // Audit form data (keeping existing structure)
-  const [auditFormData, setAuditFormData] = useState({
     assetId: "",
     auditorRemark: "",
-    proposedChanges: {   
-    year: null,
-    name: "",
-    description: "",
-    purchaseValue: "",
-    location: "",
-    artist: "",
-    size: "",
-    department: "",
-    building: "",
-    floor: "",
-  },
+    proposedChanges: {
+      name: "",
+      description: "",
+      purchaseValue: "",
+      locationId: "",
+      departmentId: "",
+      buildingId: "",
+      floorId: "",
+      year: null,
+      artist: "",
+      size: "",
+    },
+    assetImage: null,
     auditImage1: null,
     auditImage2: null,
     auditImage3: null,
   });
+  const [sizeWidth, setSizeWidth] = useState("");
+  const [sizeHeight, setSizeHeight] = useState("");
+  const [departmentOpen, setDepartmentOpen] = useState(false);
+  const [departmentOptions, setDepartmentOptions] = useState([]);
+  const [departmentLoading, setDepartmentLoading] = useState(false);
+  const [buildingOpen, setBuildingOpen] = useState(false);
+  const [buildingOptions, setBuildingOptions] = useState([]);
+  const [buildingLoading, setBuildingLoading] = useState(false);
+  const [floorOpen, setFloorOpen] = useState(false);
+  const [floorOptions, setFloorOptions] = useState([]);
+  const [floorLoading, setFloorLoading] = useState(false);
 
-  // Handle size changes
   const handleSizeChange = (width, height) => {
     setSizeWidth(width);
     setSizeHeight(height);
-    const sizeString = width && height ? `${width} × ${height}` : "";
+    const sizeString = width && height ? `${width} × ${height} inches` : "";
     setFormData((prev) => ({ ...prev, size: sizeString }));
   };
 
-  // Handle form changes
   const handleChange = (e) => {
     const { name, value, files } = e.target;
     if (files && files.length > 0) {
       setFormData((prev) => ({ ...prev, [name]: files[0] }));
+    } else if (name in formData.proposedChanges) {
+      setFormData((prev) => ({
+        ...prev,
+        proposedChanges: { ...prev.proposedChanges, [name]: value },
+      }));
     } else {
       setFormData((prev) => ({ ...prev, [name]: value }));
     }
   };
 
-  // Handle audit form changes
-  const handleAuditChange = (e) => {
-    const { name, value, files } = e.target;
-    if (files && files.length > 0) {
-      setAuditFormData((prev) => ({ ...prev, [name]: files[0] }));
-    } else {
-      setAuditFormData((prev) => ({ ...prev, [name]: value }));
-    }
-  };
-
-  // Department dropdown handlers
-  const handleDepartmentOpen = () => {
-    setDepartmentOpen(true);
-    (async () => {
+  useEffect(() => {
+    const checkAuth = async () => {
       try {
-        setDepartmentLoading(true);
-        const res = await getAllDepartment();
-        setDepartmentOptions(res?.data ?? []);
+        const res = await getCurrentUser();
+        setLocations(res?.data?.user?.location || []);
       } catch (error) {
-        setDepartmentOptions([]);
+        setLocations([]);
         dispatch(
           showNotificationWithTimeout({
             show: true,
@@ -181,109 +132,107 @@ export default function ScannedAsset() {
             message: handleAxiosError(error),
           })
         );
-      } finally {
-        setDepartmentLoading(false);
       }
-    })();
+    };
+
+    if (isAdmin) {
+      checkAuth();
+    }
+  }, [isAdmin]);
+
+  const handleDepartmentOpen = () => {
+    setDepartmentOpen(true);
+
+    if (departmentOptions.length === 0) {
+      (async () => {
+        try {
+          setDepartmentLoading(true);
+          const res = await getAllDepartment();
+          setDepartmentOptions(res?.data ?? []);
+        } catch (error) {
+          setDepartmentOptions([]);
+          dispatch(
+            showNotificationWithTimeout({
+              show: true,
+              type: "error",
+              message: handleAxiosError(error),
+            })
+          );
+        } finally {
+          setDepartmentLoading(false);
+        }
+      })();
+    }
   };
 
   const handleDepartmentClose = () => {
     setDepartmentOpen(false);
-    setDepartmentOptions([]);
   };
 
-  // Building dropdown handlers
   const handleBuildingOpen = () => {
     setBuildingOpen(true);
-    (async () => {
-      try {
-        setBuildingLoading(true);
-        const res = await getAllBuildings();
-        setBuildingOptions(res?.data ?? []);
-      } catch (error) {
-        setBuildingOptions([]);
-        dispatch(
-          showNotificationWithTimeout({
-            show: true,
-            type: "error",
-            message: handleAxiosError(error),
-          })
-        );
-      } finally {
-        setBuildingLoading(false);
-      }
-    })();
+
+    if (buildingOptions.length === 0) {
+      (async () => {
+        try {
+          setBuildingLoading(true);
+          const res = await getAllBuildings();
+          setBuildingOptions(res?.data ?? []);
+        } catch (error) {
+          setBuildingOptions([]);
+          dispatch(
+            showNotificationWithTimeout({
+              show: true,
+              type: "error",
+              message: handleAxiosError(error),
+            })
+          );
+        } finally {
+          setBuildingLoading(false);
+        }
+      })();
+    }
   };
 
   const handleBuildingClose = () => {
     setBuildingOpen(false);
-    setBuildingOptions([]);
   };
 
-  // Floor dropdown handlers
   const handleFloorOpen = () => {
     setFloorOpen(true);
-    (async () => {
-      try {
-        setFloorLoading(true);
-        const res = await getAllFloors();
-        setFloorOptions(res?.data ?? []);
-      } catch (error) {
-        setFloorOptions([]);
-        dispatch(
-          showNotificationWithTimeout({
-            show: true,
-            type: "error",
-            message: handleAxiosError(error),
-          })
-        );
-      } finally {
-        setFloorLoading(false);
-      }
-    })();
+
+    if (floorOptions) {
+      (async () => {
+        try {
+          setFloorLoading(true);
+          const res = await getAllFloors();
+          setFloorOptions(res?.data ?? []);
+        } catch (error) {
+          setFloorOptions([]);
+          dispatch(
+            showNotificationWithTimeout({
+              show: true,
+              type: "error",
+              message: handleAxiosError(error),
+            })
+          );
+        } finally {
+          setFloorLoading(false);
+        }
+      })();
+    }
   };
 
   const handleFloorClose = () => {
     setFloorOpen(false);
-    setFloorOptions([]);
   };
 
-  // Fetch asset details
   useEffect(() => {
     const fetchAssetDetails = async () => {
       try {
         setLoading(true);
         const response = await viewAssetPublic(id);
         setData(response.data);
-        
-        // Populate form data with existing asset data
-        const asset = response.data.asset;
-        setFormData({
-          name: asset.name || "",
-          artist: asset.artist || "",
-          location: asset.locationId?._id || "",
-          departmentId: asset.departmentId || null,
-          buildingId: asset.buildingId || null,
-          floorId: asset.floorId || null,
-          currentValue: asset.purchaseValue || "",
-          size: asset.size || "",
-          year: asset.year ? dayjs().year(asset.year) : null,
-          status: asset.status || "active",
-          description: asset.description || "",
-          image: null,
-        });
-
-        // Parse size if it exists
-        if (asset.size && asset.size.includes("×")) {
-          const [width, height] = asset.size.split("×").map(s => s.trim());
-          setSizeWidth(width);
-          setSizeHeight(height);
-        } else if (asset.size && asset.size.includes("x")) {
-          const [width, height] = asset.size.split("x").map(s => s.trim().replace(/\s*inches?$/i, ''));
-          setSizeWidth(width);
-          setSizeHeight(height);
-        }
-        
       } catch (error) {
         dispatch(
           showNotificationWithTimeout({
@@ -301,85 +250,44 @@ export default function ScannedAsset() {
 
   const toggleEdit = () => setShowEditForm((p) => !p);
 
-  const resetForm = () => {
-    if (data?.asset) {
-      const asset = data.asset;
-      setFormData({
-        name: asset.name || "",
-        artist: asset.artist || "",
-        location: asset.locationId?._id || "",
-        departmentId: asset.departmentId || null,
-        buildingId: asset.buildingId || null,
-        floorId: asset.floorId || null,
-        currentValue: asset.purchaseValue || "",
-        size: asset.size || "",
-        year: asset.year ? dayjs().year(asset.year) : null,
-        status: asset.status || "active",
-        description: asset.description || "",
-        image: null,
-      });
+  const resetForm = () =>
+    setFormData({
+      assetId: "",
+      auditorRemark: "",
+      proposedChanges: {
+        name: "",
+        description: "",
+        purchaseValue: "",
+        location: "",
+        year: null,
+        artist: "",
+        place: "",
+        size: "",
+        department: "",
+        building: "",
+        floor: "",
+      },
+      assetImage: null,
+      auditImage1: null,
+      auditImage2: null,
+      auditImage3: null,
+    });
 
-      // Reset size fields
-      if (asset.size && asset.size.includes("×")) {
-        const [width, height] = asset.size.split("×").map(s => s.trim());
-        setSizeWidth(width);
-        setSizeHeight(height);
-      } else if (asset.size && asset.size.includes("x")) {
-        const [width, height] = asset.size.split("x").map(s => s.trim().replace(/\s*inches?$/i, ''));
-        setSizeWidth(width);
-        setSizeHeight(height);
-      }
-    }
-  };
-
-  // Handle edit form submission
-  const handleEditSubmit = async () => {
+  const handleSubmit = async (e) => {
+    e.preventDefault();
     try {
       setSubmit(true);
-      
-      // Prepare the data to send - handle null/empty year properly
-      const dataToSend = {
-        id: data.asset._id,
-        ...formData,
-        year: formData.year && formData.year.isValid && formData.year.isValid() ? formData.year : null,
-      };
-
-      // Only include department, building, floor if they have valid _id values
-      if (formData.departmentId && formData.departmentId._id) {
-        dataToSend.department = formData.departmentId._id;
-      }
-      
-      if (formData.buildingId && formData.buildingId._id) {
-        dataToSend.building = formData.buildingId._id;
-      }
-      
-      if (formData.floorId && formData.floorId._id) {
-        dataToSend.floor = formData.floorId._id;
-      }
-
-      // Map location field to locationId for the API
-      if (formData.location) {
-        dataToSend.locationId = formData.location;
-      }
-
-      console.log('Data being sent to backend:', dataToSend); // Debug log
-
-      const response = await updateAsset(dataToSend);
-      
+      const payload = { ...formData, assetId: data?.asset?._id };
+      const response = await submitAudit(payload);
       setShowEditForm(false);
-      
+      resetForm();
       dispatch(
         showNotificationWithTimeout({
           show: true,
           type: "success",
-          message: response.message || "Asset updated successfully",
+          message: response.message,
         })
       );
-
-      // Refresh asset data
-      const updatedResponse = await viewAssetPublic(id);
-      setData(updatedResponse.data);
-      
     } catch (error) {
       dispatch(
         showNotificationWithTimeout({
@@ -392,54 +300,6 @@ export default function ScannedAsset() {
       setSubmit(false);
     }
   };
-
-  // Handle audit submission (keeping existing functionality)
-  const handleAuditSubmit = async () => {
-  if (!auditFormData.auditorRemark.trim()) return alert("Remarks are required");
-  if (!auditFormData.auditImage1) return alert("Image 1 is required");
-
-  const payload = { ...auditFormData, assetId: data?.asset?._id };
-
-  //  Ensure proposedChanges.year is converted properly
-  if (payload.proposedChanges?.year) {
-    if (payload.proposedChanges.year.$y) {
-      // If it's a dayjs object
-      payload.proposedChanges.year = payload.proposedChanges.year.year();
-    } else {
-      payload.proposedChanges.year = new Date(payload.proposedChanges.year).getFullYear();
-    }
-  }
-
-  try {
-    setSubmit(true);
-    const response = await submitAudit(payload);
-    setAuditFormData({
-      assetId: "",
-      auditorRemark: "",
-      auditImage1: null,
-      auditImage2: null,
-      auditImage3: null,
-    });
-    dispatch(
-      showNotificationWithTimeout({
-        show: true,
-        type: "success",
-        message: response.message,
-      })
-    );
-  } catch (error) {
-    dispatch(
-      showNotificationWithTimeout({
-        show: true,
-        type: "error",
-        message: handleAxiosError(error),
-      })
-    );
-  } finally {
-    setSubmit(false);
-  }
-};
-
 
   if (loading) {
     return (
@@ -522,11 +382,7 @@ export default function ScannedAsset() {
                     size="small"
                     variant="outlined"
                     className="w-full sm:w-auto !rounded-xl !border-slate-300 hover:!border-slate-400 hover:!bg-slate-50 transition"
-                    onClick={() =>
-                      navigate("/create-new-asset", {
-                        state: { locations: data.locations },
-                      })
-                    }
+                    onClick={() => navigate("/create-new-asset")}
                   >
                     Add New Asset
                   </Button>
@@ -546,61 +402,119 @@ export default function ScannedAsset() {
         />
 
         <CardContent className="pt-0">
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 sm:gap-5">
-            <Row label="Asset" value={data.asset.name} />
-            <Row label="Year" value={data.asset.year || "-"} />
-            <Row label="Artist" value={data.asset.artist || "-"} />
-            <Row label="Description" value={data.asset.description || "-"} />
-
-            <Row
-              label="Image"
-              value={
-                <div
-                  className="group cursor-pointer"
-                  onClick={() => setImageOpen({image: data.asset.image, name: data.asset.name, open: true})}
-                >
-                  <img
-                    src={data.asset.image}
-                    alt={data.asset.name}
-                    className="w-40 h-28 object-cover rounded-lg border border-slate-200 shadow-sm transition group-hover:shadow-md"
-                  />
-                  <div className="mt-1 text-[11px] text-slate-500">
-                    Click to enlarge
+          <Grid container spacing={3}>
+            <Grid size={{ xs: 12, md: 6 }}>
+              <Row
+                label="Image"
+                value={
+                  <div
+                    className="group cursor-pointer"
+                    onClick={() =>
+                      setImageOpen({
+                        image: data.asset.image,
+                        name: data.asset.name,
+                        open: true,
+                      })
+                    }
+                  >
+                    <img
+                      src={data.asset.image}
+                      alt={data.asset.name}
+                      className="w-full h-40 object-cover rounded-md"
+                    />
+                    <div className="mt-1 text-[11px] text-slate-500">
+                      Click to enlarge
+                    </div>
                   </div>
+                }
+              />
+
+              {imageOpen.open && (
+                <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50">
+                  <img
+                    src={imageOpen.image}
+                    alt={imageOpen.name}
+                    className="max-w-[90%] max-h-[90%] object-contain rounded-lg"
+                  />
+                  <Button
+                    onClick={() =>
+                      setImageOpen((prev) => ({ ...prev, open: false }))
+                    }
+                    className="absolute top-4 right-4 text-white text-xl"
+                  >
+                    ✕
+                  </Button>
                 </div>
-              }
-            />
-
-            {imageOpen.open && (
-              <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50">
-                <img
-                  src={imageOpen.image}
-                  alt={imageOpen.name}
-                  className="max-w-[90%] max-h-[90%] object-contain rounded-lg"
-                />
-                <button
-                  onClick={() => setImageOpen(prev => ({ ...prev, open: false }))}
-                  className="absolute top-4 right-4 text-white text-xl"
-                >
-                  ✕
-                </button>
-              </div>
-            )}
-
-            <Row label="Size" value={data.asset.size ? `${data.asset.size} ${data.asset.unit || "inches"}` : "-"} />
-            
-            {/* Location Details */}
-            <Row label="Location" value={data.asset.locationId?.name || "-"} />
-            <Row label="State" value={data.asset.locationId?.stateId?.name || "-"} />
-            <Row label="City" value={data.asset.locationId?.cityId?.name || "-"} />
-            <Row label="Area" value={data.asset.locationId?.areaId?.name || "-"} />
-
-            {/* New Fields */}
-            <Row label="Department" value={data.asset.departmentId?.name || "-"} />
-            <Row label="Building" value={data.asset.buildingId?.name || "-"} />
-            <Row label="Floor" value={data.asset.floorId?.name || "-"} />
-            <Row label="Purchase Value" value={data.asset.purchaseValue ?? "-"} />
-          </div>
+              )}
+            </Grid>
+            <Grid size={{ xs: 12, md: 6 }}>
+              <Row label="Asset" value={data?.asset?.name || "-"} />
+            </Grid>
+            <Grid size={{ xs: 12, md: 6 }}>
+              <Row label="Description" value={data.asset.description || "-"} />
+            </Grid>
+            <Grid size={{ xs: 12, md: 6 }}>
+              <Row
+                label="Purchase Value"
+                value={data.asset.purchaseValue ?? "-"}
+              />
+            </Grid>
+            <Grid size={{ xs: 12, md: 6 }}>
+              <Row label="Artist" value={data.asset.artist || "-"} />
+            </Grid>
+            <Grid size={{ xs: 12, md: 6 }}>
+              <Row
+                label="Size"
+                value={
+                  data.asset.size
+                    ? `${data.asset.size} ${data.asset.unit || "inches"}`
+                    : "-"
+                }
+              />
+            </Grid>
+            <Grid size={{ xs: 12, md: 6 }}>
+              <Row label="Year" value={data.asset.year || "-"} />
+            </Grid>
+            <Grid size={{ xs: 12, md: 6 }}>
+              <Row
+                label="Location"
+                value={data.asset.locationId?.name || "-"}
+              />
+            </Grid>
+            <Grid size={{ xs: 12, md: 6 }}>
+              <Row
+                label="State"
+                value={data.asset.locationId?.stateId?.name || "-"}
+              />
+            </Grid>
+            <Grid size={{ xs: 12, md: 6 }}>
+              <Row
+                label="City"
+                value={data.asset.locationId?.cityId?.name || "-"}
+              />
+            </Grid>
+            <Grid size={{ xs: 12, md: 6 }}>
+              <Row
+                label="Area"
+                value={data.asset.locationId?.areaId?.name || "-"}
+              />
+            </Grid>
+            <Grid size={{ xs: 12, md: 6 }}>
+              <Row
+                label="Department"
+                value={data.asset.departmentId?.name || "-"}
+              />
+            </Grid>
+            <Grid size={{ xs: 12, md: 6 }}>
+              <Row
+                label="Building"
+                value={data.asset.buildingId?.name || "-"}
+              />
+            </Grid>
+            <Grid size={{ xs: 12, md: 6 }}>
+              <Row label="Floor" value={data.asset.floorId?.name || "-"} />
+            </Grid>
+          </Grid>
         </CardContent>
       </Card>
 
@@ -619,9 +533,9 @@ export default function ScannedAsset() {
               <LocalizationProvider dateAdapter={AdapterDayjs}>
                 <Grid container spacing={3}>
                   {/* Name */}
-                  <Grid item xs={12} md={6}>
+                  <Grid size={{ xs: 12, md: 6 }}>
                     <Stack spacing={1}>
-                      <LabelWithRedAsterisk required>Name</LabelWithRedAsterisk>
+                      <LabelWithRedAsterisk>Name</LabelWithRedAsterisk>
                       <TextField
                         name="name"
                         value={formData.name}
@@ -629,7 +543,6 @@ export default function ScannedAsset() {
                         fullWidth
                         size="small"
                         placeholder="Enter name"
-                        required
                         sx={{
                           "& .MuiOutlinedInput-root": {
                             backgroundColor: "inherit",
@@ -641,9 +554,9 @@ export default function ScannedAsset() {
                   </Grid>
 
                   {/* Artist */}
-                  <Grid item xs={12} md={6}>
+                  <Grid size={{ xs: 12, md: 6 }}>
                     <Stack spacing={1}>
-                      <LabelWithRedAsterisk required>Artist</LabelWithRedAsterisk>
+                      <LabelWithRedAsterisk>Artist</LabelWithRedAsterisk>
                       <TextField
                         name="artist"
                         value={formData.artist}
@@ -651,7 +564,6 @@ export default function ScannedAsset() {
                         fullWidth
                         size="small"
                         placeholder="Enter artist name"
-                        required
                         sx={{
                           "& .MuiOutlinedInput-root": {
                             backgroundColor: "inherit",
@@ -663,52 +575,54 @@ export default function ScannedAsset() {
                   </Grid>
 
                   {/* Location */}
-                  <Grid item xs={12} md={6}>
+                  <Grid size={{ xs: 12, md: 6 }}>
                     <Stack spacing={1}>
-                      <LabelWithRedAsterisk required>Location</LabelWithRedAsterisk>
-                      <FormControl fullWidth required disabled={loading}>
-                        <Select
-                          value={formData.location}
-                          onChange={(e) =>
-                            setFormData((prev) => ({
-                              ...prev,
-                              location: e.target.value,
-                            }))
-                          }
-                          required
-                          displayEmpty
-                          size="small"
-                        >
-                          <MenuItem value="" disabled>
-                            Select Location
-                          </MenuItem>
-                          {Array.isArray(data?.locations) && data.locations.length > 0 ? (
-                            data.locations.map((loc) => (
-                              <MenuItem key={loc._id} value={loc._id}>
-                                {loc.name}
-                              </MenuItem>
-                            ))
-                          ) : (
-                            <MenuItem disabled>No locations available</MenuItem>
-                          )}
-                        </Select>
-                      </FormControl>
+                      <LabelWithRedAsterisk>Location</LabelWithRedAsterisk>
+                      <Autocomplete
+                        value={
+                          locations.find(
+                            (location) => location._id === formData.locationId
+                          ) || null
+                        }
+                        options={locations}
+                        getOptionLabel={(option) => option?.name || ""}
+                        onChange={(event, newValue) => {
+                          setFormData((prev) => ({
+                            ...prev,
+                            locationId: newValue?._id || "",
+                          }));
+                        }}
+                        noOptionsText="No locations available"
+                        sx={{ mt: 1 }}
+                        renderInput={(params) => (
+                          <TextField
+                            {...params}
+                            placeholder="Search location..."
+                            size="small"
+                          />
+                        )}
+                      />
                     </Stack>
                   </Grid>
 
                   {/* Department */}
-                  <Grid item xs={12} md={6}>
+                  <Grid size={{ xs: 12, md: 6 }}>
                     <Stack spacing={1}>
                       <LabelWithRedAsterisk>Department</LabelWithRedAsterisk>
                       <Autocomplete
                         open={departmentOpen}
                         onOpen={handleDepartmentOpen}
                         onClose={handleDepartmentClose}
-                        value={formData.departmentId}
+                        value={
+                          departmentOptions.find(
+                            (option) => option._id === formData.departmentId
+                          ) || null
+                        }
                         loading={departmentLoading}
                         options={departmentOptions}
                         getOptionLabel={(option) => option?.name || ""}
                         disabled={loading}
+                        noOptionsText="No departments available"
                         ListboxProps={{
                           style: {
                             maxHeight: 200,
@@ -717,7 +631,7 @@ export default function ScannedAsset() {
                         onChange={(e, newValue) =>
                           setFormData((prev) => ({
                             ...prev,
-                            departmentId: newValue || null,
+                            departmentId: newValue?._id || "",
                           }))
                         }
                         renderInput={(params) => (
@@ -731,7 +645,10 @@ export default function ScannedAsset() {
                                 endAdornment: (
                                   <Fragment>
                                     {departmentLoading ? (
-                                      <CircularProgress color="inherit" size={20} />
+                                      <CircularProgress
+                                        color="inherit"
+                                        size={20}
+                                      />
                                     ) : null}
                                     {params.InputProps.endAdornment}
                                   </Fragment>
@@ -745,18 +662,23 @@ export default function ScannedAsset() {
                   </Grid>
 
                   {/* Building Name */}
-                  <Grid item xs={12} md={6}>
+                  <Grid size={{ xs: 12, md: 6 }}>
                     <Stack spacing={1}>
                       <LabelWithRedAsterisk>Building Name</LabelWithRedAsterisk>
                       <Autocomplete
                         open={buildingOpen}
                         onOpen={handleBuildingOpen}
                         onClose={handleBuildingClose}
-                        value={formData.buildingId}
+                        value={
+                          buildingOptions.find(
+                            (option) => option._id === formData.buildingId
+                          ) || null
+                        }
                         loading={buildingLoading}
                         options={buildingOptions}
                         getOptionLabel={(option) => option?.name || ""}
                         disabled={loading}
+                        noOptionsText="No buildings available"
                         ListboxProps={{
                           style: {
                             maxHeight: 200,
@@ -765,7 +687,7 @@ export default function ScannedAsset() {
                         onChange={(e, newValue) =>
                           setFormData((prev) => ({
                             ...prev,
-                            buildingId: newValue || null,
+                            buildingId: newValue?._id || "",
                           }))
                         }
                         renderInput={(params) => (
@@ -779,7 +701,10 @@ export default function ScannedAsset() {
                                 endAdornment: (
                                   <Fragment>
                                     {buildingLoading ? (
-                                      <CircularProgress color="inherit" size={20} />
+                                      <CircularProgress
+                                        color="inherit"
+                                        size={20}
+                                      />
                                     ) : null}
                                     {params.InputProps.endAdornment}
                                   </Fragment>
@@ -793,18 +718,23 @@ export default function ScannedAsset() {
                   </Grid>
 
                   {/* Floor */}
-                  <Grid item xs={12} md={6}>
+                  <Grid size={{ xs: 12, md: 6 }}>
                     <Stack spacing={1}>
                       <LabelWithRedAsterisk>Floor</LabelWithRedAsterisk>
                       <Autocomplete
                         open={floorOpen}
                         onOpen={handleFloorOpen}
                         onClose={handleFloorClose}
-                        value={formData.floorId}
+                        value={
+                          floorOptions.find(
+                            (option) => option._id === formData.floorId
+                          ) || null
+                        }
                         loading={floorLoading}
                         options={floorOptions}
                         getOptionLabel={(option) => option?.name || ""}
                         disabled={loading}
+                        noOptionsText="No floors available"
                         ListboxProps={{
                           style: {
                             maxHeight: 200,
@@ -813,7 +743,7 @@ export default function ScannedAsset() {
                         onChange={(e, newValue) =>
                           setFormData((prev) => ({
                             ...prev,
-                            floorId: newValue || null,
+                            floorId: newValue?._id || "",
                           }))
                         }
                         renderInput={(params) => (
@@ -827,7 +757,10 @@ export default function ScannedAsset() {
                                 endAdornment: (
                                   <Fragment>
                                     {floorLoading ? (
-                                      <CircularProgress color="inherit" size={20} />
+                                      <CircularProgress
+                                        color="inherit"
+                                        size={20}
+                                      />
                                     ) : null}
                                     {params.InputProps.endAdornment}
                                   </Fragment>
@@ -841,9 +774,11 @@ export default function ScannedAsset() {
                   </Grid>
 
                   {/* Purchase Value */}
-                  <Grid item xs={12} md={6}>
+                  <Grid size={{ xs: 12, md: 6 }}>
                     <Stack spacing={1}>
-                      <LabelWithRedAsterisk>Purchase Value</LabelWithRedAsterisk>
+                      <LabelWithRedAsterisk>
+                        Purchase Value
+                      </LabelWithRedAsterisk>
                       <TextField
                         name="currentValue"
                         value={formData.currentValue}
@@ -866,16 +801,17 @@ export default function ScannedAsset() {
                   </Grid>
 
                   {/* Size */}
-                  <Grid item xs={12} md={6}>
+                  <Grid size={{ xs: 12, md: 6 }}>
                     <Stack spacing={1}>
-                      <LabelWithRedAsterisk required>Size (inches)</LabelWithRedAsterisk>
+                      <LabelWithRedAsterisk>Size (inches)</LabelWithRedAsterisk>
                       <Stack direction="row" spacing={1} alignItems="center">
                         <TextField
                           value={sizeWidth}
-                          onChange={(e) => handleSizeChange(e.target.value, sizeHeight)}
+                          onChange={(e) =>
+                            handleSizeChange(e.target.value, sizeHeight)
+                          }
                           size="small"
                           placeholder="Width"
-                          required={!sizeHeight}
                           disabled={loading}
                           type="number"
                           slotProps={{
@@ -888,15 +824,19 @@ export default function ScannedAsset() {
                             },
                           }}
                         />
-                        <Typography variant="body1" sx={{ mx: 1, fontWeight: 600 }}>
-                          ×
+                        <Typography
+                          variant="body1"
+                          sx={{ mx: 1, fontWeight: 600 }}
+                        >
+                          x
                         </Typography>
                         <TextField
                           value={sizeHeight}
-                          onChange={(e) => handleSizeChange(sizeWidth, e.target.value)}
+                          onChange={(e) =>
+                            handleSizeChange(sizeWidth, e.target.value)
+                          }
                           size="small"
                           placeholder="Height"
-                          required={!sizeWidth}
                           disabled={loading}
                           type="number"
                           slotProps={{
@@ -909,15 +849,12 @@ export default function ScannedAsset() {
                             },
                           }}
                         />
-                        <Typography variant="body2" color="text.secondary" sx={{ minWidth: 40 }}>
-                          inches
-                        </Typography>
                       </Stack>
                     </Stack>
                   </Grid>
 
                   {/* Year */}
-                  <Grid item xs={12} md={6}>
+                  <Grid size={{ xs: 12, md: 6 }}>
                     <Stack spacing={1}>
                       <LabelWithRedAsterisk>Year</LabelWithRedAsterisk>
                       <DatePicker
@@ -925,12 +862,12 @@ export default function ScannedAsset() {
                         onChange={(newValue) =>
                           setFormData((prev) => ({ ...prev, year: newValue }))
                         }
-                        views={['year']}
+                        views={["year"]}
                         disabled={loading}
                         slotProps={{
                           textField: {
-                            size: 'small',
-                            placeholder: 'Select year',
+                            size: "small",
+                            placeholder: "Select year",
                             sx: {
                               "& .MuiOutlinedInput-root": {
                                 backgroundColor: "inherit",
@@ -943,28 +880,41 @@ export default function ScannedAsset() {
                   </Grid>
 
                   {/* Status */}
-                  <Grid item xs={12} md={6}>
+                  <Grid size={{ xs: 12, md: 6 }}>
                     <Stack spacing={1}>
-                      <LabelWithRedAsterisk required>Status</LabelWithRedAsterisk>
-                      <FormControl fullWidth required disabled={loading}>
+                      <LabelWithRedAsterisk>Status</LabelWithRedAsterisk>
+                      <FormControl fullWidth>
                         <Select
                           name="status"
                           value={formData.status}
-                          onChange={handleChange}
-                          required
+                          onChange={(e) =>
+                            setFormData((prev) => ({
+                              ...prev,
+                              status: e.target.value,
+                            }))
+                          }
+                          displayEmpty
                           size="small"
+                          renderValue={(selected) => {
+                            if (selected === "") {
+                              return (
+                                <span style={{ color: "#999" }}>
+                                  Select status
+                                </span>
+                              );
+                            }
+                            return selected == "active" ? "Active" : "Inactive";
+                          }}
                         >
                           <MenuItem value="active">Active</MenuItem>
                           <MenuItem value="inactive">Inactive</MenuItem>
-                          <MenuItem value="maintenance">Maintenance</MenuItem>
-                          <MenuItem value="retired">Retired</MenuItem>
                         </Select>
                       </FormControl>
                     </Stack>
                   </Grid>
 
                   {/* Description */}
-                  <Grid item xs={12}>
+                  <Grid size={{ xs: 12, md: 6 }}>
                     <Stack spacing={1}>
                       <LabelWithRedAsterisk>Description</LabelWithRedAsterisk>
                       <TextField
@@ -987,7 +937,7 @@ export default function ScannedAsset() {
                   </Grid>
 
                   {/* Image Upload */}
-                  <Grid item xs={12}>
+                  <Grid size={{ xs: 12, md: 6 }}>
                     <Stack spacing={1}>
                       <LabelWithRedAsterisk>Update Image</LabelWithRedAsterisk>
                       <Button
@@ -998,13 +948,15 @@ export default function ScannedAsset() {
                         startIcon={<CloudUploadIcon />}
                         disabled={loading}
                         sx={{
-                          justifyContent: 'flex-start',
-                          textTransform: 'none',
-                          borderStyle: 'dashed',
+                          justifyContent: "flex-start",
+                          textTransform: "none",
+                          borderStyle: "dashed",
                           py: 1.5,
                         }}
                       >
-                        {formData.image ? formData.image.name : "Choose new image (optional)"}
+                        {formData.image
+                          ? formData.image.name
+                          : "Choose new image (optional)"}
                         <VisuallyHiddenInput
                           type="file"
                           name="image"
@@ -1017,46 +969,6 @@ export default function ScannedAsset() {
                           Selected: {formData.image.name}
                         </Typography>
                       )}
-                    </Stack>
-                  </Grid>
-
-                  {/* Form Actions */}
-                  <Grid item xs={12}>
-                    <Stack direction="row" spacing={2} justifyContent="flex-end">
-                      <Button
-                        variant="outlined"
-                        onClick={() => {
-                          resetForm();
-                          setShowEditForm(false);
-                        }}
-                        disabled={submit}
-                        sx={{ textTransform: 'none' }}
-                      >
-                        Cancel
-                      </Button>
-                      <Button
-                        variant="outlined"
-                        onClick={resetForm}
-                        disabled={submit}
-                        sx={{ textTransform: 'none' }}
-                      >
-                        Reset
-                      </Button>
-                      <Button
-                        variant="contained"
-                        onClick={handleEditSubmit}
-                        disabled={submit || !formData.name || !formData.artist}
-                        sx={{ textTransform: 'none' }}
-                      >
-                        {submit ? (
-                          <>
-                            <CircularProgress size={16} sx={{ mr: 1 }} />
-                            Updating...
-                          </>
-                        ) : (
-                          'Update Asset'
-                        )}
-                      </Button>
                     </Stack>
                   </Grid>
                 </Grid>
@@ -1077,233 +989,187 @@ export default function ScannedAsset() {
             }
           />
           <CardContent>
-            <Grid container spacing={3}>
-              {/* Auditor Remarks */}
-              <Grid item xs={12}>
-                <Stack spacing={1}>
-                  <LabelWithRedAsterisk required>Auditor Remarks</LabelWithRedAsterisk>
-                  <TextField
-                    name="auditorRemark"
-                    value={auditFormData.auditorRemark}
-                    onChange={handleAuditChange}
-                    fullWidth
-                    multiline
-                    rows={4}
-                    size="small"
-                    placeholder="Enter your audit remarks..."
-                    required
-                    disabled={submit}
-                    sx={{
-                      "& .MuiOutlinedInput-root": {
-                        backgroundColor: "inherit",
-                      },
-                    }}
-                  />
-                </Stack>
-              </Grid>
-
-              {/* Audit Images */}
-              <Grid item xs={12} md={4}>
-                <Stack spacing={1}>
-                  <LabelWithRedAsterisk required>Audit Image 1</LabelWithRedAsterisk>
-                  <Button
-                    component="label"
-                    role={undefined}
-                    variant="outlined"
-                    tabIndex={-1}
-                    startIcon={<CloudUploadIcon />}
-                    disabled={submit}
-                    sx={{
-                      justifyContent: 'flex-start',
-                      textTransform: 'none',
-                      borderStyle: 'dashed',
-                      py: 1.5,
-                    }}
-                  >
-                    {auditFormData.auditImage1 ? auditFormData.auditImage1.name : "Choose image"}
-                    <VisuallyHiddenInput
-                      type="file"
-                      name="auditImage1"
-                      accept="image/*"
-                      onChange={handleAuditChange}
+            <Box component="form" onSubmit={loading ? null : handleSubmit}>
+              <Grid container spacing={3}>
+                {/* Auditor Remarks */}
+                <Grid size={{ xs: 12, md: 6 }}>
+                  <Stack spacing={1}>
+                    <LabelWithRedAsterisk required>
+                      Auditor Remarks
+                    </LabelWithRedAsterisk>
+                    <TextField
+                      name="auditorRemark"
+                      value={formData.auditorRemark}
+                      onChange={handleChange}
+                      fullWidth
+                      multiline
+                      rows={4}
+                      size="small"
+                      placeholder="Enter your audit remarks..."
                       required
+                      disabled={submit}
+                      sx={{
+                        "& .MuiOutlinedInput-root": {
+                          backgroundColor: "inherit",
+                        },
+                      }}
                     />
-                  </Button>
-                </Stack>
-              </Grid>
+                  </Stack>
+                </Grid>
 
-              <Grid item xs={12} md={4}>
-                <Stack spacing={1}>
-                  <LabelWithRedAsterisk>Audit Image 2</LabelWithRedAsterisk>
-                  <Button
-                    component="label"
-                    role={undefined}
-                    variant="outlined"
-                    tabIndex={-1}
-                    startIcon={<CloudUploadIcon />}
-                    disabled={submit}
-                    sx={{
-                      justifyContent: 'flex-start',
-                      textTransform: 'none',
-                      borderStyle: 'dashed',
-                      py: 1.5,
-                    }}
-                  >
-                    {auditFormData.auditImage2 ? auditFormData.auditImage2.name : "Choose image (optional)"}
-                    <VisuallyHiddenInput
-                      type="file"
-                      name="auditImage2"
-                      accept="image/*"
-                      onChange={handleAuditChange}
-                    />
-                  </Button>
-                </Stack>
-              </Grid>
+                {/* Audit Images */}
+                <Grid size={{ xs: 12, md: 6 }}>
+                  <Stack spacing={1}>
+                    <LabelWithRedAsterisk required>
+                      Audit Image 1
+                    </LabelWithRedAsterisk>
+                    <Button
+                      component="label"
+                      role={undefined}
+                      variant="outlined"
+                      tabIndex={-1}
+                      startIcon={<CloudUploadIcon />}
+                      disabled={submit}
+                      sx={{
+                        justifyContent: "flex-start",
+                        textTransform: "none",
+                        borderStyle: "dashed",
+                        py: 1.5,
+                      }}
+                    >
+                      {formData.auditImage1
+                        ? formData.auditImage1.name
+                        : "Choose image"}
+                      <VisuallyHiddenInput
+                        type="file"
+                        name="auditImage1"
+                        accept="image/*"
+                        onChange={handleChange}
+                        required
+                      />
+                    </Button>
+                  </Stack>
+                </Grid>
 
-              <Grid item xs={12} md={4}>
-                <Stack spacing={1}>
-                  <LabelWithRedAsterisk>Audit Image 3</LabelWithRedAsterisk>
-                  <Button
-                    component="label"
-                    role={undefined}
-                    variant="outlined"
-                    tabIndex={-1}
-                    startIcon={<CloudUploadIcon />}
-                    disabled={submit}
-                    sx={{
-                      justifyContent: 'flex-start',
-                      textTransform: 'none',
-                      borderStyle: 'dashed',
-                      py: 1.5,
-                    }}
-                  >
-                    {auditFormData.auditImage3 ? auditFormData.auditImage3.name : "Choose image (optional)"}
-                    <VisuallyHiddenInput
-                      type="file"
-                      name="auditImage3"
-                      accept="image/*"
-                      onChange={handleAuditChange}
-                    />
-                  </Button>
-                </Stack>
-              </Grid>
+                <Grid size={{ xs: 12, md: 6 }}>
+                  <Stack spacing={1}>
+                    <LabelWithRedAsterisk>Audit Image 2</LabelWithRedAsterisk>
+                    <Button
+                      component="label"
+                      role={undefined}
+                      variant="outlined"
+                      tabIndex={-1}
+                      startIcon={<CloudUploadIcon />}
+                      disabled={submit}
+                      sx={{
+                        justifyContent: "flex-start",
+                        textTransform: "none",
+                        borderStyle: "dashed",
+                        py: 1.5,
+                      }}
+                    >
+                      {formData.auditImage2
+                        ? formData.auditImage2.name
+                        : "Choose image (optional)"}
+                      <VisuallyHiddenInput
+                        type="file"
+                        name="auditImage2"
+                        accept="image/*"
+                        onChange={handleChange}
+                      />
+                    </Button>
+                  </Stack>
+                </Grid>
 
-              {/* Audit Form Actions */}
-              <Grid item xs={12}>
-                <Stack direction="row" spacing={2} justifyContent="flex-end">
-                  <Button
-                    variant="outlined"
-                    onClick={() => {
-                      setAuditFormData({
-                        assetId: "",
-                        auditorRemark: "",
-                        auditImage1: null,
-                        auditImage2: null,
-                        auditImage3: null,
-                      });
-                    }}
-                    disabled={submit}
-                    sx={{ textTransform: 'none' }}
-                  >
-                    Clear Form
-                  </Button>
-                  <Button
-                    variant="contained"
-                    onClick={handleAuditSubmit}
-                    disabled={submit || !auditFormData.auditorRemark.trim() || !auditFormData.auditImage1}
-                    sx={{ textTransform: 'none' }}
-                  >
-                    {submit ? (
-                      <>
-                        <CircularProgress size={16} sx={{ mr: 1 }} />
-                        Submitting...
-                      </>
-                    ) : (
-                      'Submit Audit'
-                    )}
-                  </Button>
-                </Stack>
+                <Grid size={{ xs: 12, md: 6 }}>
+                  <Stack spacing={1}>
+                    <LabelWithRedAsterisk>Audit Image 3</LabelWithRedAsterisk>
+                    <Button
+                      component="label"
+                      role={undefined}
+                      variant="outlined"
+                      tabIndex={-1}
+                      startIcon={<CloudUploadIcon />}
+                      disabled={submit}
+                      sx={{
+                        justifyContent: "flex-start",
+                        textTransform: "none",
+                        borderStyle: "dashed",
+                        py: 1.5,
+                      }}
+                    >
+                      {formData.auditImage3
+                        ? formData.auditImage3.name
+                        : "Choose image (optional)"}
+                      <VisuallyHiddenInput
+                        type="file"
+                        name="auditImage3"
+                        accept="image/*"
+                        onChange={handleChange}
+                      />
+                    </Button>
+                  </Stack>
+                </Grid>
+
+                {/* Audit Form Actions */}
+                <Grid size={{ xs: 12, md: 6 }}>
+                  <Stack direction="row" spacing={2} justifyContent="flex-end">
+                    <Button
+                      variant="outlined"
+                      onClick={resetForm}
+                      disabled={submit}
+                      sx={{ textTransform: "none" }}
+                    >
+                      Reset
+                    </Button>
+                    <Button
+                      type="submit"
+                      variant="outlined"
+                      sx={{ textTransform: "none" }}
+                    >
+                      {submit ? (
+                        <>
+                          <CircularProgress size={16} sx={{ mr: 1 }} />
+                          Submitting...
+                        </>
+                      ) : (
+                        "Submit Audit"
+                      )}
+                    </Button>
+                  </Stack>
+                </Grid>
               </Grid>
-            </Grid>
+            </Box>
           </CardContent>
         </Card>
       )}
 
-      {/* Audit History */}
-      {data?.audits && data.audits.length > 0 && (
-        <Card className="mb-5 sm:mb-6 rounded-2xl border border-slate-200 shadow-[0_10px_30px_-12px_rgba(0,0,0,0.15)]">
-          <CardHeader
-            title={
-              <Typography className="text-lg font-semibold">
-                Audit History
-              </Typography>
-            }
-          />
-          <CardContent>
-            <div className="space-y-4">
-              {data.audits.map((audit, index) => (
-                <div
-                  key={audit._id || index}
-                  className="p-4 rounded-lg border border-slate-200 bg-slate-50/50"
-                >
-                  <div className="mb-2">
-                    <Typography variant="body2" className="font-medium text-slate-900">
-                      Audit #{index + 1}
-                    </Typography>
-                    <Typography variant="caption" className="text-slate-500">
-                      {audit.createdAt ? new Date(audit.createdAt).toLocaleDateString() : 'Date not available'}
-                    </Typography>
-                  </div>
-                  <Typography variant="body2" className="text-slate-700 mb-3">
-                    {audit.auditorRemark || 'No remarks provided'}
-                  </Typography>
-                  
-                  {/* Audit Images */}
-                  {(audit.auditImage1 || audit.auditImage2 || audit.auditImage3) && (
-                    <div className="flex gap-2 flex-wrap">
-                      {audit.auditImage1 && (
-                        <img
-                          src={audit.auditImage1}
-                          alt={`Audit ${index + 1} - Image 1`}
-                          className="w-20 h-20 object-cover rounded border border-slate-200 cursor-pointer hover:shadow-md transition"
-                          onClick={() => setImageOpen({
-                            image: audit.auditImage1,
-                            name: `Audit ${index + 1} - Image 1`,
-                            open: true
-                          })}
-                        />
-                      )}
-                      {audit.auditImage2 && (
-                        <img
-                          src={audit.auditImage2}
-                          alt={`Audit ${index + 1} - Image 2`}
-                          className="w-20 h-20 object-cover rounded border border-slate-200 cursor-pointer hover:shadow-md transition"
-                          onClick={() => setImageOpen({
-                            image: audit.auditImage2,
-                            name: `Audit ${index + 1} - Image 2`,
-                            open: true
-                          })}
-                        />
-                      )}
-                      {audit.auditImage3 && (
-                        <img
-                          src={audit.auditImage3}
-                          alt={`Audit ${index + 1} - Image 3`}
-                          className="w-20 h-20 object-cover rounded border border-slate-200 cursor-pointer hover:shadow-md transition"
-                          onClick={() => setImageOpen({
-                            image: audit.auditImage3,
-                            name: `Audit ${index + 1} - Image 3`,
-                            open: true
-                          })}
-                        />
-                      )}
-                    </div>
-                  )}
-                </div>
-              ))}
-            </div>
-          </CardContent>
-        </Card>
+      {/* Loading Overlay */}
+      {submit && (
+        <Box
+          sx={{
+            position: "fixed",
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            bgcolor: "rgba(0, 0, 0, 0.3)",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            zIndex: 9999,
+          }}
+        >
+          <Card sx={{ p: 3, textAlign: "center", mx: 2, maxWidth: 400 }}>
+            <CircularProgress sx={{ mb: 2 }} />
+            <Typography variant="h6" fontWeight={500}>
+              Submiting Audit...
+            </Typography>
+            <Typography variant="body2" color="text.secondary">
+              Please wait while we process your request
+            </Typography>
+          </Card>
+        </Box>
       )}
 
       {/* Notification Component */}

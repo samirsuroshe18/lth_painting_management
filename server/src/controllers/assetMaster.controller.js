@@ -2,11 +2,7 @@ import ApiResponse from '../utils/ApiResponse.js';
 import ApiError from '../utils/ApiError.js';
 import catchAsync from '../utils/catchAsync.js';
 import { Asset } from '../models/asset.model.js';
-import { Location } from '../models/location.model.js';
 import { uploadOnCloudinary } from '../utils/cloudinary.js';
-import { Department } from '../models/department.model.js';  // Add this import
-import { Building } from '../models/building.model.js';      // Add this import
-import { Floor } from '../models/floor.model.js';
 import QRCode from 'qrcode'
 import mongoose from 'mongoose';
 
@@ -36,65 +32,41 @@ const addNewAsset = catchAsync(async (req, res) => {
         return res.status(403).json({ message: 'You do not have access to this location.' });
     }
 
-    // Updated validation - removed description, purchaseValue, and year from required check
-    if (!name || !locationId || !artist ) {
-        throw new ApiError(400, 'Name, location, and artist are required fields');
+    if (!name || !locationId || !artist || !size || !status ) {
+        throw new ApiError(400, 'Please fill in all required fields');
     }
 
     if (imagePath) {
         const uploadResult = await uploadOnCloudinary(imagePath);
         imageUrl = uploadResult.secure_url;
+    }else{
+        throw new ApiError(400, "Asset Image is missing", imagePath)
     }
 
-    // Prepare asset data with proper null handling
     const assetData = {
         name,
-        image: imageUrl || 'N/A',
+        image: imageUrl || '',
         locationId,
         artist,
         size,
         status,
         createdBy: req.user._id,
         updatedBy: req.user._id,
-        reviewStatus: req.user.role === 'auditor' ? 'pending' : 'approved',
+        reviewStatus: req.user.role !== 'superadmin' ? 'pending' : 'approved',
     };
 
-    // Add new fields if they have values
-    if (department) {
-        assetData.departmentId = department;
-    }
-    
-    if (building) {
-        assetData.buildingId = building;
-    }
-    
-    if (floor) {
-        assetData.floorId = floor;
-    }
-
-    // Only add optional fields if they have meaningful values
-    if (description && description.trim() !== '') {
-        assetData.description = description.trim();
-    }
-
-    if (purchaseValue !== null && purchaseValue !== undefined && purchaseValue !== '' && !isNaN(purchaseValue)) {
-        assetData.purchaseValue = Number(purchaseValue);
-    }
-
-    // Critical fix for year handling
-    if (year !== null && year !== undefined && year !== '' && !isNaN(year) && year > 0) {
-        assetData.year = Number(year);
-    }
-    // If year is null, undefined, empty string, or invalid, don't include it in assetData
-    // This way MongoDB won't store any value for year field
+    if (description) assetData.description = description;
+    if (purchaseValue && purchaseValue > 0) assetData.purchaseValue = purchaseValue;
+    if (year && year > 0) assetData.year = year;
+    if (department) assetData.departmentId = department;
+    if (building) assetData.buildingId = building;
+    if (floor) assetData.floorId = floor;
 
     const newAsset = await Asset.create(assetData);
 
     if (!newAsset) {
         throw new ApiError(500, 'Failed to create asset');
     }
-    
-    console.log("QR Code URL:", process.env.QR_CODE_DATA_URL);
 
     const qrCodeDataUrl = await QRCode.toDataURL(`${process.env.QR_CODE_DATA_URL}${newAsset._id}`);
 
@@ -141,34 +113,6 @@ const viewAsset = catchAsync(async (req, res) => {
     );
 });
 
-// const viewAssetPublic = catchAsync(async (req, res) => {
-//     const assetId = req.params.assetId;
-//     if (!assetId) {
-//         throw new ApiError(400, 'Asset ID is required');
-//     }
-//     const asset = await Asset.findOne({ _id: assetId, status: true, reviewStatus: 'approved' })
-//         .select('-updatedAt -reviewedBy -reviewStatus -status -qrCode -__v')
-//         .populate('locationId', 'name area')
-//         .populate('departmentId', 'name')
-//         .populate('buildingId', 'name')
-//         .populate('floorId', 'name')
-//         .populate('createdBy', 'userName');
-
-//     if (!asset) {
-//         throw new ApiError(404, 'Asset not found');
-//     }
-
-//     const locations = await Location.find()
-//         .select('name area stateId')
-//         .populate('stateId', 'name');
-
-//     return res.status(200).json(
-//         new ApiResponse(200, {
-//             asset,
-//             locations
-//         }, "Asset retrieved successfully")
-//     );
-// });
 const viewAssetPublic = catchAsync(async (req, res) => {
     const assetId = req.params.assetId;
     if (!assetId) {
@@ -195,32 +139,9 @@ const viewAssetPublic = catchAsync(async (req, res) => {
         throw new ApiError(404, 'Asset not found');
     }
 
-    const locations = await Location.find()
-        .select('name area stateId cityId areaId')
-        .populate('stateId', 'name')
-        .populate('cityId', 'name')
-        .populate('areaId', 'name');
-
-    // Add the missing database queries
-    const departments = await Department.find()
-        .select('name')
-        .sort({ name: 1 }); // Optional: sort alphabetically
-
-    const buildings = await Building.find()
-        .select('name')
-        .sort({ name: 1 }); // Optional: sort alphabetically
-
-    const floors = await Floor.find()
-        .select('name')
-        .sort({ name: 1 }); // Optional: sort alphabetically
-
     return res.status(200).json(
         new ApiResponse(200, {
             asset,
-            locations,
-            departments,
-            buildings,
-            floors
         }, "Asset retrieved successfully")
     );
 });
@@ -252,19 +173,17 @@ const updateAsset = catchAsync(async (req, res) => {
         return res.status(403).json({ message: 'You do not have access to this location.' });
     }
 
-    // Check if asset exists
     const existingAsset = await Asset.findById(assetId);
+
     if (!existingAsset) {
         throw new ApiError(404, 'Asset not found');
     }
 
-    // Handle image upload if new image is provided
     if (imagePath) {
         const uploadResult = await uploadOnCloudinary(imagePath);
         imageUrl = uploadResult.secure_url;
     }
 
-    // Prepare update object with only provided fields
     const updateData = {
         updatedBy: req.user._id,
     };
@@ -279,13 +198,10 @@ const updateAsset = catchAsync(async (req, res) => {
     if (size !== undefined) updateData.size = size;
     if (status !== undefined) updateData.status = status;
     if (imageUrl) updateData.image = imageUrl;
-    
-    // Add new fields to update data
     if (department !== undefined) updateData.departmentId = department;
     if (building !== undefined) updateData.buildingId = building;
     if (floor !== undefined) updateData.floorId = floor;
 
-    // Update the asset
     const updatedAsset = await Asset.findByIdAndUpdate(
         assetId,
         updateData,
@@ -316,10 +232,9 @@ const reviewAssetStatus = catchAsync(async (req, res) => {
         .populate({
             path: 'locationId',
             populate: [
-                {
-                    path: 'stateId',
-                    select: 'name',
-                },
+                { path: 'stateId', select: 'name' },
+                { path: 'cityId', select: 'name' },
+                { path: 'areaId', select: 'name' }
             ]
         })
         .populate('createdBy', 'userName');
@@ -336,10 +251,6 @@ const reviewAssetStatus = catchAsync(async (req, res) => {
         throw new ApiError(403, 'Access denied.')
     }
 
-    if (!['approved', 'rejected'].includes(reviewStatus)) {
-        throw new ApiError(400, 'Invalid review status');
-    }
-
     asset.reviewStatus = reviewStatus;
     asset.updatedBy = req.user._id;
     asset.reviewedBy = req.user._id;
@@ -351,120 +262,20 @@ const reviewAssetStatus = catchAsync(async (req, res) => {
     );
 });
 
-// const getAssets = catchAsync(async (req, res) => {
-//     // Pagination parameters
-//     const page = parseInt(req.query.page) || 1;
-//     const limit = parseInt(req.query.limit) || 10;
-//     const skip = (page - 1) * limit;
-
-//     // Filter parameters
-//     const filters = {};
-
-//     // Status filter
-//     if (req.query.status) {
-//         filters.reviewStatus = req.query.status;
-//     }
-
-//     // Date range filter
-//     if (req.query.startDate && req.query.endDate) {
-//         const startDate = new Date(req.query.startDate);
-//         const endDate = new Date(req.query.endDate);
-//         endDate.setHours(23, 59, 59, 999); // Set to end of day
-
-//         filters.createdAt = {
-//             $gte: startDate,
-//             $lte: endDate
-//         };
-//     }
-
-//     if (req.query.startDate) {
-//         const startDate = new Date(req.query.startDate);
-
-//         filters.createdAt = {
-//             $gte: startDate
-//         };
-//     }
-
-//     if (req.query.endDate) {
-//         const endDate = new Date(req.query.endDate);
-//         endDate.setHours(23, 59, 59, 999);
-
-//         filters.createdAt = {
-//             $lte: endDate
-//         };
-//     }
-
-//     // Name/keyword search
-//     if (req.query.search) {
-//         filters.$or = [
-//             { name: { $regex: req.query.search, $options: 'i' } },
-//         ];
-//     }
-
-//     // Base match conditions for DeliveryEntry
-//     const assetMatch = {
-//         isDeleted: false,
-//         locationId: { $in: req.user.location.map(loc => loc._id) },
-//         ...filters
-//     };
-
-//     // Sorting parameters
-//     let sort = { createdAt: -1 }; // default sort (newest first)
-//     if (req.query.sortField && req.query.sortOrder) {
-//         const sortField = req.query.sortField;
-//         const sortOrder = parseInt(req.query.sortOrder);
-//         sort = { [sortField]: sortOrder };
-//     }
-
-//     // Count total documents for pagination
-//     const totalCount = await Asset.countDocuments(assetMatch);
-//     const totalPages = Math.ceil(totalCount / limit);
-//     const updatedAsset = await Asset.find(assetMatch)
-//         .sort(sort)
-//         .populate('locationId', 'name')
-//         .populate('departmentId', 'name')
-//         .populate('buildingId', 'name')
-//         .populate('floorId', 'name')
-//         .populate('createdBy', 'userName');
-//     // Apply pagination on combined results
-//     const response = updatedAsset.slice(skip, skip + limit);
-
-//     if (response.length <= 0) {
-//         throw new ApiError(404, "No assets available.");
-//     }
-
-//     return res.status(200).json(
-//         new ApiResponse(200, {
-//             assets: response,
-//             pagination: {
-//                 totalEntries: totalCount,
-//                 entriesPerPage: limit,
-//                 currentPage: page,
-//                 totalPages: totalPages,
-//                 hasMore: page < totalPages
-//             }
-//         }, "Assets retrieved successfully")
-//     );
-// });
 const getAssets = catchAsync(async (req, res) => {
-    // Pagination parameters
     const page = parseInt(req.query.page) || 1;
     const limit = parseInt(req.query.limit) || 10;
     const skip = (page - 1) * limit;
-
-    // Filter parameters
     const filters = {};
 
-    // Status filter
     if (req.query.status) {
         filters.reviewStatus = req.query.status;
     }
 
-    // Date range filter
     if (req.query.startDate && req.query.endDate) {
         const startDate = new Date(req.query.startDate);
         const endDate = new Date(req.query.endDate);
-        endDate.setHours(23, 59, 59, 999); // Set to end of day
+        endDate.setHours(23, 59, 59, 999);
 
         filters.createdAt = {
             $gte: startDate,
@@ -479,41 +290,36 @@ const getAssets = catchAsync(async (req, res) => {
         filters.createdAt = { $lte: endDate };
     }
 
-    // Name/keyword search
     if (req.query.search) {
         filters.$or = [{ name: { $regex: req.query.search, $options: "i" } }];
     }
 
-    // Base match conditions for assets
     const assetMatch = {
         isDeleted: false,
         locationId: { $in: req.user.location.map((loc) => loc._id) },
         ...filters,
     };
 
-    // Sorting parameters
-    let sort = { createdAt: -1 }; // default sort (newest first)
+    let sort = { createdAt: -1 };
     if (req.query.sortField && req.query.sortOrder) {
         const sortField = req.query.sortField;
         const sortOrder = parseInt(req.query.sortOrder);
         sort = { [sortField]: sortOrder };
     }
 
-    // Count total documents for pagination
     const totalCount = await Asset.countDocuments(assetMatch);
     const totalPages = Math.ceil(totalCount / limit);
 
-    // Fetch assets with nested populate
     const updatedAsset = await Asset.find(assetMatch)
         .sort(sort)
         .populate({
-            path: "locationId",
-            select: "name area cityId",
-            populate: {
-                path: "cityId",
-                select: "name", // city name
-                model: "City"
-            }
+            path: 'locationId',
+            select: 'name area stateId cityId areaId',
+            populate: [
+                { path: 'stateId', select: 'name' },
+                { path: 'cityId', select: 'name' },
+                { path: 'areaId', select: 'name' }
+            ]
         })
         .populate("departmentId", "name")
         .populate("buildingId", "name")
@@ -629,20 +435,18 @@ const removeAsset = catchAsync(async (req, res) => {
 })
 
 const getAssetsByLocation = catchAsync(async (req, res) => {
-    const { locationIds } = req.body; // expecting array of location IDs
+    const { locationIds } = req.body;
 
     if (!Array.isArray(locationIds) || locationIds.length === 0) {
         throw new ApiError(400, 'locationIds must be a non-empty array');
     }
 
-    // Sanitize the input arrays to prevent injection attacks
     const sanitizedLocationIds = locationIds.filter(id => typeof id === 'string' && mongoose.Types.ObjectId.isValid(id));
 
     if (sanitizedLocationIds.length === 0) {
         throw new ApiError(400, 'Invalid ID format provided');
     }
 
-    // Query assets that match any of the location IDs
     const assets = await Asset.find({
         locationId: { $in: sanitizedLocationIds }
     })

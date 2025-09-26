@@ -1,10 +1,5 @@
 import { useEffect, useState } from "react";
-import {
-  getAllArea,
-  addArea,
-  updateArea,
-  deleteArea,
-} from "../../api/areaApi";
+import { getAllArea, addArea, updateArea, deleteArea } from "../../api/areaApi";
 import { useDispatch } from "react-redux";
 import { showNotificationWithTimeout } from "../../redux/slices/notificationSlice";
 import {
@@ -51,7 +46,7 @@ const AreaMaster = () => {
   const [editMode, setEditMode] = useState(false);
   const [editAreaId, setEditAreaId] = useState(null);
   const [areaName, setAreaName] = useState("");
-  const [status, setStatus] = useState(true);
+  const [status, setStatus] = useState("");
   const [submitLoading, setSubmitLoading] = useState(false);
   const [areaToDelete, setAreaToDelete] = useState(null);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
@@ -185,7 +180,7 @@ const AreaMaster = () => {
 
   const handleEditClick = (area) => {
     setAreaName(area?.name ?? "");
-    setStatus(!!area.status);
+    setStatus(area?.status);
     setEditAreaId(area._id);
     setEditMode(true);
     setShowDialog(true);
@@ -246,7 +241,7 @@ const AreaMaster = () => {
     setShowDialog(false);
     setEditMode(false);
     setAreaName("");
-    setStatus(null);
+    setStatus("");
     setEditAreaId(null);
   };
 
@@ -254,7 +249,7 @@ const AreaMaster = () => {
     setShowDialog(true);
     setEditMode(false);
     setAreaName("");
-    setStatus(true);
+    setStatus("");
   };
 
   const handleRefresh = () => {
@@ -447,32 +442,31 @@ const AreaMaster = () => {
       {/* DataGrid */}
       <Box sx={{ height: 410, width: "100%", mt: 3 }}>
         <DataGrid
-        rows={filteredRows}
-        columns={columns}
-        disableRowSelectionOnClick
-        loading={loading}
-        paginationModel={paginationModel}
-        onPaginationModelChange={(newModel) => {
-        //added this to reset page to 0 when pageSize changes
-          if (newModel.pageSize !== paginationModel.pageSize) {
-            setPaginationModel({ page: 0, pageSize: newModel.pageSize });
-          } else {
-            setPaginationModel(newModel);
-          }
-        }}
-        pageSizeOptions={[5, 10, 25, 50]}
-        rowHeight={60}
-        headerHeight={50}
-        sx={{
-          "& .MuiDataGrid-columnHeaders": {
-            backgroundColor: "rgba(99,102,241,0.06)",
-          },
-          borderRadius: 2,
-          border: "1px solid",
-          borderColor: "divider",
-        }}
-      />
-
+          rows={filteredRows}
+          columns={columns}
+          disableRowSelectionOnClick
+          loading={loading}
+          paginationModel={paginationModel}
+          onPaginationModelChange={(newModel) => {
+            //added this to reset page to 0 when pageSize changes
+            if (newModel.pageSize !== paginationModel.pageSize) {
+              setPaginationModel({ page: 0, pageSize: newModel.pageSize });
+            } else {
+              setPaginationModel(newModel);
+            }
+          }}
+          pageSizeOptions={[5, 10, 25, 50]}
+          rowHeight={60}
+          headerHeight={50}
+          sx={{
+            "& .MuiDataGrid-columnHeaders": {
+              backgroundColor: "rgba(99,102,241,0.06)",
+            },
+            borderRadius: 2,
+            border: "1px solid",
+            borderColor: "divider",
+          }}
+        />
       </Box>
 
       {/* Add/Edit Dialog */}
@@ -516,16 +510,25 @@ const AreaMaster = () => {
                   disabled={submitLoading}
                 />
 
-                <FormControl fullWidth required disabled={submitLoading}>
-                  <InputLabel>Status</InputLabel>
+                <FormControl fullWidth>
                   <Select
-                    value={status === null ? "" : String(status)}
-                    onChange={(e) => setStatus(e.target.value === "true")}
-                    label="Status"
+                    value={status}
+                    onChange={(e) => setStatus(e.target.value)}
+                    required
+                    displayEmpty
+                    renderValue={(selected) => {
+                      if (selected === "") {
+                        return (
+                          <span style={{ color: "#999" }}>Select status</span>
+                        );
+                      }
+                      return selected == "active" || selected === true
+                        ? "Active"
+                        : "Inactive";
+                    }}
                   >
-                    <MenuItem value="">Select status</MenuItem>
-                    <MenuItem value="true">Active</MenuItem>
-                    <MenuItem value="false">Inactive</MenuItem>
+                    <MenuItem value="active">Active</MenuItem>
+                    <MenuItem value="inactive">Inactive</MenuItem>
                   </Select>
                 </FormControl>
               </Box>
@@ -576,8 +579,8 @@ const AreaMaster = () => {
           </DialogTitle>
           <DialogContent>
             <Alert severity="warning" sx={{ mb: 2 }}>
-              This action cannot be undone. The area will be permanently
-              removed from the system.
+              This action cannot be undone. The area will be permanently removed
+              from the system.
             </Alert>
             <Typography>
               Are you sure you want to delete area{" "}

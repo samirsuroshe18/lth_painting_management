@@ -51,7 +51,7 @@ const CityMaster = () => {
   const [editMode, setEditMode] = useState(false);
   const [editCityId, setEditCityId] = useState(null);
   const [cityName, setCityName] = useState("");
-  const [status, setStatus] = useState(true);
+  const [status, setStatus] = useState("");
   const [submitLoading, setSubmitLoading] = useState(false);
   const [cityToDelete, setCityToDelete] = useState(null);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
@@ -185,7 +185,7 @@ const CityMaster = () => {
 
   const handleEditClick = (city) => {
     setCityName(city?.name ?? "");
-    setStatus(!!city.status);
+    setStatus(city?.status);
     setEditCityId(city._id);
     setEditMode(true);
     setShowDialog(true);
@@ -246,7 +246,7 @@ const CityMaster = () => {
     setShowDialog(false);
     setEditMode(false);
     setCityName("");
-    setStatus(null);
+    setStatus("");
     setEditCityId(null);
   };
 
@@ -254,7 +254,7 @@ const CityMaster = () => {
     setShowDialog(true);
     setEditMode(false);
     setCityName("");
-    setStatus(true);
+    setStatus("");
   };
 
   const handleRefresh = () => {
@@ -447,32 +447,31 @@ const CityMaster = () => {
       {/* DataGrid */}
       <Box sx={{ height: 410, width: "100%", mt: 3 }}>
         <DataGrid
-        rows={filteredRows}
-        columns={columns}
-        disableRowSelectionOnClick
-        loading={loading}
-        paginationModel={paginationModel}
-        onPaginationModelChange={(newModel) => {
-        //added this to reset page to 0 when pageSize changes
-          if (newModel.pageSize !== paginationModel.pageSize) {
-            setPaginationModel({ page: 0, pageSize: newModel.pageSize });
-          } else {
-            setPaginationModel(newModel);
-          }
-        }}
-        pageSizeOptions={[5, 10, 25, 50]}
-        rowHeight={60}
-        headerHeight={50}
-        sx={{
-          "& .MuiDataGrid-columnHeaders": {
-            backgroundColor: "rgba(99,102,241,0.06)",
-          },
-          borderRadius: 2,
-          border: "1px solid",
-          borderColor: "divider",
-        }}
-      />
-
+          rows={filteredRows}
+          columns={columns}
+          disableRowSelectionOnClick
+          loading={loading}
+          paginationModel={paginationModel}
+          onPaginationModelChange={(newModel) => {
+            //added this to reset page to 0 when pageSize changes
+            if (newModel.pageSize !== paginationModel.pageSize) {
+              setPaginationModel({ page: 0, pageSize: newModel.pageSize });
+            } else {
+              setPaginationModel(newModel);
+            }
+          }}
+          pageSizeOptions={[5, 10, 25, 50]}
+          rowHeight={60}
+          headerHeight={50}
+          sx={{
+            "& .MuiDataGrid-columnHeaders": {
+              backgroundColor: "rgba(99,102,241,0.06)",
+            },
+            borderRadius: 2,
+            border: "1px solid",
+            borderColor: "divider",
+          }}
+        />
       </Box>
 
       {/* Add/Edit Dialog */}
@@ -516,16 +515,25 @@ const CityMaster = () => {
                   disabled={submitLoading}
                 />
 
-                <FormControl fullWidth required disabled={submitLoading}>
-                  <InputLabel>Status</InputLabel>
+                <FormControl fullWidth>
                   <Select
-                    value={status === null ? "" : String(status)}
-                    onChange={(e) => setStatus(e.target.value === "true")}
-                    label="Status"
+                    value={status}
+                    onChange={(e) => setStatus(e.target.value)}
+                    required
+                    displayEmpty
+                    renderValue={(selected) => {
+                      if (selected === "") {
+                        return (
+                          <span style={{ color: "#999" }}>Select status</span>
+                        );
+                      }
+                      return selected == "active" || selected === true
+                        ? "Active"
+                        : "Inactive";
+                    }}
                   >
-                    <MenuItem value="">Select status</MenuItem>
-                    <MenuItem value="true">Active</MenuItem>
-                    <MenuItem value="false">Inactive</MenuItem>
+                    <MenuItem value="active">Active</MenuItem>
+                    <MenuItem value="inactive">Inactive</MenuItem>
                   </Select>
                 </FormControl>
               </Box>
@@ -576,8 +584,8 @@ const CityMaster = () => {
           </DialogTitle>
           <DialogContent>
             <Alert severity="warning" sx={{ mb: 2 }}>
-              This action cannot be undone. The city will be permanently
-              removed from the system.
+              This action cannot be undone. The city will be permanently removed
+              from the system.
             </Alert>
             <Typography>
               Are you sure you want to delete city{" "}

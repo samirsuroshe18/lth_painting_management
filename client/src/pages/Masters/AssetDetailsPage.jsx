@@ -17,6 +17,12 @@ import {
   FaPaperclip,
   FaImage,
 } from "react-icons/fa";
+import FloorIcon from "@mui/icons-material/Layers";
+import PublicIcon from "@mui/icons-material/Public";
+import BuildingIcon from "@mui/icons-material/Apartment";
+import DepartmentIcon from "@mui/icons-material/Domain";
+import AreaIcon from "@mui/icons-material/Map";
+import CityIcon from "@mui/icons-material/LocationCity";
 import { reviewAuditStatus } from "../../api/auditLogApi";
 import { useDispatch } from "react-redux";
 import { showNotificationWithTimeout } from "../../redux/slices/notificationSlice";
@@ -142,24 +148,39 @@ const AssetDetailsPage = () => {
       icon: <FaCalendarAlt />,
     },
     {
-      label: "Asset Location Name",
+      label: "Asset Location",
       value: auditLog.assetId?.locationId?.name || "-",
       icon: <FaMapMarkerAlt />,
     },
     {
       label: "Asset State",
       value: auditLog.assetId?.locationId?.stateId?.name || "-",
-      icon: <FaMapMarkerAlt />,
+      icon: <PublicIcon />,
     },
     {
-      label: "Asset Place",
-      value: auditLog.assetId?.place || "-",
-      icon: <FaMapMarkerAlt />,
+      label: "Asset City",
+      value: auditLog.assetId?.locationId?.cityId?.name || "-",
+      icon: <CityIcon />,
     },
     {
-      label: "Asset Location Area",
-      value: auditLog.assetId?.locationId?.area || "-",
-      icon: <FaMapMarkerAlt />,
+      label: "Asset Area",
+      value: auditLog.assetId?.locationId?.areaId?.name || "-",
+      icon: <AreaIcon />,
+    },
+    {
+      label: "Asset Department",
+      value: auditLog.assetId?.departmentId?.name || "-",
+      icon: <DepartmentIcon />,
+    },
+    {
+      label: "Asset Building/Block",
+      value: auditLog.assetId?.buildingId?.name || "-",
+      icon: <BuildingIcon />,
+    },
+    {
+      label: "Asset Floor",
+      value: auditLog.assetId?.floorId?.name || "-",
+      icon: <FloorIcon />,
     },
   ];
 
@@ -330,7 +351,7 @@ const AssetDetailsPage = () => {
               {
                 key: "purchaseValue",
                 label: "Purchase Value",
-                icon: <FaDollarSign />,
+                icon: <FaRupeeSign />,
                 format: (val) => `₹${Number(val).toLocaleString("en-IN")}`,
               },
               { key: "year", label: "Year", icon: <FaCalendarAlt /> },

@@ -653,7 +653,7 @@ export default function AssetMaster() {
         }}
         disableRestoreFocus
         slotProps={{ backdrop: { inert: true } }}
-        maxWidth="sm"
+        maxWidth="xs"
         fullWidth
       >
         <DialogTitle>QR Code</DialogTitle>

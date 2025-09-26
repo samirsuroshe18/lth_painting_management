@@ -55,12 +55,12 @@ const CreateNewAsset = () => {
   const [departmentOpen, setDepartmentOpen] = useState(false);
   const [departmentOptions, setDepartmentOptions] = useState([]);
   const [departmentLoading, setDepartmentLoading] = useState(false);
-  
+
   // Building dropdown states
   const [buildingOpen, setBuildingOpen] = useState(false);
   const [buildingOptions, setBuildingOptions] = useState([]);
   const [buildingLoading, setBuildingLoading] = useState(false);
-  
+
   // Floor dropdown states
   const [floorOpen, setFloorOpen] = useState(false);
   const [floorOptions, setFloorOptions] = useState([]);
@@ -69,31 +69,31 @@ const CreateNewAsset = () => {
   // Add these state variables for separate size inputs
   const [sizeWidth, setSizeWidth] = useState(() => {
     if (asset?.size) {
-      const parts = asset.size.split('x');
-      return parts[0]?.trim() || '';
+      const parts = asset.size.split("x");
+      return parts[0]?.trim() || "";
     }
-    return '';
+    return "";
   });
 
   const [sizeHeight, setSizeHeight] = useState(() => {
     if (asset?.size) {
-      const parts = asset.size.split('x');
-      return parts[1]?.replace(/\s*inches?$/i, '').trim() || '';
+      const parts = asset.size.split("x");
+      return parts[1]?.replace(/\s*inches?$/i, "").trim() || "";
     }
-    return '';
+    return "";
   });
 
   // Add this function to handle size changes and update the main formData
   const handleSizeChange = (width, height) => {
     setSizeWidth(width);
     setSizeHeight(height);
-    
+
     // Combine into the format expected by backend (always inches)
-    let combinedSize = '';
+    let combinedSize = "";
     if (width && height) {
       combinedSize = `${width}x${height} inches`;
     }
-    
+
     setFormData((prev) => ({ ...prev, size: combinedSize }));
   };
 
@@ -120,21 +120,20 @@ const CreateNewAsset = () => {
   }, [dispatch]);
 
   const [formData, setFormData] = useState({
-  id: asset?._id ?? undefined,
-  image: null,
-  name: asset?.name ?? "",
-  artist: asset?.artist ?? "",
-  place: asset?.place ?? "",
-  location: asset?.locationId?._id ?? "",
-  departmentId: asset?.departmentId || null,  // Changed from {} to null
-  buildingId: asset?.buildingId || null,      // Changed from {} to null
-  floorId: asset?.floorId || null,            // Changed from {} to null
-  currentValue: asset?.purchaseValue ?? "",
-  year: asset?.year ? dayjs().year(asset?.year) : null,
-  description: asset?.description ?? "",
-  size: asset?.size ?? "",
-  status: asset?.status === true ? "active" : "inactive",
-});
+    id: asset?._id ?? undefined,
+    image: null,
+    name: asset?.name ?? "",
+    artist: asset?.artist ?? "",
+    location: asset?.locationId?._id ?? "",
+    departmentId: asset?.departmentId || null,
+    buildingId: asset?.buildingId || null,
+    floorId: asset?.floorId || null,
+    currentValue: asset?.purchaseValue ?? "",
+    year: asset?.year ? dayjs().year(asset?.year) : null,
+    description: asset?.description ?? "",
+    size: asset?.size ?? "",
+    status: asset?.status === true ? "active" : "inactive",
+  });
 
   // Department dropdown handlers
   const handleDepartmentOpen = () => {
@@ -265,7 +264,7 @@ const CreateNewAsset = () => {
   const removeImage = () => {
     setFormData((prev) => ({ ...prev, image: null }));
     setFileImage(null);
-    setImageUrl(""); // ✅ clear backend image too
+    setImageUrl("");
   };
 
   const handleSubmit = async (e) => {
@@ -284,35 +283,31 @@ const CreateNewAsset = () => {
 
     try {
       setLoading(true);
-
-      // Add 1 second delay for loading state visibility
-      await new Promise((resolve) => setTimeout(resolve, 1000));
-
-      // Prepare the data to send - handle null/empty year properly
       const dataToSend = {
         ...formData,
-        year: formData.year && formData.year.isValid && formData.year.isValid() ? formData.year : null,
+        year:
+          formData.year && formData.year.isValid && formData.year.isValid()
+            ? formData.year
+            : null,
       };
 
       // Only include department, building, floor if they have valid _id values
       if (formData.departmentId && formData.departmentId._id) {
         dataToSend.department = formData.departmentId._id;
       }
-      
+
       if (formData.buildingId && formData.buildingId._id) {
         dataToSend.building = formData.buildingId._id;
       }
-      
+
       if (formData.floorId && formData.floorId._id) {
         dataToSend.floor = formData.floorId._id;
       }
 
-      console.log('Data being sent to backend:', dataToSend); // Debug log
-
       const response = asset
         ? await updateAsset(dataToSend)
         : await createNewAsset(dataToSend);
-        
+
       dispatch(
         showNotificationWithTimeout({
           show: true,
@@ -322,8 +317,6 @@ const CreateNewAsset = () => {
       );
       asset ? setSuccessDialogOpen(false) : setSuccessDialogOpen(true);
     } catch (error) {
-      // Add delay even for errors to maintain consistent UX
-      await new Promise((resolve) => setTimeout(resolve, 1000));
       dispatch(
         showNotificationWithTimeout({
           show: true,
@@ -344,7 +337,9 @@ const CreateNewAsset = () => {
   const LabelWithRedAsterisk = ({ children, required = false }) => (
     <Typography variant="subtitle2">
       {children}
-      {required && <span style={{ color: '#f44336', marginLeft: '2px' }}>*</span>}
+      {required && (
+        <span style={{ color: "#f44336", marginLeft: "2px" }}>*</span>
+      )}
     </Typography>
   );
 
@@ -516,33 +511,31 @@ const CreateNewAsset = () => {
           <Grid size={{ xs: 12, md: 6 }}>
             <Stack spacing={1}>
               <LabelWithRedAsterisk required>Location</LabelWithRedAsterisk>
-              <FormControl fullWidth required disabled={loading}>
-                <Select
-                  value={formData.location}
-                  onChange={(e) =>
-                    setFormData((prev) => ({
-                      ...prev,
-                      location: e.target.value,
-                    }))
-                  }
-                  required
-                  displayEmpty
-                  size="small"
-                >
-                  <MenuItem value="" disabled>
-                    Select Location
-                  </MenuItem>
-                  {Array.isArray(locations) && locations.length > 0 ? (
-                    locations.map((loc) => (
-                      <MenuItem key={loc._id} value={loc._id}>
-                        {loc.name}
-                      </MenuItem>
-                    ))
-                  ) : (
-                    <MenuItem disabled>No locations available</MenuItem>
-                  )}
-                </Select>
-              </FormControl>
+              <Autocomplete
+                value={
+                  locations.find(
+                    (location) => location._id === formData.location
+                  ) || null
+                }
+                options={locations}
+                getOptionLabel={(option) => option?.name || ""}
+                onChange={(event, newValue) => {
+                  setFormData((prev) => ({
+                    ...prev,
+                    location: newValue?._id || "",
+                  }));
+                }}
+                noOptionsText="No locations available"
+                sx={{ mt: 1 }}
+                renderInput={(params) => (
+                  <TextField
+                    {...params}
+                    placeholder="Search location..."
+                    size="small"
+                    required
+                  />
+                )}
+              />
             </Stack>
           </Grid>
 
@@ -694,32 +687,33 @@ const CreateNewAsset = () => {
           <Grid size={{ xs: 12, md: 6 }}>
             <Stack spacing={1}>
               <LabelWithRedAsterisk>Purchase Value</LabelWithRedAsterisk>
-            <TextField
-              name="currentValue"
-              value={formData.currentValue}
-              onChange={handleChange}
-              fullWidth
-              size="small"
-              placeholder="Enter purchase value"
-              disabled={loading}
-              type="number"
-              slotProps={{
-                htmlInput: { min: 0 },  // ✅ replaces inputProps
-              }}
-              sx={{
-              "& .MuiOutlinedInput-root": {
-              backgroundColor: "inherit",
-              },
-          }}
-            />
-
+              <TextField
+                name="currentValue"
+                value={formData.currentValue}
+                onChange={handleChange}
+                fullWidth
+                size="small"
+                placeholder="Enter purchase value"
+                disabled={loading}
+                type="number"
+                slotProps={{
+                  htmlInput: { min: 0 }, // ✅ replaces inputProps
+                }}
+                sx={{
+                  "& .MuiOutlinedInput-root": {
+                    backgroundColor: "inherit",
+                  },
+                }}
+              />
             </Stack>
           </Grid>
 
           {/* Size - Updated for better UX (inches only) */}
           <Grid size={{ xs: 12, md: 6 }}>
             <Stack spacing={1}>
-              <LabelWithRedAsterisk required>Size (inches)</LabelWithRedAsterisk>
+              <LabelWithRedAsterisk required>
+                Size (inches)
+              </LabelWithRedAsterisk>
               <Stack direction="row" spacing={1} alignItems="center">
                 <TextField
                   value={sizeWidth}
@@ -760,11 +754,7 @@ const CreateNewAsset = () => {
                     },
                   }}
                 />
-                <Typography variant="body2" color="text.secondary" sx={{ minWidth: 40 }}>
-                  inches
-                </Typography>
               </Stack>
-            
             </Stack>
           </Grid>
 
@@ -798,7 +788,7 @@ const CreateNewAsset = () => {
           <Grid size={{ xs: 12, md: 6 }}>
             <Stack spacing={1}>
               <LabelWithRedAsterisk required>Status</LabelWithRedAsterisk>
-              <FormControl fullWidth required disabled={loading}>
+              <FormControl fullWidth size="small">
                 <Select
                   value={formData?.status ?? ""}
                   onChange={(e) =>
@@ -807,13 +797,18 @@ const CreateNewAsset = () => {
                       status: e.target.value,
                     }))
                   }
-                  size="small"
                   required
                   displayEmpty
+                  size="small"
+                  renderValue={(selected) => {
+                    if (selected === "") {
+                      return (
+                        <span style={{ color: "#999" }}>Select status</span>
+                      );
+                    }
+                    return selected == "active" ? "Active" : "Inactive";
+                  }}
                 >
-                  <MenuItem value="" disabled>
-                    Select status
-                  </MenuItem>
                   <MenuItem value="active">Active</MenuItem>
                   <MenuItem value="inactive">Inactive</MenuItem>
                 </Select>
@@ -849,7 +844,7 @@ const CreateNewAsset = () => {
         <Box sx={{ display: "flex", justifyContent: "flex-end", mt: 4 }}>
           <Stack direction="row" spacing={2}>
             <Button type="submit" variant="contained" disabled={loading}>
-              {asset ? "Edit Asset" : "Create Asset"}
+              {asset ? "Update Asset" : "Create Asset"}
             </Button>
             <Button
               variant="outlined"
@@ -947,8 +942,8 @@ const CreateNewAsset = () => {
                 floorId: {},
               });
               setFileImage(null);
-              setSizeWidth('');
-              setSizeHeight('');
+              setSizeWidth("");
+              setSizeHeight("");
               setSuccessDialogOpen(false);
             }}
             variant="contained"

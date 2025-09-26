@@ -16,7 +16,6 @@ import {
   DialogTitle,
   DialogContent,
   FormControl,
-  InputLabel,
   Select,
   MenuItem,
   DialogActions,
@@ -62,22 +61,15 @@ const LocationMaster = () => {
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [deleteLoading, setDeleteLoading] = useState(false);
   const [filteredRows, setFilteredRows] = useState([]);
-  
-  // State dropdown states
   const [stateOpen, setStateOpen] = useState(false);
   const [stateOptions, setStateOptions] = useState([]);
   const [stateLoading, setStateLoading] = useState(false);
-  
-  // City dropdown states
   const [cityOpen, setCityOpen] = useState(false);
   const [cityOptions, setCityOptions] = useState([]);
   const [cityLoading, setCityLoading] = useState(false);
-  
-  // Area dropdown states
   const [areaOpen, setAreaOpen] = useState(false);
   const [areaOptions, setAreaOptions] = useState([]);
   const [areaLoading, setAreaLoading] = useState(false);
-  
   const [formData, setFormData] = useState({
     name: "",
     stateId: {},
@@ -105,7 +97,9 @@ const LocationMaster = () => {
       const result = await getAllLocations();
       const locationssWithIds = result.data.map((location, index) => ({
         ...location,
-        hasAccess: usersLocation.some(userLoc => userLoc._id === location._id),
+        hasAccess: usersLocation.some(
+          (userLoc) => userLoc._id === location._id
+        ),
         id: location?._id ?? index,
       }));
 
@@ -127,7 +121,6 @@ const LocationMaster = () => {
   const applyFilters = () => {
     let filtered = [...rows];
 
-    // Apply search filter
     if (searchTerm.trim()) {
       const searchLower = searchTerm.toLowerCase().trim();
 
@@ -177,7 +170,6 @@ const LocationMaster = () => {
       try {
         setCityLoading(true);
         const res = await getAllCities();
-        // Show all cities regardless of status
         setCityOptions(res?.data ?? []);
       } catch (error) {
         setCityOptions([]);
@@ -205,7 +197,6 @@ const LocationMaster = () => {
       try {
         setAreaLoading(true);
         const res = await getAllArea();
-        // Show all areas regardless of status
         setAreaOptions(res?.data ?? []);
       } catch (error) {
         setAreaOptions([]);
@@ -234,11 +225,11 @@ const LocationMaster = () => {
       setSubmitLoading(true);
 
       if (editMode) {
-        let payload = { 
-          ...formData, 
+        let payload = {
+          ...formData,
           state: formData.stateId?._id,
           city: formData.cityId?._id,
-          area: formData.areaId?._id 
+          area: formData.areaId?._id,
         };
         const result = await updateLocation(editLocationId, payload);
 
@@ -257,11 +248,11 @@ const LocationMaster = () => {
           })
         );
       } else {
-        let payload = { 
-          ...formData, 
+        let payload = {
+          ...formData,
           state: formData.stateId?._id,
           city: formData.cityId?._id,
-          area: formData.areaId?._id 
+          area: formData.areaId?._id,
         };
         const result = await addLocation(payload);
 
@@ -295,7 +286,7 @@ const LocationMaster = () => {
   const handleCreateClick = () => {
     setShowDialog(true);
     setEditMode(false);
-    setFormData((prev) => ({ ...prev, status: true }));
+    setFormData((prev) => ({ ...prev, status: "" }));
   };
 
   const handleEditClick = (location) => {
@@ -304,7 +295,7 @@ const LocationMaster = () => {
     setEditLocationId(location._id);
     setShowDialog(true);
   };
-  
+
   const handleRequestAccess = async (location) => {
     try {
       const result = await addLocationToSuperAdmin(location._id);
@@ -323,7 +314,6 @@ const LocationMaster = () => {
           })
         );
       }
-      
     } catch (error) {
       dispatch(
         showNotificationWithTimeout({
@@ -390,7 +380,7 @@ const LocationMaster = () => {
       stateId: null,
       cityId: null,
       areaId: null,
-      status: null,
+      status: "",
     });
   };
 
@@ -501,68 +491,84 @@ const LocationMaster = () => {
         />
       ),
     },
-   {
-  field: "status",
-  headerName: "Status",
-  width: 140,
-  align: "center",
-  headerAlign: "center",
-  sortable: false,
-  filterable: false,
-  renderCell: (params) => (
-    <Chip
-      label={params.value ? "Active" : "Inactive"}
-      size="small"
-      color={params.value ? "success" : "default"}
-      variant={params.value ? "filled" : "outlined"}
-    />
-  ),
-},
-   {
-  field: "actions",
-  headerName: "Actions",
-  width: 150,
-  align: "center",
-  headerAlign: "center",
-  sortable: false,
-  filterable: false,
-  renderCell: (params) => (
-    <Box
-      sx={{
-        display: "flex",
-        gap: 0.5,
-        justifyContent: "center",
-        alignItems: "center",
-        height: "100%",
-      }}
-    >
-      {/* Remove role/access check, always show edit/delete */}
-      <IconButton
-        size="small"
-        color="primary"
-        onClick={(e) => {
-          e.stopPropagation();
-          handleEditClick(params.row);
-        }}
-        title="Edit Location"
-      >
-        <EditIcon fontSize="small" />
-      </IconButton>
+    {
+      field: "status",
+      headerName: "Status",
+      width: 140,
+      align: "center",
+      headerAlign: "center",
+      sortable: false,
+      filterable: false,
+      renderCell: (params) => (
+        <Chip
+          label={params.value ? "Active" : "Inactive"}
+          size="small"
+          color={params.value ? "success" : "default"}
+          variant={params.value ? "filled" : "outlined"}
+        />
+      ),
+    },
+    {
+      field: "actions",
+      headerName: "Actions",
+      width: 150,
+      align: "center",
+      headerAlign: "center",
+      sortable: false,
+      filterable: false,
+      renderCell: (params) => (
+        <Box
+          sx={{
+            display: "flex",
+            gap: 0.5,
+            justifyContent: "center",
+            alignItems: "center",
+            height: "100%",
+          }}
+        >
+          {/* Remove role/access check, always show edit/delete */}
+          {!params.row?.hasAccess && userData?.role == "superadmin" ? (
+            <IconButton
+              size="small"
+              color="warning"
+              onClick={(e) => {
+                e.stopPropagation();
+                handleRequestAccess(params.row);
+              }}
+              title="You don’t have access. Click to request."
+            >
+              <AddLocationAlt fontSize="small" />
+            </IconButton>
+          ) : (
+            <>
+              <IconButton
+                size="small"
+                color="primary"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  handleEditClick(params.row);
+                }}
+                title="Edit Location"
+              >
+                <EditIcon fontSize="small" />
+              </IconButton>
 
-      <IconButton
-        size="small"
-        color="error"
-        onClick={(e) => {
-          e.stopPropagation();
-          handleDeleteClick(params.row);
-        }}
-        title="Delete Location"
-      >
-        <DeleteIcon fontSize="small" />
-      </IconButton>
-    </Box>
-  ),
-},
+              <IconButton
+                size="small"
+                color="error"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  handleDeleteClick(params.row);
+                }}
+                title="Delete Location"
+              >
+                <DeleteIcon fontSize="small" />
+              </IconButton>
+            </>
+          )}
+        </Box>
+      ),
+    },
   ];
 
   return (
@@ -761,7 +767,7 @@ const LocationMaster = () => {
                           label="Inactive"
                           color="default"
                           variant="outlined"
-                          sx={{ ml: 1, fontSize: '0.6rem', height: '16px' }}
+                          sx={{ ml: 1, fontSize: "0.6rem", height: "16px" }}
                         />
                       )}
                     </Box>
@@ -812,7 +818,7 @@ const LocationMaster = () => {
                           label="Inactive"
                           color="default"
                           variant="outlined"
-                          sx={{ ml: 1, fontSize: '0.6rem', height: '16px' }}
+                          sx={{ ml: 1, fontSize: "0.6rem", height: "16px" }}
                         />
                       )}
                     </Box>
@@ -846,8 +852,7 @@ const LocationMaster = () => {
                   )}
                 />
 
-                <FormControl fullWidth required disabled={submitLoading}>
-                  <InputLabel>Status</InputLabel>
+                <FormControl fullWidth>
                   <Select
                     value={formData.status}
                     onChange={(e) =>
@@ -856,11 +861,19 @@ const LocationMaster = () => {
                         status: e.target.value,
                       }))
                     }
-                    label="Status"
+                    required
+                    displayEmpty
+                    renderValue={(selected) => {
+                      if (selected === "") {
+                        return (
+                          <span style={{ color: "#999" }}>Select status</span>
+                        );
+                      }
+                      return selected == "active" || selected === true ? "Active" : "Inactive";
+                    }}
                   >
-                    <MenuItem value="">Select status</MenuItem>
-                    <MenuItem value={true}>Active</MenuItem>
-                    <MenuItem value={false}>Inactive</MenuItem>
+                    <MenuItem value="active">Active</MenuItem>
+                    <MenuItem value="inactive">Inactive</MenuItem>
                   </Select>
                 </FormControl>
               </Box>

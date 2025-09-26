@@ -17,13 +17,6 @@ const ViewAsset = () => {
   const { state } = useLocation();
   const initialAsset = state?.asset || {};
 
-  // Debug: Log the asset data to console to see what's available
-  console.log("Asset data:", initialAsset);
-  console.log("Location data:", initialAsset?.locationId);
-  console.log("Department data:", initialAsset?.departmentId);
-  console.log("Building data:", initialAsset?.buildingId);
-  console.log("Floor data:", initialAsset?.floorId);
-
   const assetDetails = [
     {
       label: "Asset Image",

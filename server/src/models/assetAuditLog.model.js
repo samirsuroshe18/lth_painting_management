@@ -20,7 +20,7 @@ const proposedChangesSchema = new Schema({
         maxlength: 100,
     },
 
-    location: {
+    locationId: {
         type: Schema.Types.ObjectId,
         ref: 'Location',
     },
@@ -33,9 +33,22 @@ const proposedChangesSchema = new Schema({
         type: String,
     },
 
-    place: {
-        type: String,
-        maxlength: 100
+    departmentId: {
+        type: Schema.Types.ObjectId,
+        ref: 'Department',
+        required: false
+    },
+
+    buildingId: {
+        type: Schema.Types.ObjectId,
+        ref: 'Building',
+        required: false
+    },
+
+    floorId: {
+        type: Schema.Types.ObjectId,
+        ref: 'Floor',
+        required: false
     },
 
     size: {
@@ -93,16 +106,16 @@ const AssetAuditLogSchema = new Schema({
         maxlength: 1000,
     },
 
-    createdBy : {
+    createdBy: {
         type: Schema.Types.ObjectId,
         ref: 'User'
     },
-    
-    updatedBy : {
+
+    updatedBy: {
         type: Schema.Types.ObjectId,
         ref: 'User'
     }
-    
+
 }, { timestamps: true });
 
 export const AssetAuditLog = mongoose.model('AssetAuditLog', AssetAuditLogSchema);

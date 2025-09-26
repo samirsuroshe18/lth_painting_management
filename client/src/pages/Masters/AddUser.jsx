@@ -20,23 +20,19 @@ import { useDispatch, useSelector } from "react-redux";
 import { showNotificationWithTimeout } from "../../redux/slices/notificationSlice";
 import { handleAxiosError } from "../../utils/handleAxiosError";
 import { Visibility, VisibilityOff } from "@mui/icons-material";
+import LabelWithRedAsterisk from "../../components/LabelWithRedAsterisk";
 
 export default function AddUser() {
   const { state } = useLocation();
   const user = state?.user;
   const navigate = useNavigate();
   const dispatch = useDispatch();
-
   const [loading, setLoading] = useState(false);
-
-  // memoize locations to avoid re-renders in Autocomplete
   const userData = useSelector((s) => s.auth?.userData?.user);
   const locations = useMemo(
     () => (Array.isArray(userData?.location) ? userData.location : []),
     [userData?.location]
   );
-
-  // memoize initial form, derive from `user`
   const initialForm = useMemo(
     () => ({
       userName: user?.userName ?? "",
@@ -45,43 +41,38 @@ export default function AddUser() {
       password: "",
       confirmPassword: "",
       role: user?.role ?? "supervisor",
-      status: user?.isActive ? "active" : "inactive",
+      status: !user ? "active" : user?.isActive ? "active" :  "inactive",
       location: Array.isArray(user?.location) ? user.location : [],
     }),
     [user]
   );
-
   const [formData, setFormData] = useState(initialForm);
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
-  // Custom component for labels with red asterisks
-  const LabelWithRedAsterisk = ({ children, required = false }) => (
-    <Typography variant="subtitle2">
-      {children}
-      {required && <span style={{ color: '#f44336', marginLeft: '2px' }}>*</span>}
-    </Typography>
-  );
-
-  // stable callbacks
   const handleChange = useCallback((e) => {
     const { name, value } = e.target;
-    setFormData((prev) => (prev[name] === value ? prev : { ...prev, [name]: value }));
+    setFormData((prev) =>
+      prev[name] === value ? prev : { ...prev, [name]: value }
+    );
   }, []);
 
   const handleRoleChange = useCallback((e) => {
     const value = e.target.value;
-    setFormData((prev) => (prev.role === value ? prev : { ...prev, role: value }));
+    setFormData((prev) =>
+      prev.role === value ? prev : { ...prev, role: value }
+    );
   }, []);
 
   const handleStatusChange = useCallback((e) => {
     const value = e.target.value;
-    setFormData((prev) => (prev.status === value ? prev : { ...prev, status: value }));
+    setFormData((prev) =>
+      prev.status === value ? prev : { ...prev, status: value }
+    );
   }, []);
 
   const handleLocationChange = useCallback((_, val) => {
     setFormData((prev) => {
-      // shallow compare by ids to avoid unnecessary updates
       const prevIds = (prev.location || []).map((x) => x._id).join(",");
       const newIds = (val || []).map((x) => x._id).join(",");
       return prevIds === newIds ? prev : { ...prev, location: val || [] };
@@ -91,6 +82,7 @@ export default function AddUser() {
   const toggleShowPassword = useCallback(() => {
     setShowPassword((p) => !p);
   }, []);
+
   const toggleShowConfirmPassword = useCallback(() => {
     setShowConfirmPassword((p) => !p);
   }, []);
@@ -99,7 +91,6 @@ export default function AddUser() {
     async (e) => {
       e.preventDefault();
 
-      // fast client-side check on create
       if (!user && formData.password !== formData.confirmPassword) {
         dispatch(
           showNotificationWithTimeout({
@@ -129,7 +120,9 @@ export default function AddUser() {
           showNotificationWithTimeout({
             show: true,
             type: "success",
-            message: user ? "User updated successfully" : "User created successfully",
+            message: user
+              ? "User updated successfully"
+              : "User created successfully",
           })
         );
         navigate(-1);
@@ -149,7 +142,10 @@ export default function AddUser() {
   );
 
   // stable helper for Autocomplete equality
-  const isOptionEqualToValue = useCallback((opt, val) => opt._id === val._id, []);
+  const isOptionEqualToValue = useCallback(
+    (opt, val) => opt._id === val._id,
+    []
+  );
   const getOptionLabel = useCallback((opt) => opt?.name ?? "", []);
 
   return (
@@ -185,7 +181,9 @@ export default function AddUser() {
                 required
                 autoComplete="name"
                 type="text"
-                sx={{ "& .MuiOutlinedInput-root": { backgroundColor: "inherit" } }}
+                sx={{
+                  "& .MuiOutlinedInput-root": { backgroundColor: "inherit" },
+                }}
               />
             </Stack>
           </Grid>
@@ -228,8 +226,16 @@ export default function AddUser() {
                       input: {
                         endAdornment: (
                           <InputAdornment position="end">
-                            <IconButton onClick={toggleShowPassword} edge="end" aria-label="toggle password visibility">
-                              {showPassword ? <VisibilityOff /> : <Visibility />}
+                            <IconButton
+                              onClick={toggleShowPassword}
+                              edge="end"
+                              aria-label="toggle password visibility"
+                            >
+                              {showPassword ? (
+                                <VisibilityOff />
+                              ) : (
+                                <Visibility />
+                              )}
                             </IconButton>
                           </InputAdornment>
                         ),
@@ -241,7 +247,9 @@ export default function AddUser() {
 
               <Grid size={{ xs: 12, md: 6 }}>
                 <Stack spacing={1}>
-                  <LabelWithRedAsterisk required>Confirm Password</LabelWithRedAsterisk>
+                  <LabelWithRedAsterisk required>
+                    Confirm Password
+                  </LabelWithRedAsterisk>
                   <TextField
                     name="confirmPassword"
                     value={formData.confirmPassword}
@@ -261,7 +269,11 @@ export default function AddUser() {
                               edge="end"
                               aria-label="toggle confirm password visibility"
                             >
-                              {showConfirmPassword ? <VisibilityOff /> : <Visibility />}
+                              {showConfirmPassword ? (
+                                <VisibilityOff />
+                              ) : (
+                                <Visibility />
+                              )}
                             </IconButton>
                           </InputAdornment>
                         ),
@@ -300,14 +312,24 @@ export default function AddUser() {
           <Grid size={{ xs: 12, md: 6 }}>
             <Stack spacing={1}>
               <LabelWithRedAsterisk required>Role</LabelWithRedAsterisk>
-              <FormControl fullWidth required disabled={loading} size="small">
+              <FormControl fullWidth size="small">
                 <Select
                   value={formData.role}
                   onChange={handleRoleChange}
+                  required
                   displayEmpty
-                  inputProps={{ "aria-label": "Select role", autoComplete: "off" }}
+                  size="small"
+                  renderValue={(selected) => {
+                    if (selected === "") {
+                      return <span style={{ color: "#999" }}>Select Role</span>;
+                    }
+                    return selected == "supervisor"
+                      ? "Supervisor"
+                      : selected === "admin"
+                        ? "Admin"
+                        : "Auditor";
+                  }}
                 >
-                  <MenuItem value="">Select Role</MenuItem>
                   <MenuItem value="supervisor">Supervisor</MenuItem>
                   <MenuItem value="admin">Admin</MenuItem>
                   <MenuItem value="auditor">Auditor</MenuItem>
@@ -320,14 +342,22 @@ export default function AddUser() {
           <Grid size={{ xs: 12, md: 6 }}>
             <Stack spacing={1}>
               <LabelWithRedAsterisk required>Status</LabelWithRedAsterisk>
-              <FormControl fullWidth required disabled={loading} size="small">
+              <FormControl fullWidth size="small">
                 <Select
                   value={formData.status ?? ""}
                   onChange={handleStatusChange}
+                  required
                   displayEmpty
-                  inputProps={{ "aria-label": "Select status", autoComplete: "off" }}
+                  size="small"
+                  renderValue={(selected) => {
+                    if (selected === "") {
+                      return (
+                        <span style={{ color: "#999" }}>Select status</span>
+                      );
+                    }
+                    return selected == "active" ? "Active" : "Inactive";
+                  }}
                 >
-                  <MenuItem value="">Select Status</MenuItem>
                   <MenuItem value="active">Active</MenuItem>
                   <MenuItem value="inactive">Inactive</MenuItem>
                 </Select>
@@ -345,11 +375,16 @@ export default function AddUser() {
                 limitTags={1}
                 value={formData.location}
                 options={locations}
-                isOptionEqualToValue={isOptionEqualToValue}
-                getOptionLabel={getOptionLabel}
+                getOptionLabel={(option) => option?.name || ""}
                 onChange={handleLocationChange}
+                noOptionsText="No locations available"
+                sx={{ mt: 1 }}
                 renderInput={(params) => (
-                  <TextField {...params} placeholder="Search location..." size="small" />
+                  <TextField
+                    {...params}
+                    placeholder="Search location..."
+                    size="small"
+                  />
                 )}
               />
             </Stack>
@@ -363,7 +398,13 @@ export default function AddUser() {
               disabled={loading}
               sx={{ minWidth: 150 }}
             >
-              {loading ? (user ? "Saving..." : "Creating...") : user ? "Edit User" : "Create User"}
+              {loading
+                ? user
+                  ? "Updating..."
+                  : "Creating..."
+                : user
+                  ? "Update User"
+                  : "Create User"}
             </Button>
           </Grid>
         </Grid>

@@ -4,7 +4,7 @@ import {
   addDepartment,
   updateDepartment,
   deleteDepartment,
-  addDepartmentsFromExcel
+  addDepartmentsFromExcel,
 } from "../../api/departmentApi";
 import { useDispatch } from "react-redux";
 import { showNotificationWithTimeout } from "../../redux/slices/notificationSlice";
@@ -59,7 +59,7 @@ const DepartmentMaster = () => {
   const [editMode, setEditMode] = useState(false);
   const [editDepartmentId, setEditDepartmentId] = useState(null);
   const [departmentName, setDepartmentName] = useState("");
-  const [status, setStatus] = useState(true);
+  const [status, setStatus] = useState("");
   const [submitLoading, setSubmitLoading] = useState(false);
   const [departmentToDelete, setDepartmentToDelete] = useState(null);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
@@ -69,7 +69,7 @@ const DepartmentMaster = () => {
     page: 0,
     pageSize: 5,
   });
-  
+
   // Excel upload states
   const [excelUploadLoading, setExcelUploadLoading] = useState(false);
   const [showExcelDialog, setShowExcelDialog] = useState(false);
@@ -195,7 +195,7 @@ const DepartmentMaster = () => {
 
   const handleEditClick = (department) => {
     setDepartmentName(department?.name ?? "");
-    setStatus(!!department.status);
+    setStatus(department?.status);
     setEditDepartmentId(department._id);
     setEditMode(true);
     setShowDialog(true);
@@ -214,7 +214,9 @@ const DepartmentMaster = () => {
       const result = await deleteDepartment(departmentToDelete.id);
 
       if (result.success) {
-        setRows((prev) => prev.filter((item) => item.id !== departmentToDelete.id));
+        setRows((prev) =>
+          prev.filter((item) => item.id !== departmentToDelete.id)
+        );
 
         dispatch(
           showNotificationWithTimeout({
@@ -256,7 +258,7 @@ const DepartmentMaster = () => {
     setShowDialog(false);
     setEditMode(false);
     setDepartmentName("");
-    setStatus(null);
+    setStatus("");
     setEditDepartmentId(null);
   };
 
@@ -264,7 +266,7 @@ const DepartmentMaster = () => {
     setShowDialog(true);
     setEditMode(false);
     setDepartmentName("");
-    setStatus(true);
+    setStatus("");
   };
 
   const handleRefresh = () => {
@@ -290,8 +292,14 @@ const DepartmentMaster = () => {
     const file = event.target.files[0];
     if (file) {
       // Validate file type
-      const validTypes = ['application/vnd.ms-excel', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'];
-      if (!validTypes.includes(file.type) && !file.name.match(/\.(xlsx|xls)$/)) {
+      const validTypes = [
+        "application/vnd.ms-excel",
+        "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+      ];
+      if (
+        !validTypes.includes(file.type) &&
+        !file.name.match(/\.(xlsx|xls)$/)
+      ) {
         dispatch(
           showNotificationWithTimeout({
             show: true,
@@ -320,9 +328,9 @@ const DepartmentMaster = () => {
     try {
       setExcelUploadLoading(true);
       const result = await addDepartmentsFromExcel(selectedFile);
-      
+
       setUploadResults(result.data);
-      
+
       // Refresh the data to show new departments
       await fetchDepartment();
 
@@ -333,7 +341,6 @@ const DepartmentMaster = () => {
           message: result.message || "Excel file processed successfully",
         })
       );
-
     } catch (error) {
       dispatch(
         showNotificationWithTimeout({
@@ -352,18 +359,19 @@ const DepartmentMaster = () => {
     setSelectedFile(null);
     setUploadResults(null);
     if (fileInputRef.current) {
-      fileInputRef.current.value = '';
+      fileInputRef.current.value = "";
     }
   };
 
   const downloadTemplate = () => {
     // Create a simple CSV template
-    const csvContent = "name|status\nIT Department|true\nHR Department|false\nFinance Department|true";
-    const blob = new Blob([csvContent], { type: 'text/csv' });
+    const csvContent =
+      "name|status\nIT Department|true\nHR Department|false\nFinance Department|true";
+    const blob = new Blob([csvContent], { type: "text/csv" });
     const url = window.URL.createObjectURL(blob);
-    const a = document.createElement('a');
+    const a = document.createElement("a");
     a.href = url;
-    a.download = 'department_template.csv';
+    a.download = "department_template.csv";
     document.body.appendChild(a);
     a.click();
     document.body.removeChild(a);
@@ -623,16 +631,25 @@ const DepartmentMaster = () => {
                   disabled={submitLoading}
                 />
 
-                <FormControl fullWidth required disabled={submitLoading}>
-                  <InputLabel>Status</InputLabel>
+                <FormControl fullWidth>
                   <Select
-                    value={status === null ? "" : String(status)}
-                    onChange={(e) => setStatus(e.target.value === "true")}
-                    label="Status"
+                    value={status}
+                    onChange={(e) => setStatus(e.target.value)}
+                    required
+                    displayEmpty
+                    renderValue={(selected) => {
+                      if (selected === "") {
+                        return (
+                          <span style={{ color: "#999" }}>Select status</span>
+                        );
+                      }
+                      return selected == "active" || selected === true
+                        ? "Active"
+                        : "Inactive";
+                    }}
                   >
-                    <MenuItem value="">Select status</MenuItem>
-                    <MenuItem value="true">Active</MenuItem>
-                    <MenuItem value="false">Inactive</MenuItem>
+                    <MenuItem value="active">Active</MenuItem>
+                    <MenuItem value="inactive">Inactive</MenuItem>
                   </Select>
                 </FormControl>
               </Box>
@@ -698,7 +715,9 @@ const DepartmentMaster = () => {
             <Box display="flex" flexDirection="column" gap={3} pt={1}>
               <Alert severity="info">
                 <Typography variant="body2">
-                  Upload an Excel file with departments. The file should have columns: <strong>name</strong> and <strong>status</strong> (boolean: true/false).
+                  Upload an Excel file with departments. The file should have
+                  columns: <strong>name</strong> and <strong>status</strong>{" "}
+                  (boolean: true/false).
                 </Typography>
               </Alert>
 
@@ -711,43 +730,45 @@ const DepartmentMaster = () => {
                 >
                   Download Template
                 </Button>
-                
+
                 <input
                   ref={fileInputRef}
                   type="file"
                   accept=".xlsx,.xls"
                   onChange={handleFileSelect}
-                  style={{ display: 'none' }}
+                  style={{ display: "none" }}
                 />
-                
+
                 <Box
                   sx={{
-                    border: '2px dashed',
-                    borderColor: selectedFile ? 'success.main' : 'grey.300',
+                    border: "2px dashed",
+                    borderColor: selectedFile ? "success.main" : "grey.300",
                     borderRadius: 2,
                     p: 3,
-                    textAlign: 'center',
-                    cursor: 'pointer',
-                    transition: 'all 0.3s ease',
-                    '&:hover': {
-                      borderColor: 'primary.main',
-                      backgroundColor: (theme) => 
-                        theme.palette.mode === 'dark' 
-                          ? 'rgba(255, 255, 255, 0.05)' 
-                          : 'rgba(0, 0, 0, 0.04)'
-                    }
+                    textAlign: "center",
+                    cursor: "pointer",
+                    transition: "all 0.3s ease",
+                    "&:hover": {
+                      borderColor: "primary.main",
+                      backgroundColor: (theme) =>
+                        theme.palette.mode === "dark"
+                          ? "rgba(255, 255, 255, 0.05)"
+                          : "rgba(0, 0, 0, 0.04)",
+                    },
                   }}
                   onClick={() => fileInputRef.current?.click()}
                 >
-                  <CloudUploadIcon 
-                    sx={{ 
-                      fontSize: 48, 
-                      color: selectedFile ? 'success.main' : 'grey.400',
-                      mb: 1 
-                    }} 
+                  <CloudUploadIcon
+                    sx={{
+                      fontSize: 48,
+                      color: selectedFile ? "success.main" : "grey.400",
+                      mb: 1,
+                    }}
                   />
                   <Typography variant="body1" sx={{ mb: 1 }}>
-                    {selectedFile ? selectedFile.name : 'Click to select Excel file'}
+                    {selectedFile
+                      ? selectedFile.name
+                      : "Click to select Excel file"}
                   </Typography>
                   <Typography variant="body2" color="text.secondary">
                     Supported formats: .xlsx, .xls
@@ -761,26 +782,36 @@ const DepartmentMaster = () => {
                     Upload Results
                   </Typography>
                   <Alert severity="success" sx={{ mb: 2 }}>
-                    Successfully processed {uploadResults.summary?.successfullyCreated || 0} departments
+                    Successfully processed{" "}
+                    {uploadResults.summary?.successfullyCreated || 0}{" "}
+                    departments
                   </Alert>
-                  
+
                   {uploadResults.summary?.failed > 0 && (
                     <Alert severity="warning" sx={{ mb: 2 }}>
-                      {uploadResults.summary.failed} departments failed to create
+                      {uploadResults.summary.failed} departments failed to
+                      create
                     </Alert>
                   )}
 
                   {uploadResults.summary?.errors && (
                     <Box>
-                      <Typography variant="subtitle2" color="error" gutterBottom>
+                      <Typography
+                        variant="subtitle2"
+                        color="error"
+                        gutterBottom
+                      >
                         Errors:
                       </Typography>
                       <List dense>
                         {uploadResults.summary.errors.map((error, index) => (
                           <ListItem key={index}>
-                            <ListItemText 
+                            <ListItemText
                               primary={error}
-                              primaryTypographyProps={{ variant: 'body2', color: 'error' }}
+                              primaryTypographyProps={{
+                                variant: "body2",
+                                color: "error",
+                              }}
                             />
                           </ListItem>
                         ))}
@@ -798,7 +829,7 @@ const DepartmentMaster = () => {
               variant="outlined"
               disabled={excelUploadLoading}
             >
-              {uploadResults ? 'Close' : 'Cancel'}
+              {uploadResults ? "Close" : "Cancel"}
             </Button>
             {!uploadResults && (
               <Button
@@ -806,7 +837,11 @@ const DepartmentMaster = () => {
                 variant="contained"
                 disabled={excelUploadLoading || !selectedFile}
                 startIcon={
-                  excelUploadLoading ? <CircularProgress size={16} /> : <UploadIcon />
+                  excelUploadLoading ? (
+                    <CircularProgress size={16} />
+                  ) : (
+                    <UploadIcon />
+                  )
                 }
               >
                 {excelUploadLoading ? "Uploading..." : "Upload File"}

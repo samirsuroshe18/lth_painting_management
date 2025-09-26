@@ -4,7 +4,7 @@ import {
   addBuilding,
   updateBuilding,
   deleteBuilding,
-  addBuildingsFromExcel
+  addBuildingsFromExcel,
 } from "../../api/buildingApi";
 import { useDispatch } from "react-redux";
 import { showNotificationWithTimeout } from "../../redux/slices/notificationSlice";
@@ -59,7 +59,7 @@ const BuildingMaster = () => {
   const [editMode, setEditMode] = useState(false);
   const [editBuildingId, setEditBuildingId] = useState(null);
   const [buildingName, setBuildingName] = useState("");
-  const [status, setStatus] = useState(true);
+  const [status, setStatus] = useState("");
   const [submitLoading, setSubmitLoading] = useState(false);
   const [buildingToDelete, setBuildingToDelete] = useState(null);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
@@ -196,7 +196,7 @@ const BuildingMaster = () => {
 
   const handleEditClick = (building) => {
     setBuildingName(building?.name ?? "");
-    setStatus(!!building.status);
+    setStatus(building?.status);
     setEditBuildingId(building._id);
     setEditMode(true);
     setShowDialog(true);
@@ -215,7 +215,9 @@ const BuildingMaster = () => {
       const result = await deleteBuilding(buildingToDelete.id);
 
       if (result.success) {
-        setRows((prev) => prev.filter((item) => item.id !== buildingToDelete.id));
+        setRows((prev) =>
+          prev.filter((item) => item.id !== buildingToDelete.id)
+        );
 
         dispatch(
           showNotificationWithTimeout({
@@ -257,7 +259,7 @@ const BuildingMaster = () => {
     setShowDialog(false);
     setEditMode(false);
     setBuildingName("");
-    setStatus(null);
+    setStatus("");
     setEditBuildingId(null);
   };
 
@@ -265,7 +267,7 @@ const BuildingMaster = () => {
     setShowDialog(true);
     setEditMode(false);
     setBuildingName("");
-    setStatus(true);
+    setStatus("");
   };
 
   const handleRefresh = () => {
@@ -291,8 +293,14 @@ const BuildingMaster = () => {
     const file = event.target.files[0];
     if (file) {
       // Validate file type
-      const validTypes = ['application/vnd.ms-excel', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'];
-      if (!validTypes.includes(file.type) && !file.name.match(/\.(xlsx|xls)$/)) {
+      const validTypes = [
+        "application/vnd.ms-excel",
+        "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+      ];
+      if (
+        !validTypes.includes(file.type) &&
+        !file.name.match(/\.(xlsx|xls)$/)
+      ) {
         dispatch(
           showNotificationWithTimeout({
             show: true,
@@ -321,9 +329,9 @@ const BuildingMaster = () => {
     try {
       setExcelUploadLoading(true);
       const result = await addBuildingsFromExcel(selectedFile);
-      
+
       setUploadResults(result.data);
-      
+
       // Refresh the data to show new building
       await fetchBuildings();
 
@@ -334,7 +342,6 @@ const BuildingMaster = () => {
           message: result.message || "Excel file processed successfully",
         })
       );
-
     } catch (error) {
       dispatch(
         showNotificationWithTimeout({
@@ -353,18 +360,19 @@ const BuildingMaster = () => {
     setSelectedFile(null);
     setUploadResults(null);
     if (fileInputRef.current) {
-      fileInputRef.current.value = '';
+      fileInputRef.current.value = "";
     }
   };
 
   const downloadTemplate = () => {
     // Create a simple CSV template
-    const csvContent = "name|status\nBuilding 1|true\nBuilding 2|false\nBuilding 3|true";
-    const blob = new Blob([csvContent], { type: 'text/csv' });
+    const csvContent =
+      "name|status\nBuilding 1|true\nBuilding 2|false\nBuilding 3|true";
+    const blob = new Blob([csvContent], { type: "text/csv" });
     const url = window.URL.createObjectURL(blob);
-    const a = document.createElement('a');
+    const a = document.createElement("a");
     a.href = url;
-    a.download = 'building_template.csv';
+    a.download = "building_template.csv";
     document.body.appendChild(a);
     a.click();
     document.body.removeChild(a);
@@ -483,10 +491,10 @@ const BuildingMaster = () => {
       <Grid container spacing={2} alignItems="center">
         <Grid size={{ xs: 12, md: "auto" }}>
           <Typography variant="h4" fontWeight={700} color="primary">
-            Buildingy Management
+            Building Management
           </Typography>
           <Typography variant="body2" color="text.secondary">
-            Manage and monitor all building in the system
+            Manage and monitor all buildings in the system
           </Typography>
         </Grid>
       </Grid>
@@ -557,30 +565,30 @@ const BuildingMaster = () => {
       {/* DataGrid */}
       <Box sx={{ height: 410, width: "100%", mt: 3 }}>
         <DataGrid
-        rows={filteredRows}
-        columns={columns}
-        disableRowSelectionOnClick
-        loading={loading}
-        paginationModel={paginationModel}
-        onPaginationModelChange={(newModel) => {
-          if (newModel.pageSize !== paginationModel.pageSize) {
-            setPaginationModel({ page: 0, pageSize: newModel.pageSize });
-          } else {
-            setPaginationModel(newModel);
-          }
-        }}
-        pageSizeOptions={[5, 10, 25, 50]}
-        rowHeight={60}
-        headerHeight={50}
-        sx={{
-          "& .MuiDataGrid-columnHeaders": {
-            backgroundColor: "rgba(99,102,241,0.06)",
-          },
-          borderRadius: 2,
-          border: "1px solid",
-          borderColor: "divider",
-        }}
-      />
+          rows={filteredRows}
+          columns={columns}
+          disableRowSelectionOnClick
+          loading={loading}
+          paginationModel={paginationModel}
+          onPaginationModelChange={(newModel) => {
+            if (newModel.pageSize !== paginationModel.pageSize) {
+              setPaginationModel({ page: 0, pageSize: newModel.pageSize });
+            } else {
+              setPaginationModel(newModel);
+            }
+          }}
+          pageSizeOptions={[5, 10, 25, 50]}
+          rowHeight={60}
+          headerHeight={50}
+          sx={{
+            "& .MuiDataGrid-columnHeaders": {
+              backgroundColor: "rgba(99,102,241,0.06)",
+            },
+            borderRadius: 2,
+            border: "1px solid",
+            borderColor: "divider",
+          }}
+        />
       </Box>
 
       {/* Add/Edit Dialog */}
@@ -624,16 +632,25 @@ const BuildingMaster = () => {
                   disabled={submitLoading}
                 />
 
-                <FormControl fullWidth required disabled={submitLoading}>
-                  <InputLabel>Status</InputLabel>
+                <FormControl fullWidth>
                   <Select
-                    value={status === null ? "" : String(status)}
-                    onChange={(e) => setStatus(e.target.value === "true")}
-                    label="Status"
+                    value={status}
+                    onChange={(e) => setStatus(e.target.value)}
+                    required
+                    displayEmpty
+                    renderValue={(selected) => {
+                      if (selected === "") {
+                        return (
+                          <span style={{ color: "#999" }}>Select status</span>
+                        );
+                      }
+                      return selected == "active" || selected === true
+                        ? "Active"
+                        : "Inactive";
+                    }}
                   >
-                    <MenuItem value="">Select status</MenuItem>
-                    <MenuItem value="true">Active</MenuItem>
-                    <MenuItem value="false">Inactive</MenuItem>
+                    <MenuItem value="active">Active</MenuItem>
+                    <MenuItem value="inactive">Inactive</MenuItem>
                   </Select>
                 </FormControl>
               </Box>
@@ -682,9 +699,7 @@ const BuildingMaster = () => {
               alignItems="center"
               justifyContent="space-between"
             >
-              <Typography variant="h6">
-                Upload Buildings from Excel
-              </Typography>
+              <Typography variant="h6">Upload Buildings from Excel</Typography>
               <IconButton
                 onClick={handleCloseExcelDialog}
                 size="small"
@@ -699,7 +714,9 @@ const BuildingMaster = () => {
             <Box display="flex" flexDirection="column" gap={3} pt={1}>
               <Alert severity="info">
                 <Typography variant="body2">
-                  Upload an Excel file with buildings. The file should have columns: <strong>name</strong> and <strong>status</strong> (boolean: true/false).
+                  Upload an Excel file with buildings. The file should have
+                  columns: <strong>name</strong> and <strong>status</strong>{" "}
+                  (boolean: true/false).
                 </Typography>
               </Alert>
 
@@ -712,43 +729,45 @@ const BuildingMaster = () => {
                 >
                   Download Template
                 </Button>
-                
+
                 <input
                   ref={fileInputRef}
                   type="file"
                   accept=".xlsx,.xls"
                   onChange={handleFileSelect}
-                  style={{ display: 'none' }}
+                  style={{ display: "none" }}
                 />
-                
+
                 <Box
                   sx={{
-                    border: '2px dashed',
-                    borderColor: selectedFile ? 'success.main' : 'grey.300',
+                    border: "2px dashed",
+                    borderColor: selectedFile ? "success.main" : "grey.300",
                     borderRadius: 2,
                     p: 3,
-                    textAlign: 'center',
-                    cursor: 'pointer',
-                    transition: 'all 0.3s ease',
-                    '&:hover': {
-                      borderColor: 'primary.main',
-                      backgroundColor: (theme) => 
-                        theme.palette.mode === 'dark' 
-                          ? 'rgba(255, 255, 255, 0.05)' 
-                          : 'rgba(0, 0, 0, 0.04)'
-                    }
+                    textAlign: "center",
+                    cursor: "pointer",
+                    transition: "all 0.3s ease",
+                    "&:hover": {
+                      borderColor: "primary.main",
+                      backgroundColor: (theme) =>
+                        theme.palette.mode === "dark"
+                          ? "rgba(255, 255, 255, 0.05)"
+                          : "rgba(0, 0, 0, 0.04)",
+                    },
                   }}
                   onClick={() => fileInputRef.current?.click()}
                 >
-                  <CloudUploadIcon 
-                    sx={{ 
-                      fontSize: 48, 
-                      color: selectedFile ? 'success.main' : 'grey.400',
-                      mb: 1 
-                    }} 
+                  <CloudUploadIcon
+                    sx={{
+                      fontSize: 48,
+                      color: selectedFile ? "success.main" : "grey.400",
+                      mb: 1,
+                    }}
                   />
                   <Typography variant="body1" sx={{ mb: 1 }}>
-                    {selectedFile ? selectedFile.name : 'Click to select Excel file'}
+                    {selectedFile
+                      ? selectedFile.name
+                      : "Click to select Excel file"}
                   </Typography>
                   <Typography variant="body2" color="text.secondary">
                     Supported formats: .xlsx, .xls
@@ -762,9 +781,10 @@ const BuildingMaster = () => {
                     Upload Results
                   </Typography>
                   <Alert severity="success" sx={{ mb: 2 }}>
-                    Successfully processed {uploadResults.summary?.successfullyCreated || 0} buildings
+                    Successfully processed{" "}
+                    {uploadResults.summary?.successfullyCreated || 0} buildings
                   </Alert>
-                  
+
                   {uploadResults.summary?.failed > 0 && (
                     <Alert severity="warning" sx={{ mb: 2 }}>
                       {uploadResults.summary.failed} buildings failed to create
@@ -773,15 +793,22 @@ const BuildingMaster = () => {
 
                   {uploadResults.summary?.errors && (
                     <Box>
-                      <Typography variant="subtitle2" color="error" gutterBottom>
+                      <Typography
+                        variant="subtitle2"
+                        color="error"
+                        gutterBottom
+                      >
                         Errors:
                       </Typography>
                       <List dense>
                         {uploadResults.summary.errors.map((error, index) => (
                           <ListItem key={index}>
-                            <ListItemText 
+                            <ListItemText
                               primary={error}
-                              primaryTypographyProps={{ variant: 'body2', color: 'error' }}
+                              primaryTypographyProps={{
+                                variant: "body2",
+                                color: "error",
+                              }}
                             />
                           </ListItem>
                         ))}
@@ -799,7 +826,7 @@ const BuildingMaster = () => {
               variant="outlined"
               disabled={excelUploadLoading}
             >
-              {uploadResults ? 'Close' : 'Cancel'}
+              {uploadResults ? "Close" : "Cancel"}
             </Button>
             {!uploadResults && (
               <Button
@@ -807,7 +834,11 @@ const BuildingMaster = () => {
                 variant="contained"
                 disabled={excelUploadLoading || !selectedFile}
                 startIcon={
-                  excelUploadLoading ? <CircularProgress size={16} /> : <UploadIcon />
+                  excelUploadLoading ? (
+                    <CircularProgress size={16} />
+                  ) : (
+                    <UploadIcon />
+                  )
                 }
               >
                 {excelUploadLoading ? "Uploading..." : "Upload File"}

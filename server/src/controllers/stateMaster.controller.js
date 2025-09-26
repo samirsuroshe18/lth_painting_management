@@ -6,13 +6,13 @@ import { State } from '../models/state.model.js';
 const addNewState = catchAsync(async (req, res) => {
     const { name, status } = req.body;
 
-    if (!name || typeof status !== 'boolean') {
-        throw new ApiError(400, 'Name and valid status are required fields');
+    if (!name || !status) {
+        throw new ApiError(400, 'Name and status are required fields');
     }
 
     const newState = await State.create({
         name,
-        status,
+        status: status==="active"?true:false,
         createdBy: req.user._id,
         updatedBy: req.user._id
     });
@@ -50,7 +50,7 @@ const updateState = catchAsync(async (req, res) => {
 
     const updatedState = await State.findByIdAndUpdate(
         id,
-        { name, status, updatedBy: req.user._id },
+        { name, status: status === "active"?true:false, updatedBy: req.user._id },
         { new: true, runValidators: true }
     )
         .populate('createdBy', 'userName')

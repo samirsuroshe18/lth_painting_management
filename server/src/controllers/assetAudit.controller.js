@@ -6,7 +6,6 @@ import { uploadOnCloudinary } from '../utils/cloudinary.js';
 import { AssetAuditLog } from '../models/assetAuditLog.model.js';
 import mongoose from 'mongoose';
 
-// To add a new asset audit
 const addNewAssetAudit = catchAsync(async (req, res) => {
     const { assetId, auditorRemark, proposedChanges } = req.body;
     const files = req.files || {};
@@ -109,8 +108,17 @@ const reviewAuditStatus = catchAsync(async (req, res) => {
         }
     });
 
-    if (audit?.proposedChanges?.location) {
-        updateData.locationId = audit.proposedChanges.location;
+    if (audit?.proposedChanges?.locationId) {
+        updateData.locationId = audit.proposedChanges.locationId;
+    }
+    if (audit?.proposedChanges?.departmentId) {
+        updateData.departmentId = audit.proposedChanges.departmentId;
+    }
+    if (audit?.proposedChanges?.buildingId) {
+        updateData.buildingId = audit.proposedChanges.buildingId;
+    }
+    if (audit?.proposedChanges?.floorId) {
+        updateData.floorId = audit.proposedChanges.floorId;
     }
 
     const updatedAsset = await Asset.findByIdAndUpdate(
@@ -225,7 +233,7 @@ const getAuditLogs = catchAsync(async (req, res) => {
             select: 'name',
         })
         .populate({
-            path: 'proposedChanges.location',
+            path: 'proposedChanges.locationId',
             select: 'name',
         })
         .populate({
@@ -263,12 +271,6 @@ const fetchAllAuditLogs = catchAsync(async (req, res) => {
 
     const updatedAssetAudit = await AssetAuditLog.find(assetAuditMatch)
         .populate({
-            path: 'proposedChanges.locationId',
-            model: 'Location',
-            select: 'name',
-            strictPopulate: false
-        })
-        .populate({
             path: 'assetId',
             populate: [
                 {
@@ -278,7 +280,27 @@ const fetchAllAuditLogs = catchAsync(async (req, res) => {
                             path: 'stateId',
                             select: 'name',
                         },
+                        {
+                            path: 'cityId',
+                            select: 'name',
+                        },
+                        {
+                            path: 'areaId',
+                            select: 'name',
+                        },
                     ]
+                },
+                {
+                    path: 'departmentId',
+                    select: 'name',
+                },
+                {
+                    path: 'buildingId',
+                    select: 'name',
+                },
+                {
+                    path: 'floorId',
+                    select: 'name',
                 },
                 {
                     path: 'createdBy',
@@ -297,7 +319,7 @@ const fetchAllAuditLogs = catchAsync(async (req, res) => {
             select: 'name',
         })
         .populate({
-            path: 'proposedChanges.location',
+            path: 'proposedChanges.locationId',
             select: 'name',
         })
         .populate({
@@ -365,7 +387,7 @@ const getAssetAuditLogs = catchAsync(async (req, res) => {
             select: 'name',
         })
         .populate({
-            path: 'proposedChanges.location',
+            path: 'proposedChanges.locationId',
             select: 'name',
         })
         .populate({

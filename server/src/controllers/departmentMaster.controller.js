@@ -8,13 +8,13 @@ import fs from 'fs';
 const addNewDepartment = catchAsync(async (req, res) => {
     const { name, status } = req.body;
 
-    if (!name || typeof status !== 'boolean') {
-        throw new ApiError(400, 'Name and valid status are required fields');
+    if (!name || !status) {
+        throw new ApiError(400, 'Name and status are required fields');
     }
 
     const newDepartment = await Department.create({
         name,
-        status,
+        status:status==="active"?true:false,
         createdBy: req.user._id,
         updatedBy: req.user._id
     });
@@ -46,13 +46,13 @@ const updateDepartment = catchAsync(async (req, res) => {
     const { id } = req.params;
     const { name, status } = req.body;
 
-    if (!name || status == null) {
+    if (!name || !status) {
         throw new ApiError(400, 'Name and status is a required field');
     }
 
     const updatedDepartment = await Department.findByIdAndUpdate(
         id,
-        { name, status, updatedBy: req.user._id },
+        { name, status: status==="active"?true:false, updatedBy: req.user._id },
         { new: true, runValidators: true }
     )
         .populate('createdBy', 'userName')

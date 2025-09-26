@@ -6,13 +6,13 @@ import { City } from '../models/city.model.js';
 const addNewCity = catchAsync(async (req, res) => {
     const { name, status } = req.body;
 
-    if (!name || typeof status !== 'boolean') {
-        throw new ApiError(400, 'Name and valid status are required fields');
+    if (!name || !status) {
+        throw new ApiError(400, 'Name and status are required fields');
     }
 
     const newCity = await City.create({
         name,
-        status,
+        status:status==="active"?true:false,
         createdBy: req.user._id,
         updatedBy: req.user._id
     });
@@ -44,13 +44,13 @@ const updateCity = catchAsync(async (req, res) => {
     const { id } = req.params;
     const { name, status } = req.body;
 
-    if (!name || status == null) {
+    if (!name || !status) {
         throw new ApiError(400, 'Name and status is a required field');
     }
 
     const updatedCity = await City.findByIdAndUpdate(
         id,
-        { name, status, updatedBy: req.user._id },
+        { name, status:status==="active"?true:false, updatedBy: req.user._id },
         { new: true, runValidators: true }
     )
         .populate('createdBy', 'userName')
