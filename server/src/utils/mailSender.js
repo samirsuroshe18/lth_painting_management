@@ -1,6 +1,7 @@
 import { createTransport } from 'nodemailer';
 import bcrypt from 'bcrypt';
 import { User } from '../models/user.model.js';
+import { config } from '../config/env.js';
 
 async function mailSender(email, emailType, password = "NA", userId = "") {
   try {
@@ -203,7 +204,7 @@ async function mailSender(email, emailType, password = "NA", userId = "") {
           <h2 style="color: #333;">Password Reset Request</h2>
           <p>You have requested to reset your password. Click the button below to proceed.</p>
           <div style="margin: 30px 0;">
-            <a href="${process.env.BASE_URL}/api/v1/verify/reset-password?token=${hashedToken}" 
+            <a href="${config.server.baseUrl}/api/v1/verify/reset-password?token=${hashedToken}" 
                style="background-color: #dc3545; color: white; padding: 12px 24px; text-decoration: none; border-radius: 5px; display: inline-block;">
               Reset Password
             </a>
@@ -215,17 +216,17 @@ async function mailSender(email, emailType, password = "NA", userId = "") {
 
     // Create a Transporter to send emails
     let transporter = createTransport({
-      host: process.env.MAIL_HOST,
-      port: process.env.EMAIL_PORT,
+      host: config.mail.host,
+      port: config.mail.port,
       auth: {
-        user: process.env.MAIL_USER,
-        pass: process.env.MAIL_PASS,
+        user: config.mail.user,
+        pass: config.mail.pass,
       }
     });
 
     // Send emails to users
     let mailResponse = await transporter.sendMail({
-      from: process.env.MAIL_USER,
+      from: config.mail.user,
       to: email,
       subject: subject,
       html: htmlContent

@@ -1,8 +1,7 @@
-import dotenv from "dotenv";
-dotenv.config()
 import connectDB from "./database/database.js";
 import app from "./app.js";
 import seedSuperAdmin from "./utils/seedSuperAdmin.js";
+import { config } from "./config/env.js";
 
 connectDB().then(async () => {
     try {
@@ -13,8 +12,8 @@ connectDB().then(async () => {
         // ⚠️ Option 2: process.exit(1); // If you want to fail hard
     }
 
-    app.listen(process.env.PORT || 8000, process.env.SERVER_HOST, async () => {
-        console.log(`Server is running at on : http://${process.env.SERVER_HOST}:${process.env.PORT}`);
+    app.listen(config.port || 8000, config.server.host, async () => {
+        console.log(`Server is running at on : http://${config.server.host}:${config.port}`);
     })
 }).catch((err) => {
     console.log('MongoDB Failed !!!', err);

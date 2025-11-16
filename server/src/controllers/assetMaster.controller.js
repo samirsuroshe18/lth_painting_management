@@ -5,6 +5,7 @@ import { Asset } from '../models/asset.model.js';
 import { uploadOnCloudinary } from '../utils/cloudinary.js';
 import QRCode from 'qrcode'
 import mongoose from 'mongoose';
+import { config } from '../config/env.js';
 
 const addNewAsset = catchAsync(async (req, res) => {
     const { 
@@ -36,9 +37,15 @@ const addNewAsset = catchAsync(async (req, res) => {
         throw new ApiError(400, 'Please fill in all required fields');
     }
 
+    // if (imagePath) {
+    //     const uploadResult = await uploadOnCloudinary(imagePath);
+    //     imageUrl = uploadResult.secure_url;
+    // }else{
+    //     throw new ApiError(400, "Asset Image is missing", imagePath)
+    // }
+
     if (imagePath) {
-        const uploadResult = await uploadOnCloudinary(imagePath);
-        imageUrl = uploadResult.secure_url;
+        imageUrl = `${config.server.baseUrl}/temp/${req.file.filename}`;
     }else{
         throw new ApiError(400, "Asset Image is missing", imagePath)
     }
@@ -68,7 +75,7 @@ const addNewAsset = catchAsync(async (req, res) => {
         throw new ApiError(500, 'Failed to create asset');
     }
 
-    const qrCodeDataUrl = await QRCode.toDataURL(`${process.env.QR_CODE_DATA_URL}${newAsset._id}`);
+    const qrCodeDataUrl = await QRCode.toDataURL(`${config.qr.dataUrl}${newAsset._id}`);
 
     if (!qrCodeDataUrl) {
         throw new ApiError(500, 'Failed to generate QR code');
@@ -180,8 +187,9 @@ const updateAsset = catchAsync(async (req, res) => {
     }
 
     if (imagePath) {
-        const uploadResult = await uploadOnCloudinary(imagePath);
-        imageUrl = uploadResult.secure_url;
+        // const uploadResult = await uploadOnCloudinary(imagePath);
+        // imageUrl = uploadResult.secure_url;
+        imageUrl = `${config.server.baseUrl}/temp/${req.file.filename}`;
     }
 
     const updateData = {

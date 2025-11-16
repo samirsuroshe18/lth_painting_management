@@ -45,10 +45,11 @@ import { getAllCities } from "../../api/cityApi";
 import { getAllArea } from "../../api/areaApi";
 import { showNotificationWithTimeout } from "../../redux/slices/notificationSlice";
 import { handleAxiosError } from "../../utils/handleAxiosError";
+import { getCurrentUser } from "../../api/authApi";
 
 const LocationMaster = () => {
   const userData = useSelector((state) => state.auth.userData?.user);
-  const usersLocation = userData?.location || [];
+  const [usersLocation, setUsersLocation] = useState(userData?.location || []);
   const dispatch = useDispatch();
   const [loading, setLoading] = useState(false);
   const [rows, setRows] = useState([]);
@@ -300,6 +301,8 @@ const LocationMaster = () => {
     try {
       const result = await addLocationToSuperAdmin(location._id);
       if (result.success) {
+        const res = await getCurrentUser();
+        setUsersLocation((prev) => [...prev, ...res.data?.user?.location]);
         setRows((prev) =>
           prev.map((item) =>
             item.id === location.id ? { ...item, hasAccess: true } : item

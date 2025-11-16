@@ -2,6 +2,7 @@ import { User } from '../models/user.model.js';
 import ApiResponse from '../utils/ApiResponse.js';
 import ApiError from '../utils/ApiError.js';
 import catchAsync from '../utils/catchAsync.js';
+import { config } from '../config/env.js';
 
 // Helper function to validate and sanitize reset token
 const validateResetToken = (token) => {
@@ -83,7 +84,7 @@ const resetPassword = catchAsync(async (req, res) => {
   }
 
   return res.render("forgotPasswordSuccess", {
-    apiBaseUrl: process.env.BASE_URL
+    apiBaseUrl: config.server.baseUrl
   });
 });
 

@@ -5,6 +5,7 @@ import { Asset } from '../models/asset.model.js';
 import { uploadOnCloudinary } from '../utils/cloudinary.js';
 import { AssetAuditLog } from '../models/assetAuditLog.model.js';
 import mongoose from 'mongoose';
+import { config } from '../config/env.js';
 
 const addNewAssetAudit = catchAsync(async (req, res) => {
     const { assetId, auditorRemark, proposedChanges } = req.body;
@@ -31,25 +32,29 @@ const addNewAssetAudit = catchAsync(async (req, res) => {
     if (proposedChanges || assetImagePath) {
         proposedChangesData = proposedChanges ? JSON.parse(proposedChanges) : {};
         if (assetImagePath) {
-            const uploadResult = await uploadOnCloudinary(assetImagePath);
-            assetImage = uploadResult.secure_url;
+            // const uploadResult = await uploadOnCloudinary(assetImagePath);
+            // assetImage = uploadResult.secure_url;
+            assetImage = `${config.server.baseUrl}/temp/${files['assetImage']?.[0]?.filename}`;
         }
         proposedChangesData.image = assetImage || undefined;
     }
 
     if (auditImagePath1) {
-        const uploadResult = await uploadOnCloudinary(auditImagePath1);
-        auditImage1 = uploadResult.secure_url;
+        // const uploadResult = await uploadOnCloudinary(auditImagePath1);
+        // auditImage1 = uploadResult.secure_url;
+        auditImage1 = `${config.server.baseUrl}/temp/${files['auditImage1']?.[0]?.filename}`;
     }
 
     if (auditImagePath2) {
-        const uploadResult = await uploadOnCloudinary(auditImagePath2);
-        auditImage2 = uploadResult.secure_url;
+        // const uploadResult = await uploadOnCloudinary(auditImagePath2);
+        // auditImage2 = uploadResult.secure_url;
+        auditImage2 = `${config.server.baseUrl}/temp/${files['auditImage2']?.[0]?.filename}`;
     }
 
     if (auditImagePath3) {
-        const uploadResult = await uploadOnCloudinary(auditImagePath3);
-        auditImage3 = uploadResult.secure_url;
+        // const uploadResult = await uploadOnCloudinary(auditImagePath3);
+        // auditImage3 = uploadResult.secure_url;
+        auditImage3 = `${config.server.baseUrl}/temp/${files['auditImage3']?.[0]?.filename}`;
     }
 
     const auditData = {

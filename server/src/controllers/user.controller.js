@@ -4,6 +4,7 @@ import ApiResponse from '../utils/ApiResponse.js';
 import mailSender from '../utils/mailSender.js';
 import { User } from '../models/user.model.js';
 import jwt from "jsonwebtoken";
+import { config } from '../config/env.js';
 
 const generateAccessAndRefreshToken = async (userId) => {
     try {
@@ -53,10 +54,10 @@ const loginUser = catchAsync(async (req, res) => {
 
     // Create cookie options object
     const option = {
-        httpOnly: process.env.HTTP_ONLY === 'true',
-        secure: process.env.NODE_ENV === 'production',
-        maxAge: isRemember ? Number(process.env.COOKIE_MAX_AGE) : undefined,
-        sameSite: process.env.SAME_SITE === 'true' ? 'Strict' : 'Lax',
+        httpOnly: config.cookie.httpOnly === 'true',
+        secure: config.isProd === 'production',
+        maxAge: isRemember ? config.cookie.maxAge : undefined,
+        sameSite: config.cookie.sameSite === 'true' ? 'Strict' : 'Lax',
     };
 
     return res.status(200).cookie('accessToken', accessToken, option).cookie('refreshToken', refreshToken, option).json(
@@ -73,9 +74,9 @@ const logoutUser = catchAsync(async (req, res) => {
 
     // Cookie options
     const option = {
-        httpOnly: process.env.HTTP_ONLY === 'true',
-        secure: process.env.NODE_ENV === 'production',
-        sameSite: process.env.SAME_SITE === 'true' ? 'Strict' : 'Lax',
+        httpOnly: config.cookie.httpOnly === 'true',
+        secure: config.isProd === 'production',
+        sameSite: config.cookie.sameSite === 'true' ? 'Strict' : 'Lax',
     }
 
     try {
@@ -124,7 +125,7 @@ const refreshAccessToken = catchAsync(async (req, res) => {
     let decodedToken;
 
     try {
-        decodedToken = jwt.verify(incomingRefreshToken, process.env.REFRESH_TOKEN_SECRET);
+        decodedToken = jwt.verify(incomingRefreshToken, config.jwt.refreshSecret);
     } catch (err) {
         if (err.name === 'TokenExpiredError') {
             throw new ApiError(401, "Refresh token is expired");
@@ -143,10 +144,10 @@ const refreshAccessToken = catchAsync(async (req, res) => {
     }
 
     const option = {
-        httpOnly: process.env.HTTP_ONLY === 'true',
-        secure: process.env.NODE_ENV === 'production',
-        maxAge: user?.isRemember ? Number(process.env.COOKIE_MAX_AGE) : undefined,
-        sameSite: process.env.SAME_SITE === 'true' ? 'Strict' : 'Lax',
+        httpOnly: config.cookie.httpOnly === 'true',
+        secure: config.isProd === 'production',
+        maxAge: user?.isRemember ? config.cookie.maxAge : undefined,
+        sameSite: config.cookie.sameSite === 'true' ? 'Strict' : 'Lax',
     };
 
     const { accessToken } = await generateAccessAndRefreshToken(user._id);

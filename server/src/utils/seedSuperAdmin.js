@@ -1,3 +1,4 @@
+import { config } from "../config/env.js";
 import getAccessByRole from "../config/getAccessByRole.js";
 import { User } from "../models/user.model.js";
 
@@ -10,11 +11,11 @@ const seedSuperAdmin = async () => {
   }
 
   await User.create({
-    userName: process.env.SUPERADMIN_NAME,
-    email: process.env.SUPERADMIN_EMAIL,
-    password: process.env.SUPERADMIN_PASSWORD,
-    role: process.env.SUPERADMIN_ROLE || "superadmin",
-    permissions: getAccessByRole(process.env.SUPERADMIN_ROLE || "superadmin"),
+    userName: config.superAdmin.name,
+    email: config.superAdmin.email,
+    password: config.superAdmin.password,
+    role: config.superAdmin.role || "superadmin",
+    permissions: getAccessByRole(config.superAdmin.role || "superadmin"),
     isActive: true,
     isDeleted: false,
   });
